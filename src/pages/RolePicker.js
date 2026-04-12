@@ -1,28 +1,38 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { clearAuthIntent, getDefaultFullName, normalizeRole, ROLE_OPTIONS } from "../auth";
 import { supabase } from "../supabase";
+import "./RolePicker.css";
 
-export default function RolePicker({ session }) {
-  const [role, setRole] = useState("");
-  const [fullName, setFullName] = useState("");
+export default function RolePicker({ session, profile, onProfileCreated }) {
+  const navigate = useNavigate();
+  const [role, setRole] = useState(
+    normalizeRole(profile?.role) || normalizeRole(session.user.user_metadata?.role) || ""
+  );
+  const [fullName, setFullName] = useState(profile?.full_name || getDefaultFullName(session.user));
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
     if (!fullName.trim() || !role) {
-      setMessage("Please fill in your name and select a role");
+      setMessage("Please add your name and choose a role.");
       return;
     }
 
     setLoading(true);
     setMessage("");
 
-    const { error } = await supabase
+    const payload = {
+      id: session.user.id,
+      full_name: fullName.trim(),
+      role,
+    };
+
+    const { data, error } = await supabase
       .from("profiles")
-      .insert([{
-        id: session.user.id,
-        full_name: fullName.trim(),
-        role: role,                    // "student", "staff", or "admin"
-      }]);
+      .upsert(payload)
+      .select("*")
+      .maybeSingle();
 
     setLoading(false);
 
@@ -31,40 +41,65 @@ export default function RolePicker({ session }) {
       return;
     }
 
-    // Refresh so App.js picks up the new profile
-    window.location.href = "/";
+    clearAuthIntent();
+    onProfileCreated(data || payload);
+  };
+
+  const handleBack = async () => {
+    setLoading(true);
+    await supabase.auth.signOut();
+    clearAuthIntent();
+    navigate("/", { replace: true });
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.title}>One Last Step!</h2>
-        <p style={styles.subtitle}>
-          Welcome {session.user.email}! Please complete your profile.
-        </p>
+    <div className="role-picker-page">
+      <div className="role-picker-card">
+        <button type="button" className="role-picker-back" onClick={handleBack} disabled={loading}>
+          <ArrowLeftIcon />
+          Back
+        </button>
 
-        {message && <p style={styles.error}>{message}</p>}
+        <div className="role-picker-header">
+          <span className="role-picker-kicker">Complete setup</span>
+          <h1>One last step</h1>
+          <p>
+            You are signed in as <strong>{session.user.email}</strong>. Add your name and role so
+            UniMart can open the right workspace.
+          </p>
+        </div>
 
-        <input
-          style={styles.input}
-          type="text"
-          placeholder="Full Name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-        />
+        {message && <div className="role-picker-alert">{message}</div>}
 
-        <select
-          style={styles.select}
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          <option value="">Select your role...</option>
-          <option value="student">Student</option>
-          <option value="staff">Trade Facility Staff</option>
-          <option value="admin">Admin</option>
-        </select>
+        <div className="role-picker-group">
+          <label htmlFor="role-picker-name">Full name</label>
+          <input
+            id="role-picker-name"
+            className="role-picker-input"
+            type="text"
+            placeholder="Jane Doe"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+          />
+        </div>
 
-        <button style={styles.button} onClick={handleSave} disabled={loading}>
+        <div className="role-picker-group">
+          <label>Role</label>
+          <div className="role-picker-options">
+            {ROLE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`role-picker-option ${role === option.value ? "active" : ""}`}
+                onClick={() => setRole(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button className="role-picker-submit" onClick={handleSave} disabled={loading}>
           {loading ? "Saving..." : "Continue"}
         </button>
       </div>
@@ -72,53 +107,9 @@ export default function RolePicker({ session }) {
   );
 }
 
-const styles = {
-  container: { 
-    display: "flex", 
-    justifyContent: "center", 
-    alignItems: "center", 
-    height: "100vh", 
-    backgroundColor: "#f3f4f6" 
-  },
-  card: { 
-    backgroundColor: "white", 
-    padding: "40px", 
-    borderRadius: "12px", 
-    boxShadow: "0 4px 20px rgba(0,0,0,0.1)", 
-    width: "380px", 
-    textAlign: "center" 
-  },
-  title: { fontSize: "24px", fontWeight: "bold", marginBottom: "8px", color: "#111" },
-  subtitle: { fontSize: "14px", color: "#6b7280", marginBottom: "24px" },
-  input: { 
-    width: "100%", 
-    padding: "12px", 
-    borderRadius: "8px", 
-    border: "1px solid #d1d5db", 
-    fontSize: "15px", 
-    marginBottom: "16px", 
-    boxSizing: "border-box" 
-  },
-  select: { 
-    width: "100%", 
-    padding: "12px", 
-    borderRadius: "8px", 
-    border: "1px solid #d1d5db", 
-    fontSize: "15px", 
-    marginBottom: "16px", 
-    boxSizing: "border-box", 
-    backgroundColor: "white" 
-  },
-  button: { 
-    width: "100%", 
-    padding: "12px", 
-    backgroundColor: "#1D4ED8", 
-    color: "white", 
-    border: "none", 
-    borderRadius: "8px", 
-    fontSize: "15px", 
-    fontWeight: "bold", 
-    cursor: "pointer" 
-  },
-  error: { color: "#DC2626", fontSize: "13px", marginBottom: "12px" },
-};
+const ArrowLeftIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M19 12H5" />
+    <path d="M12 19l-7-7 7-7" />
+  </svg>
+);

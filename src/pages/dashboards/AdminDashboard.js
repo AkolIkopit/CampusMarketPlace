@@ -1,48 +1,46 @@
-import { supabase } from "../../supabase";
+import DashboardShell from "./DashboardShell";
+
+const cards = [
+  {
+    icon: "👥",
+    title: "Manage users",
+    description: "Review user access, role assignments, and account issues across the platform.",
+  },
+  {
+    icon: "📋",
+    title: "All listings",
+    description: "Monitor marketplace inventory and intervene quickly when a listing needs action.",
+  },
+  {
+    icon: "🏫",
+    title: "Trade facilities",
+    description: "Keep campus trade hubs aligned on staffing, capacity, and availability windows.",
+  },
+  {
+    icon: "📊",
+    title: "Analytics",
+    description: "Watch platform growth, listing velocity, and category performance at a glance.",
+  },
+  {
+    icon: "🚩",
+    title: "Flagged content",
+    description: "Handle moderation queues and resolve reports before they escalate.",
+  },
+  {
+    icon: "⚙️",
+    title: "Settings",
+    description: "Adjust platform defaults, operations rules, and admin-level configuration.",
+  },
+];
 
 export default function AdminDashboard({ profile }) {
   return (
-    <div style={styles.container}>
-      <div style={styles.navbar}>
-        <h1 style={styles.logo}>Campus Marketplace</h1>
-        <div style={styles.navRight}>
-          <span style={styles.welcome}>👋 {profile.full_name}</span>
-          <span style={styles.badge}>Admin</span>
-          <button
-            style={styles.logout}
-            onClick={() => supabase.auth.signOut()}
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-      <div style={styles.content}>
-        <h2 style={styles.heading}>Admin Dashboard</h2>
-        <p style={styles.sub}>Manage the entire platform from here.</p>
-        <div style={styles.grid}>
-          <div style={styles.card}>👥 Manage Users</div>
-          <div style={styles.card}>📋 All Listings</div>
-          <div style={styles.card}>🏪 Trade Facilities</div>
-          <div style={styles.card}>📊 Analytics</div>
-          <div style={styles.card}>🚩 Flagged Content</div>
-          <div style={styles.card}>⚙️ Settings</div>
-        </div>
-      </div>
-    </div>
+    <DashboardShell
+      theme="admin"
+      profile={profile}
+      title="Admin Dashboard"
+      subtitle="Run the platform from a responsive workspace with the account controls tucked into a mobile menu."
+      cards={cards}
+    />
   );
 }
-
-const styles = {
-  container: { minHeight: "100vh", backgroundColor: "#f3f4f6" },
-  navbar: { backgroundColor: "#7C3AED", padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  logo: { color: "white", fontSize: "20px", fontWeight: "bold", margin: 0 },
-  navRight: { display: "flex", alignItems: "center", gap: "16px" },
-  welcome: { color: "white", fontSize: "14px" },
-  badge: { backgroundColor: "#EDE9FE", color: "#7C3AED", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold" },
-  logout: { backgroundColor: "transparent", color: "white", border: "1px solid white", padding: "6px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
-  content: { padding: "40px 32px" },
-  heading: { fontSize: "28px", fontWeight: "bold", color: "#111", marginBottom: "8px" },
-  sub: { color: "#6b7280", marginBottom: "32px" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px", maxWidth: "500px" },
-  card: { backgroundColor: "white", padding: "32px", borderRadius: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", fontSize: "16px", fontWeight: "bold", color: "#111", textAlign: "center", cursor: "pointer" },
-};
