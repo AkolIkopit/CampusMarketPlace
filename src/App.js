@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+
+import LandingPage from "./pages/LandingPage";
+import AuthPage from "./pages/AuthPage";
 import RolePicker from "./pages/RolePicker";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
@@ -10,23 +12,24 @@ import AdminDashboard from "./pages/dashboards/AdminDashboard";
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [page, setPage] = useState("login");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setLoading(false);
+      if (session) {
+        fetchProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session);
-        if (session) fetchProfile(session.user.id);
-        else {
+        if (session) {
+          fetchProfile(session.user.id);
+        } else {
           setProfile(null);
           setLoading(false);
         }
@@ -43,43 +46,45 @@ export default function App() {
       .eq("id", userId)
       .single();
 
-    if (error || !data) {
-      setProfile(null);
-    } else {
-      setProfile(data);
-    }
+    setProfile(error || !data ? null : data);
     setLoading(false);
   };
 
-  // Loading screen
   if (loading) {
     return (
-      <div style={styles.loading}>
-        <p>Loading...</p>
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh", 
+        fontSize: "18px", 
+        color: "#6b7280" 
+      }}>
+        Loading...
       </div>
     );
   }
 
-  // Logged in but no profile yet — Google user needs to pick role
+  // If logged in but no profile → show RolePicker
   if (session && !profile) {
     return <RolePicker session={session} />;
   }
 
-  // Logged in with profile — route to correct dashboard
+  // If logged in with profile → show dashboard
   if (session && profile) {
     if (profile.role === "student") return <StudentDashboard profile={profile} />;
     if (profile.role === "staff") return <StaffDashboard profile={profile} />;
     if (profile.role === "admin") return <AdminDashboard profile={profile} />;
   }
 
-  // Not logged in
-  if (page === "login") {
-    return <Login onSwitch={() => setPage("signup")} />;
-  }
-
-  return <Signup onSwitch={() => setPage("login")} />;
+  // Not logged in → normal routing
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  );
 }
-
-const styles = {
-  loading: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", color: "#6b7280" },
-};
