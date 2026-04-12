@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '../supabase';   // ← Point to your existing supabase.js
+import { supabase } from '../supabase';
 import './AuthPage.css';
 
 const ROLES = ['Student', 'Trade Facility Staff', 'Admin'];
@@ -15,7 +15,6 @@ const AuthPage = () => {
     password: '',
     confirmPassword: '',
     fullName: '',
-    studentNumber: '',
     role: 'Student',
   });
 
@@ -23,6 +22,10 @@ const AuthPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Google confirmation popup
+  const [showGoogleConfirm, setShowGoogleConfirm] = useState(false);
+  const [pendingRole, setPendingRole] = useState('');
 
   // Clear messages when switching modes
   useEffect(() => {
@@ -39,6 +42,7 @@ const AuthPage = () => {
     setSearchParams({ mode: newMode });
   };
 
+  // ====================== EMAIL LOGIN / SIGNUP ======================
   const validate = () => {
     if (!form.email.trim()) return 'Email is required.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid email.';
@@ -47,7 +51,6 @@ const AuthPage = () => {
 
     if (mode === 'signup') {
       if (!form.fullName.trim()) return 'Full name is required.';
-      if (!form.studentNumber.trim()) return 'Student number is required.';
       if (form.password !== form.confirmPassword) return 'Passwords do not match.';
     }
     return null;
@@ -72,24 +75,19 @@ const AuthPage = () => {
           options: {
             data: {
               full_name: form.fullName,
-              student_number: form.studentNumber,
               role: form.role,
             },
           },
         });
-
         if (signUpError) throw signUpError;
-
         setSuccess('Account created! Check your email to confirm your address before logging in.');
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password,
         });
-
         if (signInError) throw signInError;
-
-        navigate('/');   // Go back to LandingPage or dashboard (handled by App.js)
+        navigate('/');
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong.';
@@ -99,16 +97,84 @@ const AuthPage = () => {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-    if (error) setError(error.message);
-    setLoading(false);
+  // ====================== GOOGLE SIGN IN ======================
+  const handleGoogleClick = () => {
+    setPendingRole(form.role);
+    setShowGoogleConfirm(true);
   };
+
+  const confirmGoogleLogin = async () => {
+    setShowGoogleConfirm(false);
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || 'Failed to start Google login');
+      setLoading(false);
+    }
+  };
+
+  // Auto-create profile after Google redirect
+  useEffect(() => {
+    const handlePostGoogleAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Check if profile already exists
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle();   // Better than .single() to avoid 406 errors
+
+      if (existing) {
+        navigate('/');
+        return;
+      }
+
+      // Get full name from Google
+      const googleName = session.user.user_metadata?.full_name ||
+                        session.user.user_metadata?.name ||
+                        session.user.email?.split('@')[0] || 'Student';
+
+      // Create profile
+      const { error } = await supabase
+        .from('profiles')
+        .insert([{
+          id: session.user.id,
+          full_name: googleName,
+          role: (pendingRole || form.role).toLowerCase(),
+        }]);
+
+      if (error) {
+        console.error("Profile insert error:", error);
+        setError('Failed to create your profile. Please try again.');
+      } else {
+        navigate('/');
+      }
+    };
+
+    // Small delay to let Supabase session settle after Google redirect
+    const timer = setTimeout(() => {
+      if (mode === 'signup') {
+        handlePostGoogleAuth();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [navigate, pendingRole, form.role, mode]);
 
   return (
     <div className="auth-page">
-      {/* Left panel */}
+      {/* Left Panel */}
       <div className="auth-left">
         <div className="auth-left-inner">
           <a href="/" className="nav-logo auth-logo">
@@ -141,7 +207,6 @@ const AuthPage = () => {
             </div>
           </div>
 
-          {/* Decorative cards */}
           <div className="auth-deco" aria-hidden="true">
             <div className="auth-deco-card">
               <span>📚</span>
@@ -161,10 +226,10 @@ const AuthPage = () => {
         </div>
       </div>
 
-      {/* Right panel — form */}
+      {/* Right Panel - Form */}
       <div className="auth-right">
         <div className="auth-form-wrap">
-          {/* Mode tabs */}
+          {/* Mode Tabs */}
           <div className="auth-tabs">
             <button
               className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
@@ -191,10 +256,10 @@ const AuthPage = () => {
             </p>
           </div>
 
-          {/* Google OAuth */}
+          {/* Google Button */}
           <button
             className="btn-oauth"
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleClick}
             disabled={loading}
             type="button"
           >
@@ -206,7 +271,7 @@ const AuthPage = () => {
             <span>or continue with email</span>
           </div>
 
-          {/* Form */}
+          {/* Main Form */}
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             {mode === 'signup' && (
               <>
@@ -217,13 +282,6 @@ const AuthPage = () => {
                     placeholder="Jane Doe"
                     value={form.fullName}
                     onChange={(v) => setField('fullName', v)}
-                  />
-                  <FormField
-                    label="Student number"
-                    type="text"
-                    placeholder="e.g. 1234567"
-                    value={form.studentNumber}
-                    onChange={(v) => setField('studentNumber', v)}
                   />
                 </div>
 
@@ -248,7 +306,7 @@ const AuthPage = () => {
             <FormField
               label="University email"
               type="email"
-              placeholder="1234567@students.wits.ac.za"
+              placeholder="student@wits.ac.za"
               value={form.email}
               onChange={(v) => setField('email', v)}
             />
@@ -283,64 +341,55 @@ const AuthPage = () => {
               />
             )}
 
-            {mode === 'login' && (
-              <div className="forgot-row">
-                <a href="#" className="forgot-link">Forgot password?</a>
-              </div>
-            )}
-
-            {error && (
-              <div className="alert alert-error">
-                <span>⚠</span> {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="alert alert-success">
-                <span>✓</span> {success}
-              </div>
-            )}
+            {error && <div className="alert alert-error"><span>⚠</span> {error}</div>}
+            {success && <div className="alert alert-success"><span>✓</span> {success}</div>}
 
             <button className="btn-submit" type="submit" disabled={loading}>
-              {loading ? (
-                <span className="spinner" />
-              ) : mode === 'login' ? (
-                'Log in to CampusSwap'
-              ) : (
-                'Create account'
-              )}
+              {loading ? <span className="spinner" /> : mode === 'login' ? 'Log in to CampusSwap' : 'Create account'}
             </button>
           </form>
 
           <p className="auth-switch">
             {mode === 'login' ? (
-              <>
-                Don't have an account?{' '}
-                <button className="auth-switch-btn" onClick={() => switchMode('signup')}>
-                  Sign up free
-                </button>
-              </>
+              <>Don't have an account? <button className="auth-switch-btn" onClick={() => switchMode('signup')}>Sign up free</button></>
             ) : (
-              <>
-                Already have an account?{' '}
-                <button className="auth-switch-btn" onClick={() => switchMode('login')}>
-                  Log in
-                </button>
-              </>
+              <>Already have an account? <button className="auth-switch-btn" onClick={() => switchMode('login')}>Log in</button></>
             )}
-          </p>
-
-          <p className="auth-terms">
-            By continuing, you agree to CampusSwap's Terms of Service and Privacy Policy.
-            This platform is exclusively for registered university students.
           </p>
         </div>
       </div>
+
+      {/* Google Role Confirmation Popup */}
+      {showGoogleConfirm && (
+        <div className="google-confirm-overlay">
+          <div className="google-confirm-modal">
+            <h3>Confirm Your Role</h3>
+            <p>
+              You have selected <strong>{pendingRole}</strong> as your role.<br />
+              Is this correct?
+            </p>
+            <div className="confirm-buttons">
+              <button 
+                onClick={() => setShowGoogleConfirm(false)} 
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmGoogleLogin} 
+                className="btn-primary"
+              >
+                Yes, Continue with Google
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-/* ── Sub-components ──────────────────────────────────── */
+/* ====================== SUB COMPONENTS ====================== */
 
 const FormField = ({ label, type, placeholder, value, onChange }) => (
   <div className="form-group">

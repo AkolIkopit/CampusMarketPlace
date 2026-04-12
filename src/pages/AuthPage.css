@@ -167,6 +167,63 @@
   animation: fadeUp 0.5s ease both;
 }
 
+.google-confirm-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.google-confirm-modal {
+  background: white;
+  padding: 30px 40px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+}
+
+.google-confirm-modal h3 {
+  margin-bottom: 15px;
+  color: #1f2937;
+}
+
+.google-confirm-modal p {
+  margin-bottom: 25px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-secondary {
+  padding: 12px 24px;
+  background: var(--text-muted);
+  color: var(--navy);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: var(--navy);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ── Mode Tabs ────────────────────────────────────────── */
 .auth-tabs {
   display: flex;
