@@ -1,0 +1,25 @@
+.ep-workspace { width: 100%; max-width: 900px; margin: 40px auto; padding: 0 20px; animation: fadeIn 0.3s ease-out; }
+.ep-card { background: #fff; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.08); border: 1px solid #f0f0f0; overflow: hidden; }
+.ep-header { padding: 24px 32px; background: #fcfcfc; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+.ep-header h2 { font-size: 1.4rem; font-weight: 800; color: #1a1a1b; }
+.ep-close-btn { background: #fff; border: 1px solid #e2e8f0; padding: 8px; border-radius: 12px; cursor: pointer; }
+.ep-body { padding: 40px; display: flex; gap: 40px; }
+.ep-avatar-section { flex: 0 0 180px; display: flex; flex-direction: column; align-items: center; }
+.ep-avatar-wrapper { position: relative; width: 150px; height: 150px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+.ep-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+.ep-camera-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; font-weight: 600; gap: 8px; }
+.ep-avatar-wrapper:hover .ep-camera-overlay { opacity: 1; }
+.ep-inputs-column { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ep-full-width { grid-column: span 2; }
+.ep-input-group { display: flex; flex-direction: column; gap: 8px; }
+.ep-input-group label { font-size: 0.85rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px; }
+.ep-input-wrapper { position: relative; display: flex; align-items: center; }
+.ep-input-wrapper svg { position: absolute; left: 14px; color: #94a3b8; }
+.ep-input-wrapper input, .ep-input-wrapper select, .ep-input-wrapper textarea { width: 100%; padding: 12px 12px 12px 42px; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 0.95rem; background: #f8fafc; }
+.ep-input-wrapper textarea { padding-left: 14px; }
+.ep-footer { padding: 24px 40px; background: #fcfcfc; border-top: 1px solid #f0f0f0; display: flex; justify-content: flex-end; gap: 12px; }
+.ep-btn-cancel { background: #f1f5f9; color: #64748b; border: none; padding: 12px 24px; border-radius: 14px; font-weight: 700; cursor: pointer; }
+.ep-btn-save { background: #3b82f6; color: white; border: none; padding: 12px 28px; border-radius: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.ep-spinner { animation: epSpin 1s linear infinite; }
+@keyframes epSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (max-width: 768px) { .ep-body { flex-direction: column; } .ep-inputs-column { grid-template-columns: 1fr; } }
