@@ -72,7 +72,16 @@ const ListingDetail = () => {
           </section>
 
           <footer className="purchase-actions">
-            <button className="msg-seller-btn" onClick={() => navigate(`/messages?user=${listing.profiles.id}`)}>
+            <button
+              className="msg-seller-btn"
+              onClick={() =>
+                navigate(
+                  `/messages?user=${encodeURIComponent(listing.profiles.id)}&name=${encodeURIComponent(
+                    listing.profiles.full_name
+                  )}&item=${encodeURIComponent(listing.title)}&listing=${encodeURIComponent(listing.id)}`
+                )
+              }
+            >
               <MessageCircle size={20} /> Message Seller
             </button>
             <button className="add-cart-btn">

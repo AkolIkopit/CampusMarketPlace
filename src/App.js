@@ -10,6 +10,7 @@ import RolePicker from "./pages/RolePicker";
 import CreateListing from "./pages/CreateListing";
 import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
+import MessagesPage from "./pages/Messages/MessagesPage";
 
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
@@ -109,6 +110,7 @@ export default function App() {
         <Route path="/create-listing" element={session ? <CreateListing /> : <Navigate to="/" />} />
         <Route path="/listing/:id" element={session ? <ListingDetail /> : <Navigate to="/" />} />
         <Route path="/my-listings" element={session ? <MyListings /> : <Navigate to="/" />} />
+        <Route path="/messages" element={session ? <MessagesPage profile={profile} /> : <Navigate to="/" />} />
         
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
