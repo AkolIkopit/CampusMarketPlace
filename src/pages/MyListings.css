@@ -1,0 +1,133 @@
+.my-listings-page {
+  background-color: #fdfaf5;
+  min-height: 100vh;
+  padding: 40px 10%;
+}
+
+.management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.management-header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem;
+  color: #0a192f;
+}
+
+.back-to-dash {
+  background: white;
+  border: 1px solid #ddd;
+  padding: 10px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.manage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.manage-item-card {
+  background: white;
+  border-radius: 30px;
+  overflow: hidden;
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+}
+
+.manage-item-img {
+  height: 180px;
+  background: #f8f8f8;
+}
+
+.manage-item-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.manage-item-details {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.item-cat-badge {
+  background: #f3ebf7;
+  color: #6D14A6;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.manage-item-details h3 {
+  margin: 10px 0 5px 0;
+  font-size: 1.2rem;
+  color: #0a192f;
+}
+
+.item-price-tag {
+  font-weight: 800;
+  font-size: 1.3rem;
+  color: #6D14A6;
+}
+
+.manage-item-actions {
+  margin-top: 20px;
+}
+
+.item-delete-btn {
+  width: 100%;
+  background: #fff0f0;
+  color: #d32f2f;
+  border: 1px solid #ffcccc;
+  padding: 12px;
+  border-radius: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.item-delete-btn:hover {
+  background: #d32f2f;
+  color: white;
+}
+
+.no-listings {
+  text-align: center;
+  padding: 100px 0;
+  color: #888;
+}
+
+.no-listings button {
+  background: #6D14A6;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 50px;
+  margin-top: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.center-loader { height: 50vh; display: flex; justify-content: center; align-items: center; }
+
+.spinner { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
