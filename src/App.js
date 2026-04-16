@@ -1,252 +1,18 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 import { supabase } from "./supabase";
-import {
-  clearAuthIntent,
-  getDefaultFullName,
-  normalizeRole,
-  readAuthIntent,
-} from "./auth";
+import { clearAuthIntent, normalizeRole, readAuthIntent } from "./auth";
 
+// Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import RolePicker from "./pages/RolePicker";
+import CreateListing from "./pages/CreateListing";
+import ListingDetail from "./pages/ListingDetail";
+import MyListings from "./pages/MyListings";
 
+// Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
-import StaffDashboard from "./pages/dashboards/StaffDashboard";
-import AdminDashboard from "./pages/dashboards/AdminDashboard";
-
-async function fetchProfile(userId) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-
-  return data || null;
-}
-
-async function syncExistingProfile(profile) {
-  const normalizedRole = normalizeRole(profile?.role);
-
-  if (!normalizedRole || normalizedRole === profile.role) {
-    return profile;
-  }
-
-  const { data } = await supabase
-    .from("profiles")
-    .update({ role: normalizedRole })
-    .eq("id", profile.id)
-    .select("*")
-    .maybeSingle();
-
-  return data || { ...profile, role: normalizedRole };
-}
-
-async function ensureProfile(user) {
-  const existingProfile = await fetchProfile(user.id);
-
-  if (existingProfile) {
-    clearAuthIntent();
-    return syncExistingProfile(existingProfile);
-  }
-
-  const authIntent = readAuthIntent();
-  const role =
-    normalizeRole(user?.user_metadata?.role) ||
-    normalizeRole(authIntent?.role);
-  const fullName = getDefaultFullName(user);
-
-  if (!role || !fullName) {
-    return null;
-  }
-
-  const { data } = await supabase
-    .from("profiles")
-    .insert([
-      {
-        id: user.id,
-        full_name: fullName,
-        role,
-      },
-    ])
-    .select("*")
-    .maybeSingle();
-
-  if (data) {
-    clearAuthIntent();
-    return data;
-  }
-
-  return fetchProfile(user.id);
-}
-
-function getDashboardPath(role) {
-  if (role === "student") return "/dashboard/student";
-  if (role === "staff") return "/dashboard/staff";
-  if (role === "admin") return "/dashboard/admin";
-  return null;
-}
-
-function LoadingScreen() {
-  return <div style={styles.loading}>Loading...</div>;
-}
-
-function HomeRoute({ loading, session, profileRole }) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <LandingPage />;
-  }
-
-  return <Navigate to={getDashboardPath(profileRole) || "/complete-profile"} replace />;
-}
-
-function AuthRoute({ loading, session, profileRole }) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <AuthPage />;
-  }
-
-  return <Navigate to={getDashboardPath(profileRole) || "/complete-profile"} replace />;
-}
-
-function CompleteProfileRoute({ loading, session, profile, setProfile }) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <Navigate to="/" replace />;
-  }
-
-  const profileRole = normalizeRole(profile?.role);
-
-  if (profileRole) {
-    return <Navigate to={getDashboardPath(profileRole)} replace />;
-  }
-
-  return (
-    <RolePicker
-      session={session}
-      profile={profile}
-      onProfileCreated={setProfile}
-    />
-  );
-}
-
-function ProtectedDashboardRoute({
-  loading,
-  session,
-  profile,
-  requiredRole,
-  element,
-}) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <Navigate to="/" replace />;
-  }
-
-  const profileRole = normalizeRole(profile?.role);
-
-  if (!profileRole) {
-    return <Navigate to="/complete-profile" replace />;
-  }
-
-  if (profileRole !== requiredRole) {
-    return <Navigate to={getDashboardPath(profileRole)} replace />;
-  }
-
-  return element;
-}
-
-function AppRoutes({ loading, session, profile, setProfile }) {
-  const profileRole = normalizeRole(profile?.role);
-
-  return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <HomeRoute
-            loading={loading}
-            session={session}
-            profileRole={profileRole}
-          />
-        }
-      />
-      <Route
-        path="/auth"
-        element={
-          <AuthRoute
-            loading={loading}
-            session={session}
-            profileRole={profileRole}
-          />
-        }
-      />
-      <Route
-        path="/complete-profile"
-        element={
-          <CompleteProfileRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            setProfile={setProfile}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/student"
-        element={
-          <ProtectedDashboardRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            requiredRole="student"
-            element={<StudentDashboard profile={{ ...profile, role: profileRole }} />}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/staff"
-        element={
-          <ProtectedDashboardRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            requiredRole="staff"
-            element={<StaffDashboard profile={{ ...profile, role: profileRole }} />}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/admin"
-        element={
-          <ProtectedDashboardRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            requiredRole="admin"
-            element={<AdminDashboard profile={{ ...profile, role: profileRole }} />}
-          />
-        }
-      />
-      <Route
-        path="*"
-        element={<Navigate to={session ? getDashboardPath(profileRole) || "/complete-profile" : "/"} replace />}
-      />
-    </Routes>
-  );
-}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -254,64 +20,99 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
     const syncSession = async (nextSession) => {
-      if (!isMounted) return;
-
       setSession(nextSession);
-
+      
       if (!nextSession) {
         setProfile(null);
-        clearAuthIntent();
         setLoading(false);
         return;
       }
 
-      setLoading(true);
-      const nextProfile = await ensureProfile(nextSession.user);
+      try {
+        setLoading(true);
+        // 1. Fetch profile
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", nextSession.user.id)
+          .maybeSingle();
 
-      if (!isMounted) return;
+        if (fetchError) throw fetchError;
 
-      setProfile(nextProfile);
-      setLoading(false);
+        if (existingProfile) {
+          setProfile(existingProfile);
+        } else {
+          // 2. Create profile if it doesn't exist
+          const authIntent = readAuthIntent();
+          const role = normalizeRole(nextSession.user?.user_metadata?.role) || normalizeRole(authIntent?.role) || 'student';
+          
+          const { data: newProfile, error: insertError } = await supabase
+            .from("profiles")
+            .insert([{ 
+              id: nextSession.user.id, 
+              full_name: nextSession.user?.user_metadata?.full_name || "New Student", 
+              role: role,
+              campus: 'Main Campus'
+            }])
+            .select("*")
+            .maybeSingle();
+
+          if (insertError) throw insertError;
+          setProfile(newProfile);
+        }
+      } catch (err) {
+        console.error("Auth System Error:", err.message);
+      } finally {
+        // This is the most important line - it kills the loading screen
+        setLoading(false);
+      }
     };
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      syncSession(currentSession);
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session: cur } }) => {
+      syncSession(cur);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        syncSession(nextSession);
-      }
-    );
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      syncSession(s);
+    });
+    
+    return () => subscription.unsubscribe();
   }, []);
+
+  const getDashboardPath = (role) => {
+    if (role === "student") return "/dashboard/student";
+    if (role === "admin") return "/dashboard/admin";
+    return "/complete-profile";
+  };
+
+  if (loading) {
+    return (
+      <main style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif', backgroundColor: '#fdfaf5'}}>
+        <p style={{color: '#666'}}>Loading UniMart...</p>
+      </main>
+    );
+  }
 
   return (
     <Router>
-      <AppRoutes
-        loading={loading}
-        session={session}
-        profile={profile}
-        setProfile={setProfile}
-      />
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={!session ? <LandingPage /> : <Navigate to={getDashboardPath(profile?.role)} replace />} />
+        <Route path="/auth" element={!session ? <AuthPage /> : <Navigate to={getDashboardPath(profile?.role)} replace />} />
+        <Route path="/complete-profile" element={<RolePicker session={session} profile={profile} onProfileCreated={setProfile} />} />
+        
+        {/* Student Dashboard & Actions */}
+        <Route path="/dashboard/student" element={session ? <StudentDashboard profile={profile} /> : <Navigate to="/" />} />
+        <Route path="/create-listing" element={session ? <CreateListing /> : <Navigate to="/" />} />
+        <Route path="/listing/:id" element={session ? <ListingDetail /> : <Navigate to="/" />} />
+        <Route path="/my-listings" element={session ? <MyListings /> : <Navigate to="/" />} />
+        
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Router>
   );
 }
-
-const styles = {
-  loading: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    fontSize: "18px",
-    color: "#6b7280",
-  },
-};
