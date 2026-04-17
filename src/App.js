@@ -3,18 +3,86 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-d
 import { supabase } from "./supabase";
 import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
 
-// Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
-import RolePicker from "./pages/RolePicker";
-import CreateListing from "./pages/CreateListing";
-import ListingDetail from "./pages/ListingDetail";
-import MyListings from "./pages/MyListings";
-
-// Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
+
+async function fetchProfile(userId) {
+  const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  return data || null;
+}
+
+async function ensureProfile(user) {
+  const existingProfile = await fetchProfile(user.id);
+  if (existingProfile) {
+    clearAuthIntent();
+    return existingProfile;
+  }
+
+  const authIntent = readAuthIntent();
+  const provider = user.app_metadata.provider;
+
+  // GATEKEEPER: Only block Google users who haven't signed up.
+  // Email users are already verified by password, so we allow profile creation.
+  if (provider === 'google' && (!authIntent || authIntent.mode === "login")) {
+    await supabase.auth.signOut();
+    clearAuthIntent();
+    window.location.href = "/auth?mode=login&error=Account+not+found.+Please+sign+up+first.";
+    return null;
+  }
+
+  const fullName = 
+    user?.user_metadata?.full_name || 
+    user?.user_metadata?.name || 
+    user?.user_metadata?.display_name ||
+    getDefaultFullName(user) || "New Student";
+
+  const { data: newProfile, error: insertError } = await supabase
+    .from("profiles")
+    .insert([{
+      id: user.id,
+      full_name: fullName,
+      role: "student",
+      application_status: "approved",
+      requested_role: "student",
+    }])
+    .select("*")
+    .maybeSingle();
+
+  if (insertError && insertError.code === '23505') { return fetchProfile(user.id); }
+
+  clearAuthIntent();
+  return newProfile;
+}
+
+function getDashboardPath(role, status) {
+  if (status === "pending") return "/waiting-room";
+  if (role === "admin") return "/dashboard/admin";
+  if (role === "staff") return "/dashboard/staff";
+  return "/dashboard/student";
+}
+
+function LoadingScreen() {
+  return <div style={styles.loading}>Loading UniMart...</div>;
+}
+
+function ProtectedDashboardRoute({ loading, session, profile, requiredRole, element }) {
+  // CRITICAL: Prevent crash if profile is still syncing
+  if (loading || (session && !profile)) return <LoadingScreen />; 
+  if (!session) return <Navigate to="/" replace />;
+
+  const profileRole = normalizeRole(profile?.role) || "student";
+  const status = profile?.application_status || "approved";
+
+  if (status === "pending") return <Navigate to="/waiting-room" replace />;
+  if (profileRole !== requiredRole) {
+    return <Navigate to={getDashboardPath(profileRole, status)} replace />;
+  }
+
+  return element;
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -22,128 +90,37 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("App.js: Initializing Auth...");
-
-    const syncUserAndProfile = async (currentSession) => {
-  try {
-    if (!currentSession) {
-      setProfile(null);
-      return;
-    }
-
-    const user = currentSession.user;
-    const authIntent = readAuthIntent();
-
-    // 1. Fetch Profile
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (existingProfile) {
-      setProfile(existingProfile);
-      clearAuthIntent();
-      return;
-    }
-
-    // 2. Updated Gatekeeper Logic
-    // Only block if: It's a Google Login AND no profile exists.
-    // If it's Email/Password, and they got this far, they are verified.
-    const isGoogle = user.app_metadata.provider === 'google';
-    
-    if (isGoogle && (!authIntent || authIntent.mode === "login")) {
-      await supabase.auth.signOut();
-      setProfile(null);
-      setSession(null);
-      clearAuthIntent();
-      window.history.replaceState(null, '', '/auth?mode=login&error=Account+not+found.+Please+sign+up+first.');
-      return;
-    }
-
-    // 3. Create Profile (For Signups OR Email users missing a profile)
-    const fullName = user?.user_metadata?.full_name || user?.user_metadata?.name || getDefaultFullName(user) || "New Student";
-    
-    const { data: newProfile, error: insertError } = await supabase
-      .from("profiles")
-      .insert([{
-        id: user.id,
-        full_name: fullName,
-        role: "student",
-        application_status: "approved",
-        requested_role: "student",
-        campus: 'Main Campus'
-      }])
-      .select("*")
-      .maybeSingle();
-
-    if (insertError && insertError.code === '23505') {
-       const { data: retry } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-       setProfile(retry);
-    } else {
-       setProfile(newProfile);
-    }
-    clearAuthIntent();
-
-  } catch (err) {
-    console.error("Critical Auth Error:", err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-    // Run initial check
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSession(initialSession);
-      syncUserAndProfile(initialSession);
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      console.log("App.js: Auth state changed:", _event);
+    let isMounted = true;
+    const syncSession = async (nextSession) => {
+      if (!isMounted) return;
       setSession(nextSession);
-      syncUserAndProfile(nextSession);
-    });
+      if (!nextSession) { setProfile(null); setLoading(false); return; }
 
-    return () => subscription.unsubscribe();
-  }, []); // Empty dependency array is KEY here
+      setLoading(true);
+      const nextProfile = await ensureProfile(nextSession.user);
+      if (!isMounted) return;
+      setProfile(nextProfile);
+      setLoading(false);
+    };
 
-  const getDashboardPath = (p) => {
-    if (!p) return "/auth";
-    const role = normalizeRole(p.role);
-    if (p.application_status === "pending") return "/waiting-room";
-    if (role === "admin") return "/dashboard/admin";
-    if (role === "staff") return "/dashboard/staff";
-    return "/dashboard/student";
-  };
+    supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => syncSession(s));
+    
+    return () => { isMounted = false; subscription.unsubscribe(); };
+  }, []);
 
-  // The Master Loading Switch
-  if (loading) {
-    return (
-      <main style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif', backgroundColor: '#fdfaf5'}}>
-        <p style={{color: '#666'}}>Initializing UniMart...</p>
-      </main>
-    );
-  }
+  if (loading && !session) return <LoadingScreen />;
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={!session ? <LandingPage /> : <Navigate to={getDashboardPath(profile)} replace />} />
-        <Route path="/auth" element={!session ? <AuthPage /> : <Navigate to={getDashboardPath(profile)} replace />} />
+        <Route path="/" element={!session ? <LandingPage /> : (!profile ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace />)} />
+        <Route path="/auth" element={!session ? <AuthPage /> : (!profile ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace />)} />
+        <Route path="/waiting-room" element={<div style={styles.loading}><h1>Request Pending</h1><p>An admin is reviewing your role upgrade.</p></div>} />
         
-        <Route path="/waiting-room" element={<div style={styles.centeredPage}><h1>Request Pending</h1><p>An admin is reviewing your upgrade.</p></div>} />
-        <Route path="/complete-profile" element={<RolePicker session={session} profile={profile} onProfileCreated={setProfile} />} />
-
-        {/* Dashboards */}
-        <Route path="/dashboard/student" element={session && profile?.role === 'student' ? <StudentDashboard profile={profile} /> : <Navigate to="/" />} />
-        <Route path="/dashboard/staff" element={session && profile?.role === 'staff' ? <StaffDashboard profile={profile} /> : <Navigate to="/" />} />
-        <Route path="/dashboard/admin" element={session && profile?.role === 'admin' ? <AdminDashboard profile={profile} /> : <Navigate to="/" />} />
-
-        {/* Listings */}
-        <Route path="/create-listing" element={session ? <CreateListing profile={profile} /> : <Navigate to="/" />} />
-        <Route path="/listing/:id" element={session ? <ListingDetail profile={profile} /> : <Navigate to="/" />} />
-        <Route path="/my-listings" element={session ? <MyListings profile={profile} /> : <Navigate to="/" />} />
+        <Route path="/dashboard/student" element={<ProtectedDashboardRoute loading={loading} session={session} profile={profile} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
+        <Route path="/dashboard/staff" element={<ProtectedDashboardRoute loading={loading} session={session} profile={profile} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
+        <Route path="/dashboard/admin" element={<ProtectedDashboardRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -152,5 +129,5 @@ export default function App() {
 }
 
 const styles = {
-  centeredPage: { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', textAlign: 'center', fontFamily: 'sans-serif' }
+  loading: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", fontFamily: "sans-serif", color: "#6b7280" },
 };
