@@ -13,7 +13,7 @@ import MyListings from "./pages/MyListings";
 
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
-
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -109,7 +109,10 @@ export default function App() {
         <Route path="/create-listing" element={session ? <CreateListing /> : <Navigate to="/" />} />
         <Route path="/listing/:id" element={session ? <ListingDetail /> : <Navigate to="/" />} />
         <Route path="/my-listings" element={session ? <MyListings /> : <Navigate to="/" />} />
-        
+        <Route 
+  path="/dashboard/admin" 
+  element={session ? <AdminDashboard /> : <Navigate to="/" />} 
+/>
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
