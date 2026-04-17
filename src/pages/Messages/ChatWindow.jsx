@@ -4,10 +4,20 @@ import styles from "./Messages.module.css";
 // Used when an incoming/outgoing message has no avatar URL.
 const DEFAULT_AVATAR = "/avatar-placeholder.svg";
 
-function ChatWindow({ conversation, onSendMessage, isSending }) {
+function ChatWindow({
+  conversation,
+  onSendMessage,
+  isSending,
+  isSelfConversation = false,
+  onBackToList,
+}) {
   return (
     <section className={styles["chat-window"]} aria-label="Conversation view">
       <header className={styles["chat-header"]}>
+        <button type="button" className={styles["mobile-back-button"]} onClick={onBackToList}>
+          ← Back
+        </button>
+
         <article className={styles["chat-user"]}>
           <figure className={styles["avatar-small"]}>
             <img
@@ -41,6 +51,13 @@ function ChatWindow({ conversation, onSendMessage, isSending }) {
       <section className={styles["messages-stream"]} aria-label="Messages">
         <p className={styles.timestamp}>{conversation.dateLabel}</p>
 
+        {isSelfConversation ? (
+          <section className={styles["empty-state"]}>
+            <h2>This is your own listing</h2>
+            <p>You can view the thread layout, but sending a message to yourself is disabled.</p>
+          </section>
+        ) : null}
+
         <ul className={styles["message-list"]}>
           {/* Render each message bubble in timestamp order. */}
           {conversation.messages.map((message) => (
@@ -66,6 +83,16 @@ function ChatWindow({ conversation, onSendMessage, isSending }) {
                   >
                     {message.text}
                   </p>
+                  {message.attachmentUrl ? (
+                    <a
+                      className={styles["message-attachment"]}
+                      href={message.attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {message.attachmentLabel || "Open attachment"}
+                    </a>
+                  ) : null}
                   <time className={styles["message-time"]}>{message.time}</time>
                 </section>
               </article>
@@ -76,7 +103,7 @@ function ChatWindow({ conversation, onSendMessage, isSending }) {
       </section>
 
       {/* Composer delegates send logic to parent and disables while posting. */}
-      <MessageInput onSendMessage={onSendMessage} disabled={isSending} />
+      <MessageInput onSendMessage={onSendMessage} disabled={isSending || isSelfConversation} />
     </section>
   );
 }

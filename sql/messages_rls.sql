@@ -7,6 +7,9 @@ begin;
 alter table public.messages enable row level security;
 
 -- Helpful indexes for inbox/thread queries.
+alter table public.messages
+  add column if not exists attachment_url text;
+
 create index if not exists idx_messages_sender_created_at
   on public.messages (sender_id, created_at desc);
 

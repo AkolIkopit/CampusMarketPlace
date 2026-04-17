@@ -7,9 +7,24 @@ import styles from "./Messages.module.css";
 
 // Local fallback used only when a profile has no avatar_url.
 const DEFAULT_AVATAR = "/avatar-placeholder.svg";
+const MESSAGE_ATTACHMENT_BUCKET = "message-attachments";
 
 // Conversation identity is pairwise by participant + listing context.
 const getConversationId = (otherUserId, listingId) => `${otherUserId}::${listingId || "no-listing"}`;
+
+const sanitizeFileName = (fileName) => fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const getAttachmentLabelFromUrl = (attachmentUrl) => {
+  if (!attachmentUrl) return "";
+
+  try {
+    const fileName = decodeURIComponent(attachmentUrl.split("/").pop() || "");
+    const label = fileName.includes("__") ? fileName.split("__").slice(1).join("__") : fileName;
+    return label || "Attachment";
+  } catch {
+    return "Attachment";
+  }
+};
 
 // Message-level timestamp (used inside a thread).
 const formatMessageTime = (isoDate) => {
@@ -48,6 +63,10 @@ const formatDateLabel = (isoDate) => {
   return date.toLocaleDateString("en-US", { month: "long", day: "numeric" });
 };
 
+// Read the viewport immediately so the first mobile render is already single-pane.
+const getIsMobileViewport = () =>
+  typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches;
+
 
 function MessagesPage({ profile }) {
   // Query params come from "Message Seller" deep-link navigation.
@@ -62,6 +81,10 @@ function MessagesPage({ profile }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentUserAvatar, setCurrentUserAvatar] = useState("");
   const [contextUserProfile, setContextUserProfile] = useState(null);
+  const [isMobile, setIsMobile] = useState(getIsMobileViewport);
+  const [mobileView, setMobileView] = useState(() =>
+    getIsMobileViewport() && contextUserId ? "thread" : "list"
+  );
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -138,7 +161,7 @@ function MessagesPage({ profile }) {
       // Pull every message where the current user is participant.
       const { data: rawMessages, error: messagesError } = await supabase
         .from("messages")
-        .select("id, listing_id, sender_id, receiver_id, message_text, is_read, created_at")
+        .select("id, listing_id, sender_id, receiver_id, message_text, attachment_url, is_read, created_at")
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order("created_at", { ascending: true });
 
@@ -208,7 +231,7 @@ function MessagesPage({ profile }) {
             headline: listingTitle,
             item: listingTitle,
             time: formatConversationTime(message.created_at),
-            message: message.message_text,
+            message: message.message_text || (message.attachment_url ? "Attachment" : ""),
             dateLabel: formatDateLabel(message.created_at),
             lastCreatedAt: message.created_at,
             messages: [],
@@ -224,6 +247,8 @@ function MessagesPage({ profile }) {
           time: formatMessageTime(message.created_at),
           incoming,
           avatar: incoming ? conversation.avatar : viewerAvatar,
+          attachmentUrl: message.attachment_url || null,
+          attachmentLabel: getAttachmentLabelFromUrl(message.attachment_url),
         });
 
         // Track latest message so sidebar preview/time is always current.
@@ -366,6 +391,42 @@ function MessagesPage({ profile }) {
   }, [currentUserId, fetchConversations]);
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
+  const isSelfConversation = Boolean(currentUserId && activeConversation?.userId === currentUserId);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+
+    const syncMobileState = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    syncMobileState(mediaQuery);
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", syncMobileState);
+    } else {
+      mediaQuery.addListener(syncMobileState);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", syncMobileState);
+      } else {
+        mediaQuery.removeListener(syncMobileState);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileView("list");
+      return;
+    }
+
+    if (contextConversationId) {
+      setMobileView("thread");
+    }
+  }, [isMobile, contextConversationId]);
 
   useEffect(() => {
     if (!currentUserId || !activeConversation?.userId) return;
@@ -391,22 +452,56 @@ function MessagesPage({ profile }) {
     markConversationAsRead();
   }, [activeConversation?.id, activeConversation?.listingId, activeConversation?.userId, currentUserId]);
 
-  const handleSendMessage = async (text) => {
+  const handleSendMessage = async (text, attachmentFile = null) => {
     // Return boolean so composer knows whether to clear the input.
-    if (!currentUserId || !activeConversation?.userId || !text.trim()) {
+    if (!currentUserId || !activeConversation?.userId) {
       return false;
     }
+
+    // Never allow a user to message themselves, even if they reach the route manually.
+    if (isSelfConversation) {
+      return false;
+    }
+
+    let uploadedAttachmentPath = null;
 
     try {
       setSending(true);
       setError("");
+
+      const trimmedText = text.trim();
+      if (!trimmedText && !attachmentFile) {
+        return false;
+      }
+
+      const messageText = trimmedText || `Attachment: ${attachmentFile.name}`;
+      let attachmentUrl = null;
+
+      if (attachmentFile) {
+        const safeName = sanitizeFileName(attachmentFile.name);
+        const filePrefix = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`;
+        uploadedAttachmentPath = `${currentUserId}/${filePrefix}__${safeName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from(MESSAGE_ATTACHMENT_BUCKET)
+          .upload(uploadedAttachmentPath, attachmentFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabase.storage
+          .from(MESSAGE_ATTACHMENT_BUCKET)
+          .getPublicUrl(uploadedAttachmentPath);
+
+        attachmentUrl = publicData.publicUrl;
+      }
 
       const payload = {
         // listing_id is optional to support general (non-listing) conversations.
         listing_id: activeConversation.listingId || null,
         sender_id: currentUserId,
         receiver_id: activeConversation.userId,
-        message_text: text.trim(),
+        message_text: messageText,
+        attachment_url: attachmentUrl,
         is_read: false,
       };
 
@@ -417,6 +512,9 @@ function MessagesPage({ profile }) {
       setActiveConversationId(activeConversation.id);
       return true;
     } catch (err) {
+      if (err && uploadedAttachmentPath) {
+        await supabase.storage.from(MESSAGE_ATTACHMENT_BUCKET).remove([uploadedAttachmentPath]);
+      }
       const message = err instanceof Error ? err.message : "Failed to send message.";
       setError(message);
       return false;
@@ -445,11 +543,28 @@ function MessagesPage({ profile }) {
     ? "This chat is ready. Send a message to start the conversation."
     : "Choose a person from the list to open the full conversation.";
 
+  const handleSelectConversation = (conversationId) => {
+    setActiveConversationId(conversationId);
+
+    if (isMobile) {
+      setMobileView("thread");
+    }
+  };
+
+  const handleBackToConversations = () => {
+    if (isMobile) {
+      setMobileView("list");
+    }
+  };
+
   return (
     <main className={styles["messages-page"]}>
       <header className={styles["messages-hero"]}>
         <section>
-          <p className={styles.eyebrow}>UNIMART</p>
+          <p className={styles.eyebrow}>
+            <img src="/UniMartlogo.png" alt="UNIMART" className={styles["hero-logo"]} />
+            UNIMART
+          </p>
           <h1>Messages</h1>
           <p className={styles["hero-copy"]}>
             Open a conversation to read the full thread and continue the chat.
@@ -469,28 +584,34 @@ function MessagesPage({ profile }) {
       </header>
 
       <section className={styles["messages-layout"]} aria-label="Messages workspace">
-        <aside className={styles["messages-list-panel"]} aria-label="Conversation list">
-          <ConversationList
-            conversations={conversations}
-            activeConversationId={activeConversationId}
-            onSelectConversation={setActiveConversationId}
-          />
-        </aside>
-
-        <section className={styles["messages-thread-panel"]} aria-label="Conversation thread">
-          {activeConversation ? (
-            <ChatWindow
-              conversation={activeConversation}
-              onSendMessage={handleSendMessage}
-              isSending={sending}
+        {(!isMobile || mobileView === "list") ? (
+          <aside className={styles["messages-list-panel"]} aria-label="Conversation list">
+            <ConversationList
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              onSelectConversation={handleSelectConversation}
             />
-          ) : (
-            <section className={styles["empty-state"]}>
-              <h2>Select a conversation</h2>
-              <p>{emptyStateMessage}</p>
-            </section>
-          )}
-        </section>
+          </aside>
+        ) : null}
+
+        {(!isMobile || mobileView === "thread") ? (
+          <section className={styles["messages-thread-panel"]} aria-label="Conversation thread">
+            {activeConversation ? (
+              <ChatWindow
+                conversation={activeConversation}
+                onSendMessage={handleSendMessage}
+                isSending={sending}
+                isSelfConversation={isSelfConversation}
+                onBackToList={handleBackToConversations}
+              />
+            ) : (
+              <section className={styles["empty-state"]}>
+                <h2>Select a conversation</h2>
+                <p>{emptyStateMessage}</p>
+              </section>
+            )}
+          </section>
+        ) : null}
       </section>
     </main>
   );

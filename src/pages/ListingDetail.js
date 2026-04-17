@@ -9,8 +9,16 @@ const ListingDetail = () => {
   const navigate = useNavigate();
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+
+    fetchCurrentUser();
+
     const fetchListingDetails = async () => {
       const { data, error } = await supabase
         .from('listings')
@@ -24,6 +32,8 @@ const ListingDetail = () => {
     };
     fetchListingDetails();
   }, [id, navigate]);
+
+  const isOwnListing = Boolean(currentUserId && listing?.profiles?.id === currentUserId);
 
   if (loading) return <main className="detail-loading-screen"><Loader2 className="spinner" /></main>;
 
@@ -81,8 +91,9 @@ const ListingDetail = () => {
                   )}&item=${encodeURIComponent(listing.title)}&listing=${encodeURIComponent(listing.id)}`
                 )
               }
+              disabled={isOwnListing}
             >
-              <MessageCircle size={20} /> Message Seller
+              <MessageCircle size={20} /> {isOwnListing ? 'Your Listing' : 'Message Seller'}
             </button>
             <button className="add-cart-btn">
               <ShoppingCart size={20} /> Add to Cart

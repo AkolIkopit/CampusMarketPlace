@@ -12,6 +12,8 @@ A student-only peer-to-peer trading platform for university campuses.
 ## Messaging Setup (Supabase)
 - Run [sql/messages_rls.sql](sql/messages_rls.sql) in the Supabase SQL Editor.
 - The script enables RLS, creates safe policies for select/insert/read-receipt updates, adds helpful indexes, and ensures realtime publication for `messages`.
+- The script also adds `attachment_url` so message uploads can be stored from the Add button.
+- Make sure the `message-attachments` storage bucket exists and the upload policy is set for authenticated users.
 ## Group Members
 - Olwethu Phiri
 - Ethan Ikopit
