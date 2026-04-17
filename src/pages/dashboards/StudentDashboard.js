@@ -109,7 +109,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
             <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-          </section>
+          </nav>
         </nav>
 
         {/* BURGER MENU */}
@@ -278,7 +278,7 @@ const ListingCard = ({ item }) => {
         </section>
         <section className="campus-badge">
           <MapPin size={10} />
-          <p>{item.profiles?.campus || 'Main'}</p>
+          <p>{item.profiles.campus || 'Main'}</p>
         </section>
       </header>
       <footer className="listing-card-bottom">
