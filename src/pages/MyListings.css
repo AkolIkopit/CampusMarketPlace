@@ -1,25 +1,51 @@
+/* --- 1. GLOBAL PAGE SETUP & BLUE AURORA BACKGROUND --- */
 .my-listings-page {
-  background-color: #fdfaf5;
+  background-color: #f0f4f8; /* Soft blueish-grey base */
   min-height: 100vh;
-  padding: 40px 10%;
+  padding: 30px 10%;
+  position: relative;
+  overflow-x: hidden;
+  font-family: sans-serif;
 }
 
-.management-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 40px;
+.aurora-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.management-header h1 {
-  font-family: 'Playfair Display', serif;
-  font-size: 2.2rem;
-  color: #0a192f;
+.orb {
+  position: absolute;
+  border: none;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.35;
+  animation: drift 25s infinite alternate ease-in-out;
 }
 
-.back-to-dash {
+.orb-1 { width: 500px; height: 500px; background: #003049; top: -10%; left: -10%; }
+.orb-2 { width: 600px; height: 600px; background: #f3a91e; bottom: -20%; right: -10%; animation-delay: -5s; }
+.orb-3 { width: 450px; height: 450px; background: #0077b6; top: 30%; right: 15%; animation-delay: -10s; }
+
+@keyframes drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(150px, 80px) scale(1.1); }
+}
+
+/* --- 2. NAVIGATION & HEADERS --- */
+.top-nav-bar {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 25px;
+}
+
+.back-btn {
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(0,0,0,0.05);
   padding: 10px 20px;
   border-radius: 12px;
   display: flex;
@@ -27,107 +53,267 @@
   gap: 8px;
   cursor: pointer;
   font-weight: 700;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+  transition: transform 0.2s;
 }
 
-.manage-grid {
+.back-btn:hover {
+  transform: translateX(-5px);
+}
+
+.page-header {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 40px;
+}
+
+.page-header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.8rem;
+  color: #0a192f;
+  border-left: 6px solid #f3a91e; /* THE GOLD ACCENT */
+  padding-left: 20px;
+  margin: 0;
+}
+
+.page-header p {
+  color: #666;
+  font-size: 1.1rem;
+  margin-top: 10px;
+  padding-left: 26px;
+}
+
+/* --- 3. LISTINGS GRID --- */
+.my-listings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 25px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 30px;
+  position: relative;
+  z-index: 1;
+  padding-bottom: 100px;
 }
 
-.manage-item-card {
+.my-listing-card {
   background: white;
-  border-radius: 30px;
+  border-radius: 35px;
   overflow: hidden;
-  border: 1px solid #eee;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
+  height: fit-content;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
 }
 
-.manage-item-img {
+.my-listing-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 45px rgba(0,0,0,0.1);
+}
+
+/* --- 4. IMAGE & DELETE BUTTON --- */
+.listing-img-box {
   height: 180px;
-  background: #f8f8f8;
+  position: relative;
+  margin: 0;
 }
 
-.manage-item-img img {
+.listing-img-box img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.manage-item-details {
-  padding: 20px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.item-cat-badge {
-  background: #f3ebf7;
-  color: #6D14A6;
-  padding: 3px 10px;
-  border-radius: 8px;
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.manage-item-details h3 {
-  margin: 10px 0 5px 0;
-  font-size: 1.2rem;
-  color: #0a192f;
-}
-
-.item-price-tag {
-  font-weight: 800;
-  font-size: 1.3rem;
-  color: #6D14A6;
-}
-
-.manage-item-actions {
-  margin-top: 20px;
-}
-
-.item-delete-btn {
-  width: 100%;
-  background: #fff0f0;
-  color: #d32f2f;
-  border: 1px solid #ffcccc;
-  padding: 12px;
-  border-radius: 15px;
+.delete-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+  z-index: 10; /* Keeps it above the card click area */
+}
+
+.delete-btn:hover {
+  transform: scale(1.15);
+  background: #cc0000;
+}
+
+/* --- 5. CARD CONTENT --- */
+.listing-details {
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.listing-cat {
+  background: #f0f7ff;
+  color: #0077b6;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.listing-header-main h3 {
+  margin: 10px 0 5px 0;
+  color: #0a192f;
+  font-size: 1.25rem;
+}
+
+.listing-price {
+  font-weight: 900;
+  font-size: 1.35rem;
+  color: #0a192f;
+  font-style: italic;
+  margin: 0;
+}
+
+/* --- 6. COMPACT REVIEWS LIST --- */
+.listing-reviews-summary {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 15px;
+}
+
+.rev-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #888;
+  margin-bottom: 12px;
+}
+
+.rev-summary-header h4 {
+  font-size: 0.8rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.compact-rev-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
   gap: 10px;
-  font-weight: 700;
-  transition: all 0.2s;
 }
 
-.item-delete-btn:hover {
-  background: #d32f2f;
-  color: white;
+.compact-rev-item {
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 15px;
+  border: 1px solid rgba(0,0,0,0.02);
 }
 
-.no-listings {
+.comp-rev-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tiny-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.tiny-placeholder {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  margin: 0;
+}
+
+.comp-rev-user strong {
+  font-size: 0.75rem;
+  color: #333;
+}
+
+.comp-rev-text {
+  font-size: 0.75rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.more-revs-hint {
+  font-size: 0.65rem;
+  color: #0077b6;
+  font-weight: 800;
+  text-align: center;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
+.no-rev-text {
+  font-size: 0.8rem;
+  color: #ccc;
+  text-align: center;
+  font-style: italic;
+}
+
+/* --- 7. EMPTY & LOADING STATES --- */
+.empty-state {
+  grid-column: 1 / -1;
   text-align: center;
   padding: 100px 0;
   color: #888;
+  position: relative;
+  z-index: 1;
 }
 
-.no-listings button {
-  background: #6D14A6;
+.empty-state h2 { margin: 20px 0; color: #0a192f; }
+
+.empty-state button {
+  background: #0a192f;
   color: white;
   border: none;
-  padding: 15px 30px;
-  border-radius: 50px;
-  margin-top: 20px;
+  padding: 14px 30px;
+  border-radius: 15px;
   font-weight: 700;
   cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.center-loader { height: 50vh; display: flex; justify-content: center; align-items: center; }
+.empty-state button:hover { transform: scale(1.05); }
 
-.spinner { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.loading-state {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 100px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: #0077b6;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .my-listings-page { padding: 30px 5%; }
+  .page-header h1 { font-size: 2.2rem; }
+}
