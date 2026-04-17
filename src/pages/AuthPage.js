@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ROLE_OPTIONS, getRoleLabel, normalizeRole, saveAuthIntent } from "../auth";
+import { saveAuthIntent } from "../auth";
 import { supabase } from "../supabase";
 import "./AuthPage.css";
 
@@ -14,15 +14,12 @@ const AuthPage = () => {
     password: "",
     confirmPassword: "",
     fullName: "",
-    role: "student",
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showGoogleConfirm, setShowGoogleConfirm] = useState(false);
-  const [pendingRole, setPendingRole] = useState("student");
 
   useEffect(() => {
     setError(null);
@@ -32,9 +29,7 @@ const AuthPage = () => {
   useEffect(() => {
     const oauthError =
       searchParams.get("error_description") || searchParams.get("error");
-
     if (!oauthError) return;
-
     setError(oauthError.replace(/\+/g, " "));
   }, [searchParams]);
 
@@ -52,7 +47,6 @@ const AuthPage = () => {
       navigate(-1);
       return;
     }
-
     navigate("/");
   };
 
@@ -71,58 +65,57 @@ const AuthPage = () => {
   };
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
+  const validationError = validate();
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
 
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+  setLoading(true);
+  setError(null);
+  
+  // CRITICAL FIX: Save the intent for Email Login/Signup too!
+  saveAuthIntent({ mode, role: "student" });
 
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      if (mode === "signup") {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: form.email.trim(),
-          password: form.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth?mode=login`,
-            data: {
-              full_name: form.fullName.trim(),
-              role: normalizeRole(form.role),
-            },
+  try {
+    if (mode === "signup") {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: form.email.trim(),
+        password: form.password,
+        options: {
+          // Change this to / so they go to the dashboard after confirming email
+          emailRedirectTo: `${window.location.origin}/`, 
+          data: {
+            full_name: form.fullName.trim(),
+            role: "student",
           },
-        });
-
-        if (signUpError) throw signUpError;
-
-        setSuccess("Account created. Check your email to confirm your address, then log in.");
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: form.email.trim(),
-          password: form.password,
-        });
-
-        if (signInError) throw signInError;
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong.";
-      setError(message);
-    } finally {
-      setLoading(false);
+        },
+      });
+      if (signUpError) throw signUpError;
+      setSuccess("Account created! Please check your email and click the confirmation link to log in.");
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email.trim(),
+        password: form.password,
+      });
+      if (signInError) throw signInError;
+      // After login, Navigate is handled by App.js
     }
-  };
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const startGoogleLogin = async (role) => {
+  const startGoogleLogin = async () => {
     setLoading(true);
     setError(null);
 
     saveAuthIntent({
       mode,
-      role: mode === "signup" ? role : "",
+      role: "student", // Always student for Google signup
     });
 
     try {
@@ -139,21 +132,6 @@ const AuthPage = () => {
       setError(message);
       setLoading(false);
     }
-  };
-
-  const handleGoogleClick = () => {
-    if (mode === "signup") {
-      setPendingRole(form.role);
-      setShowGoogleConfirm(true);
-      return;
-    }
-
-    startGoogleLogin("");
-  };
-
-  const confirmGoogleLogin = async () => {
-    setShowGoogleConfirm(false);
-    await startGoogleLogin(pendingRole);
   };
 
   return (
@@ -191,23 +169,6 @@ const AuthPage = () => {
               ))}
             </div>
           </div>
-
-          <div className="auth-deco" aria-hidden="true">
-            <div className="auth-deco-card">
-              <span>BK</span>
-              <div>
-                <p>Chemistry Textbook</p>
-                <p className="deco-price">R 220</p>
-              </div>
-            </div>
-            <div className="auth-deco-card auth-deco-card-2">
-              <span>LP</span>
-              <div>
-                <p>MacBook Air M1</p>
-                <p className="deco-price">R 11,500</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -242,16 +203,11 @@ const AuthPage = () => {
             <p className="auth-form-sub">
               {mode === "login"
                 ? "Log in to browse listings and manage your trades."
-                : "Choose your role now and your profile will be ready after Google or email sign up."}
+                : "Join thousands of students trading on campus safely."}
             </p>
           </div>
 
-          <button
-            className="btn-oauth"
-            onClick={handleGoogleClick}
-            disabled={loading}
-            type="button"
-          >
+          <button className="btn-oauth" onClick={startGoogleLogin} disabled={loading} type="button">
             <GoogleIcon />
             Continue with Google
           </button>
@@ -262,33 +218,13 @@ const AuthPage = () => {
 
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             {mode === "signup" && (
-              <>
-                <div className="field-row">
-                  <FormField
-                    label="Full name"
-                    type="text"
-                    placeholder="Jane Doe"
-                    value={form.fullName}
-                    onChange={(value) => setField("fullName", value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Role</label>
-                  <div className="role-picker">
-                    {ROLE_OPTIONS.map((role) => (
-                      <button
-                        key={role.value}
-                        type="button"
-                        className={`role-btn ${form.role === role.value ? "active" : ""}`}
-                        onClick={() => setField("role", role.value)}
-                      >
-                        {role.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
+              <FormField
+                label="Full name"
+                type="text"
+                placeholder="Jane Doe"
+                value={form.fullName}
+                onChange={(value) => setField("fullName", value)}
+              />
             )}
 
             <FormField
@@ -345,13 +281,7 @@ const AuthPage = () => {
             )}
 
             <button className="btn-submit" type="submit" disabled={loading}>
-              {loading ? (
-                <span className="spinner" />
-              ) : mode === "login" ? (
-                "Log in to UniMart"
-              ) : (
-                "Create account"
-              )}
+              {loading ? <span className="spinner" /> : mode === "login" ? "Log in" : "Create account"}
             </button>
           </form>
 
@@ -359,22 +289,14 @@ const AuthPage = () => {
             {mode === "login" ? (
               <>
                 Don&apos;t have an account?{" "}
-                <button
-                  type="button"
-                  className="auth-switch-btn"
-                  onClick={() => switchMode("signup")}
-                >
+                <button type="button" className="auth-switch-btn" onClick={() => switchMode("signup")}>
                   Sign up free
                 </button>
               </>
             ) : (
               <>
                 Already have an account?{" "}
-                <button
-                  type="button"
-                  className="auth-switch-btn"
-                  onClick={() => switchMode("login")}
-                >
+                <button type="button" className="auth-switch-btn" onClick={() => switchMode("login")}>
                   Log in
                 </button>
               </>
@@ -382,32 +304,11 @@ const AuthPage = () => {
           </p>
         </div>
       </div>
-
-      {showGoogleConfirm && (
-        <div className="google-confirm-overlay" role="presentation">
-          <div className="google-confirm-modal" role="dialog" aria-modal="true">
-            <h3>Confirm your role</h3>
-            <p>
-              You are signing up as <strong>{getRoleLabel(pendingRole)}</strong>. Is that correct?
-            </p>
-            <div className="confirm-buttons">
-              <button
-                type="button"
-                onClick={() => setShowGoogleConfirm(false)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button type="button" onClick={confirmGoogleLogin} className="btn-primary">
-                Continue with Google
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
+// ... keep SVG components and FormField as they were
 
 const FormField = ({ label, type, placeholder, value, onChange }) => (
   <div className="form-group">
