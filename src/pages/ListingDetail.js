@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { 
-  ArrowLeft, MessageCircle, ShoppingCart, User, 
-  Star, MapPin, Loader2, MessageSquare, Send 
+import {
+  ArrowLeft, MessageCircle, ShoppingCart, User,
+  Star, MapPin, Loader2, Send
 } from 'lucide-react';
 import './ListingDetail.css';
 
@@ -13,19 +13,19 @@ const ListingDetail = () => {
   const [listing, setListing] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Review Form State
+  const [currentUserId, setCurrentUserId] = useState(null);
+
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchAllData();
-  }, [id]);
-
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+
     const { data: listData } = await supabase
       .from('listings')
       .select(`*, profiles!inner(id, full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
@@ -41,7 +41,11 @@ const ListingDetail = () => {
     if (listData) setListing(listData);
     if (revData) setReviews(revData);
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -49,20 +53,19 @@ const ListingDetail = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       const { error } = await supabase
         .from('reviews')
         .insert([{
           listing_id: id,
           reviewer_id: user.id,
-          reviewee_id: listing.seller_id, // The person who posted the item
-          rating: rating,
-          comment: comment
+          reviewee_id: listing.seller_id,
+          rating,
+          comment,
         }]);
 
       if (error) throw error;
 
-      // Reset form and refresh list
       setComment("");
       setShowForm(false);
       await fetchAllData();
@@ -73,6 +76,8 @@ const ListingDetail = () => {
       setSubmitting(false);
     }
   };
+
+  const isOwnListing = Boolean(currentUserId && listing?.profiles?.id === currentUserId);
 
   if (loading) return <main className="detail-loading-screen"><Loader2 className="spinner" /></main>;
 
@@ -117,14 +122,25 @@ const ListingDetail = () => {
                 </nav>
               </header>
               <footer className="purchase-actions">
-                <button className="msg-seller-btn" onClick={() => navigate(`/messages?user=${listing.profiles.id}`)}><MessageCircle size={18} /> Message</button>
+                <button
+                  className="msg-seller-btn"
+                  onClick={() =>
+                    navigate(
+                      `/messages?user=${encodeURIComponent(listing.profiles.id)}&name=${encodeURIComponent(
+                        listing.profiles.full_name
+                      )}&item=${encodeURIComponent(listing.title)}&listing=${encodeURIComponent(listing.id)}`
+                    )
+                  }
+                  disabled={isOwnListing}
+                >
+                  <MessageCircle size={18} /> {isOwnListing ? 'Your Listing' : 'Message'}
+                </button>
                 <button className="add-cart-btn"><ShoppingCart size={18} /> Add to Cart</button>
               </footer>
             </section>
           </section>
         </section>
 
-        {/* --- REVIEWS SECTION --- */}
         <section className="reviews-container">
           <header className="section-header">
             <h2>Reviews & Feedback</h2>
@@ -139,9 +155,9 @@ const ListingDetail = () => {
                 <legend>Your Rating</legend>
                 <nav className="star-input-group">
                   {[1, 2, 3, 4, 5].map((num) => (
-                    <button 
-                      key={num} 
-                      type="button" 
+                    <button
+                      key={num}
+                      type="button"
                       className={num <= rating ? "star-btn active" : "star-btn"}
                       onClick={() => setRating(num)}
                     >
@@ -153,8 +169,8 @@ const ListingDetail = () => {
 
               <fieldset className="comment-input-area">
                 <legend>Your Feedback</legend>
-                <textarea 
-                  required 
+                <textarea
+                  required
                   placeholder="Tell others about your experience with this seller..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}

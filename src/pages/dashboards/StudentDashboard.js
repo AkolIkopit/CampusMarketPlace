@@ -118,15 +118,23 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   }, [selectedCat, selectedCampus, minPrice, maxPrice]);
 
   // --- HANDLERS ---
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+
+  // FIX: This function handles the update from EditProfile.js
+  const handleSaveProfileSuccess = (updatedProfile) => {
+    setProfile(updatedProfile); // Update local state so UI refreshes
+    setView('profile');         // Navigate back to the Profile view
   };
 
-  const handleSaveProfileSuccess = (updatedData) => {
-    setProfile((prev) => ({ ...prev, ...updatedData }));
-    setView('profile');
-    setIsMenuOpen(false);
+  const handleLogout = async () => {
+    try {
+      setIsMenuOpen(false);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      // App.js handles the redirect to '/' automatically
+    } catch (err) {
+      console.error("Logout Error:", err.message);
+      navigate('/');
+    }
   };
 
   return (

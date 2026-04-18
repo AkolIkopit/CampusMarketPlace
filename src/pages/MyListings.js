@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { ArrowLeft, Trash2, Loader2, PackageOpen, Star, User, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Trash2, Loader2, PackageOpen, User, MessageSquare } from 'lucide-react';
 import './MyListings.css';
 
 const MyListings = () => {
