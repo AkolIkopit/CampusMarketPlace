@@ -3,8 +3,14 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-d
 import { supabase } from "./supabase";
 import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
 
+// Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import CreateListing from "./pages/CreateListing";
+import ListingDetail from "./pages/ListingDetail";
+import MyListings from "./pages/MyListings";
+
+// Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
@@ -16,16 +22,16 @@ async function fetchProfile(userId) {
 
 async function ensureProfile(user) {
   const existingProfile = await fetchProfile(user.id);
+  const authIntent = readAuthIntent();
+  const provider = user.app_metadata.provider;
+
+  // 1. If profile exists, admit immediately
   if (existingProfile) {
     clearAuthIntent();
     return existingProfile;
   }
 
-  const authIntent = readAuthIntent();
-  const provider = user.app_metadata.provider;
-
-  // GATEKEEPER: Only block Google users who haven't signed up.
-  // Email users are already verified by password, so we allow profile creation.
+  // 2. GATEKEEPER: Block Google users trying to LOGIN without an account
   if (provider === 'google' && (!authIntent || authIntent.mode === "login")) {
     await supabase.auth.signOut();
     clearAuthIntent();
@@ -33,6 +39,7 @@ async function ensureProfile(user) {
     return null;
   }
 
+  // 3. Create Student Profile (Auto-approved)
   const fullName = 
     user?.user_metadata?.full_name || 
     user?.user_metadata?.name || 
@@ -47,11 +54,12 @@ async function ensureProfile(user) {
       role: "student",
       application_status: "approved",
       requested_role: "student",
+      campus: 'Main Campus' 
     }])
     .select("*")
     .maybeSingle();
 
-  if (insertError && insertError.code === '23505') { return fetchProfile(user.id); }
+  if (insertError && insertError.code === '23505') return fetchProfile(user.id);
 
   clearAuthIntent();
   return newProfile;
@@ -68,17 +76,17 @@ function LoadingScreen() {
   return <div style={styles.loading}>Loading UniMart...</div>;
 }
 
-function ProtectedDashboardRoute({ loading, session, profile, requiredRole, element }) {
-  // CRITICAL: Prevent crash if profile is still syncing
+// Security Wrapper to prevent crashes on dashboard and feature pages
+function ProtectedRoute({ loading, session, profile, requiredRole, element }) {
   if (loading || (session && !profile)) return <LoadingScreen />; 
   if (!session) return <Navigate to="/" replace />;
 
-  const profileRole = normalizeRole(profile?.role) || "student";
+  const role = normalizeRole(profile?.role) || "student";
   const status = profile?.application_status || "approved";
 
   if (status === "pending") return <Navigate to="/waiting-room" replace />;
-  if (profileRole !== requiredRole) {
-    return <Navigate to={getDashboardPath(profileRole, status)} replace />;
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to={getDashboardPath(role, status)} replace />;
   }
 
   return element;
@@ -98,9 +106,10 @@ export default function App() {
 
       setLoading(true);
       const nextProfile = await ensureProfile(nextSession.user);
-      if (!isMounted) return;
-      setProfile(nextProfile);
-      setLoading(false);
+      if (isMounted) {
+        setProfile(nextProfile);
+        setLoading(false);
+      }
     };
 
     supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
@@ -118,9 +127,15 @@ export default function App() {
         <Route path="/auth" element={!session ? <AuthPage /> : (!profile ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace />)} />
         <Route path="/waiting-room" element={<div style={styles.loading}><h1>Request Pending</h1><p>An admin is reviewing your role upgrade.</p></div>} />
         
-        <Route path="/dashboard/student" element={<ProtectedDashboardRoute loading={loading} session={session} profile={profile} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
-        <Route path="/dashboard/staff" element={<ProtectedDashboardRoute loading={loading} session={session} profile={profile} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
-        <Route path="/dashboard/admin" element={<ProtectedDashboardRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
+        {/* Dashboards */}
+        <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
+        <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
+        <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
+
+        {/* Feature Pages from Main Branch */}
+        <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<CreateListing profile={profile} />} />} />
+        <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<ListingDetail profile={profile} />} />} />
+        <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<MyListings profile={profile} />} />} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -129,5 +144,5 @@ export default function App() {
 }
 
 const styles = {
-  loading: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", fontFamily: "sans-serif", color: "#6b7280" },
+  loading: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", fontFamily: "sans-serif", backgroundColor: '#fdfaf5', color: "#6b7280" },
 };

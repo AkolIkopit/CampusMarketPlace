@@ -40,10 +40,7 @@ const AuthPage = () => {
   const switchMode = (nextMode) => setSearchParams({ mode: nextMode });
 
   const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
+    if (window.history.length > 1) { navigate(-1); return; }
     navigate("/");
   };
 
@@ -62,16 +59,13 @@ const AuthPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (validationError) { setError(validationError); return; }
 
     setLoading(true);
     setError(null);
     setSuccess(null);
 
-    // Save intent so App.js knows this is an authorized attempt
+    // CRITICAL: App.js needs this to allow profile creation
     saveAuthIntent({ mode, role: "student" });
 
     try {
@@ -81,10 +75,7 @@ const AuthPage = () => {
           password: form.password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              full_name: form.fullName.trim(),
-              role: "student",
-            },
+            data: { full_name: form.fullName.trim(), role: "student" },
           },
         });
         if (signUpError) throw signUpError;
@@ -121,130 +112,60 @@ const AuthPage = () => {
 
   return (
     <div className="auth-page">
-      {/* RESTORED LEFT PANEL GRAPHICS */}
       <div className="auth-left">
         <div className="auth-left-inner">
           <a href="/" className="nav-logo auth-logo">
             <span className="nav-logo-mark">UM</span>
             <span className="nav-logo-text">UniMart</span>
           </a>
-
           <div className="auth-left-content">
-            <h2 className="auth-tagline">
-              The campus
-              <br />
-              <em>marketplace</em>
-              <br />
-              you&apos;ve been waiting for.
-            </h2>
-            <p className="auth-tagline-sub">
-              Buy, sell, and trade with fellow students securely through our campus trade hub.
-            </p>
-
+            <h2 className="auth-tagline">The campus <br /> <em>marketplace</em> <br /> you&apos;ve been waiting for.</h2>
+            <p className="auth-tagline-sub">Buy, sell, and trade with fellow students securely.</p>
             <div className="auth-features">
-              {[
-                { icon: "01", text: "Verified student-only access" },
-                { icon: "02", text: "Safe campus trade facility" },
-                { icon: "03", text: "In-app chat and negotiation" },
-                { icon: "04", text: "Secure online payments" },
-              ].map((feature) => (
-                <div key={feature.text} className="auth-feature">
-                  <span className="auth-feature-icon">{feature.icon}</span>
-                  <span>{feature.text}</span>
+              {["Verified student access", "Safe trade facility", "In-app chat", "Secure payments"].map((text, i) => (
+                <div key={text} className="auth-feature">
+                  <span className="auth-feature-icon">0{i+1}</span>
+                  <span>{text}</span>
                 </div>
               ))}
             </div>
           </div>
-
           <div className="auth-deco" aria-hidden="true">
-            <div className="auth-deco-card">
-              <span>BK</span>
-              <div>
-                <p>Chemistry Textbook</p>
-                <p className="deco-price">R 220</p>
-              </div>
-            </div>
-            <div className="auth-deco-card auth-deco-card-2">
-              <span>LP</span>
-              <div>
-                <p>MacBook Air M1</p>
-                <p className="deco-price">R 11,500</p>
-              </div>
-            </div>
+            <div className="auth-deco-card"><span>BK</span><div><p>Chemistry Textbook</p><p className="deco-price">R 220</p></div></div>
+            <div className="auth-deco-card auth-deco-card-2"><span>LP</span><div><p>MacBook Air M1</p><p className="deco-price">R 11,500</p></div></div>
           </div>
         </div>
       </div>
 
       <div className="auth-right">
         <div className="auth-form-wrap">
-          <button type="button" className="auth-back-btn" onClick={handleBack}>
-            <ArrowLeftIcon />
-            Back
-          </button>
-
-          <div className="auth-tabs" role="tablist">
-            <button type="button" className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => switchMode("login")}>
-              Log in
-            </button>
-            <button type="button" className={`auth-tab ${mode === "signup" ? "active" : ""}`} onClick={() => switchMode("signup")}>
-              Sign up
-            </button>
+          <button type="button" className="auth-back-btn" onClick={handleBack}><ArrowLeftIcon /> Back</button>
+          <div className="auth-tabs">
+            <button type="button" className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => switchMode("login")}>Log in</button>
+            <button type="button" className={`auth-tab ${mode === "signup" ? "active" : ""}`} onClick={() => switchMode("signup")}>Sign up</button>
           </div>
-
-          <div className="auth-form-header">
-            <h1 className="auth-form-title">
-              {mode === "login" ? "Welcome back" : "Create your account"}
-            </h1>
-            <p className="auth-form-sub">
-              {mode === "login" ? "Log in to browse listings." : "Join thousands of students trading safely."}
-            </p>
-          </div>
-
-          <button className="btn-oauth" onClick={startGoogleLogin} disabled={loading} type="button">
-            <GoogleIcon />
-            Continue with Google
-          </button>
-
-          <div className="auth-divider">
-            <span>or continue with email</span>
-          </div>
-
+          <h1 className="auth-form-title">{mode === "login" ? "Welcome back" : "Join UniMart"}</h1>
+          <button className="btn-oauth" onClick={startGoogleLogin} disabled={loading} type="button"><GoogleIcon /> Continue with Google</button>
+          <div className="auth-divider"><span>or use email</span></div>
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
             {mode === "signup" && (
               <FormField label="Full name" type="text" placeholder="Jane Doe" value={form.fullName} onChange={(val) => setField("fullName", val)} />
             )}
-
             <FormField label="University email" type="email" placeholder="student@wits.ac.za" value={form.email} onChange={(val) => setField("email", val)} />
-
             <div className="form-group">
               <label className="form-label">Password</label>
               <div className="input-wrap">
                 <input className="form-input" type={showPassword ? "text" : "password"} value={form.password} onChange={(e) => setField("password", e.target.value)} />
-                <button type="button" className="input-toggle" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </button>
+                <button type="button" className="input-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff /> : <Eye />}</button>
               </div>
             </div>
-
             {mode === "signup" && (
               <FormField label="Confirm password" type={showPassword ? "text" : "password"} value={form.confirmPassword} onChange={(val) => setField("confirmPassword", val)} />
             )}
-
-            {error && <div className="alert alert-error"><span>!</span>{error}</div>}
-            {success && <div className="alert alert-success"><span>OK</span>{success}</div>}
-
-            <button className="btn-submit" type="submit" disabled={loading}>
-              {loading ? <span className="spinner" /> : mode === "login" ? "Log in" : "Create account"}
-            </button>
+            {error && <div className="alert alert-error">{error}</div>}
+            {success && <div className="alert alert-success">{success}</div>}
+            <button className="btn-submit" type="submit" disabled={loading}>{loading ? "Processing..." : mode === "login" ? "Log in" : "Create account"}</button>
           </form>
-
-          <p className="auth-switch">
-            {mode === "login" ? (
-              <>Don&apos;t have an account? <button type="button" className="auth-switch-btn" onClick={() => switchMode("signup")}>Sign up free</button></>
-            ) : (
-              <>Already have an account? <button type="button" className="auth-switch-btn" onClick={() => switchMode("login")}>Log in</button></>
-            )}
-          </p>
         </div>
       </div>
     </div>
@@ -252,12 +173,7 @@ const AuthPage = () => {
 };
 
 const FormField = ({ label, type, placeholder, value, onChange }) => (
-  <div className="form-group">
-    <label className="form-label">{label}</label>
-    <div className="input-wrap">
-      <input className="form-input" type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
-    </div>
-  </div>
+  <div className="form-group"><label className="form-label">{label}</label><div className="input-wrap"><input className="form-input" type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} /></div></div>
 );
 
 const ArrowLeftIcon = () => ( <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg> );
