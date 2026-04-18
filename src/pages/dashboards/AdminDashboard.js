@@ -1,46 +1,82 @@
-import DashboardShell from "./DashboardShell";
+import { useState } from "react";
+import "./AdminDashboard.css";
 
-const cards = [
-  {
-    icon: "👥",
-    title: "Manage users",
-    description: "Review user access, role assignments, and account issues across the platform.",
-  },
-  {
-    icon: "📋",
-    title: "All listings",
-    description: "Monitor marketplace inventory and intervene quickly when a listing needs action.",
-  },
-  {
-    icon: "🏫",
-    title: "Trade facilities",
-    description: "Keep campus trade hubs aligned on staffing, capacity, and availability windows.",
-  },
-  {
-    icon: "📊",
-    title: "Analytics",
-    description: "Watch platform growth, listing velocity, and category performance at a glance.",
-  },
-  {
-    icon: "🚩",
-    title: "Flagged content",
-    description: "Handle moderation queues and resolve reports before they escalate.",
-  },
-  {
-    icon: "⚙️",
-    title: "Settings",
-    description: "Adjust platform defaults, operations rules, and admin-level configuration.",
-  },
-];
+export default function AdminDashboard() {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-export default function AdminDashboard({ profile }) {
   return (
-    <DashboardShell
-      theme="admin"
-      profile={profile}
-      title="Admin Dashboard"
-      subtitle="Run the platform from a responsive workspace with the account controls tucked into a mobile menu."
-      cards={cards}
-    />
+    <main className="dashboard-container">
+
+      {/* HEADER */}
+      <header className="main-header">
+        <nav className="header-nav">
+
+          {/* LOGO */}
+          <section className="logo-section">
+            <img src="/logo.png" alt="logo" className="header-logo" />
+            <span className="logo-text">UniMart</span>
+          </section>
+
+          {/* BURGER MENU */}
+          <div className="burger-wrapper">
+            <button
+              className="burger-btn"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              ☰
+            </button>
+
+            {menuOpen && (
+              <div className="dropdown-menu">
+                <button className="dropdown-item">Edit Profile</button>
+                <button className="dropdown-item logout">Logout</button>
+              </div>
+            )}
+          </div>
+
+        </nav>
+      </header>
+
+      {/* HERO */}
+      <section className="hero-section">
+        <span className="hero-kicker">ADMIN PANEL</span>
+        <h1 className="hero-title">
+          Manage your campus marketplace efficiently.
+        </h1>
+        <p className="hero-description">
+          Oversee users, listings, and platform activity.
+        </p>
+      </section>
+
+      {/* ACTIONS */}
+      <section className="quick-actions-grid">
+
+        <button className="action-block">
+          <span className="block-icon">📄</span>
+          <h3>Role Requests</h3>
+          <p>Review and approve user role upgrades.</p>
+        </button>
+
+        <button className="action-block">
+          <span className="block-icon">👤</span>
+          <h3>User Management</h3>
+          <p>View and manage platform users.</p>
+        </button>
+
+        <button className="action-block">
+          <span className="block-icon">💬</span>
+          <h3>Communicate</h3>
+          <p>Message users and staff.</p>
+        </button>
+
+        <button className="action-block">
+          <span className="block-icon">📊</span>
+          <h3>Analytics</h3>
+          <p>Monitor platform activity.</p>
+        </button>
+
+      </section>
+
+    </main>
   );
 }
