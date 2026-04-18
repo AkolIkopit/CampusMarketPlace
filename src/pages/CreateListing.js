@@ -12,16 +12,12 @@ const CreateListing = () => {
   const [imagePreview, setImagePreview] = useState(null);
   
   const [formData, setFormData] = useState({
-    title: '',
-    category_id: '',
-    description: '',
-    price: '',
-    listing_type: 'sale'
+    title: '', category_id: '', description: '', price: '', listing_type: 'sale'
   });
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const { data, error } = await supabase.from('categories').select('*');
+      const { data } = await supabase.from('categories').select('*');
       if (data) setCategories(data);
     };
     fetchCategories();
@@ -38,29 +34,25 @@ const CreateListing = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!imageFile) return alert("Please add a picture!");
-    if (!formData.category_id) return alert("Please select a category!");
-
     setLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Upload Image to the CAPITALIZED bucket
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('listing-Images') // UPDATED TO CAPITAL I
+        .from('listing-Images')
         .upload(filePath, imageFile);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('listing-Images') // UPDATED TO CAPITAL I
+        .from('listing-Images')
         .getPublicUrl(filePath);
 
-      // 2. Create Listing Row
       const { data: listing, error: listingError } = await supabase
         .from('listings')
         .insert([{
@@ -76,17 +68,16 @@ const CreateListing = () => {
 
       if (listingError) throw listingError;
 
-      // 3. Link Image URL to Listing Table
       await supabase.from('listing_images').insert([{
         listing_id: listing.id,
         image_url: publicUrl,
         is_primary: true
       }]);
 
-      alert("Listing Posted Successfully!");
+      alert("Listing Posted!");
       navigate('/dashboard/student');
     } catch (err) {
-      alert("Post Error: " + err.message);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -94,6 +85,13 @@ const CreateListing = () => {
 
   return (
     <main className="create-listing-page">
+      {/* SHARED BACKGROUND ORBS */}
+      <section className="aurora-bg" aria-hidden="true">
+        <hr className="orb orb-1" />
+        <hr className="orb orb-2" />
+        <hr className="orb orb-3" />
+      </section>
+
       <nav className="top-nav-bar">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <ArrowLeft size={20} /> Back
@@ -102,69 +100,51 @@ const CreateListing = () => {
 
       <section className="create-card-container">
         <form className="listing-form-content" onSubmit={handleSubmit}>
-          
           <header className="image-upload-box">
-            <input 
-              type="file" id="pic-upload" accept="image/*" 
-              onChange={handleImageChange} hidden 
-            />
+            <input type="file" id="pic-upload" accept="image/*" onChange={handleImageChange} hidden />
             <label htmlFor="pic-upload" className="upload-trigger">
               {imagePreview ? (
                 <img src={imagePreview} alt="Preview" className="upload-preview" />
               ) : (
-                <div className="placeholder-content">
+                <article className="placeholder-content">
                   <Camera size={48} />
                   <p>Add Picture</p>
-                </div>
+                </article>
               )}
             </label>
           </header>
 
           <fieldset className="form-fields-grid">
-            <div className="input-field">
+            <article className="input-field">
               <label>Title:</label>
-              <input 
-                type="text" required 
-                onChange={(e) => setFormData({...formData, title: e.target.value})} 
-              />
-            </div>
+              <input type="text" required onChange={(e) => setFormData({...formData, title: e.target.value})} />
+            </article>
 
-            <div className="input-field">
+            <article className="input-field">
               <label>Category:</label>
-              <select 
-                required 
-                onChange={(e) => setFormData({...formData, category_id: e.target.value})}
-              >
+              <select required onChange={(e) => setFormData({...formData, category_id: e.target.value})}>
                 <option value="">Select...</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
+            </article>
 
-            <div className="input-field full-width">
+            <article className="input-field full-width">
               <label>Description:</label>
-              <textarea 
-                required rows="3"
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-              ></textarea>
-            </div>
+              <textarea required rows="3" onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
+            </article>
 
-            <div className="input-field">
+            <article className="input-field">
               <label>Price (R):</label>
-              <input 
-                type="number" required 
-                onChange={(e) => setFormData({...formData, price: e.target.value})} 
-              />
-            </div>
+              <input type="number" required onChange={(e) => setFormData({...formData, price: e.target.value})} />
+            </article>
 
-            <div className="input-field radio-group">
+            <article className="input-field radio-group">
                <label>Listing Type:</label>
-               <div className="radio-options">
+               <nav className="radio-options">
                   <label><input type="radio" name="type" value="sale" defaultChecked onChange={() => setFormData({...formData, listing_type: 'sale'})}/> Sale</label>
                   <label><input type="radio" name="type" value="trade" onChange={() => setFormData({...formData, listing_type: 'trade'})}/> Trade</label>
-               </div>
-            </div>
+               </nav>
+            </article>
           </fieldset>
 
           <button type="submit" className="post-btn" disabled={loading}>

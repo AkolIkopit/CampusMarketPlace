@@ -1,109 +1,137 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { ArrowLeft, Trash2, Loader2, PackageOpen } from 'lucide-react';
+import { ArrowLeft, Trash2, Loader2, PackageOpen, Star, User, MessageSquare } from 'lucide-react';
 import './MyListings.css';
 
 const MyListings = () => {
   const navigate = useNavigate();
-  const [myItems, setMyItems] = useState([]);
+  const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    fetchMyListings();
+    fetchUserListings();
   }, []);
 
-  const fetchMyListings = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from('listings')
-        .select(`*, categories(name), listing_images(image_url)`)
-        .eq('seller_id', user.id)
-        .order('created_at', { ascending: false });
+  const fetchUserListings = async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from('listings')
+      .select(`
+        *, 
+        categories(name), 
+        listing_images(image_url),
+        reviews(
+          id, 
+          rating, 
+          comment, 
+          created_at,
+          reviewer:profiles!reviewer_id(full_name, avatar_url)
+        )
+      `)
+      .eq('seller_id', user.id)
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setMyItems(data || []);
-    } catch (err) {
-      console.error(err.message);
-    } finally {
-      setLoading(false);
-    }
+    if (!error) setListings(data || []);
+    setLoading(false);
   };
 
-  const handleDelete = async (listingId, imageUrl) => {
-    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+  const handleDelete = async (e, id) => {
+    // Prevent the card click (navigation) from firing when clicking delete
+    e.stopPropagation();
+
+    if (!window.confirm("Delete this listing permanently?")) return;
     
-    setDeletingId(listingId);
-    try {
-      // 1. Delete from Database (Foreign keys handle listing_images rows)
-      const { error: dbError } = await supabase
-        .from('listings')
-        .delete()
-        .eq('id', listingId);
-
-      if (dbError) throw dbError;
-
-      // 2. Delete from Storage (listing-Images bucket)
-      if (imageUrl) {
-        // Extract the filename from the URL
-        const parts = imageUrl.split('listing-Images/');
-        if (parts.length > 1) {
-          const filePath = parts[1];
-          await supabase.storage.from('listing-Images').remove([filePath]);
-        }
-      }
-
-      setMyItems(myItems.filter(item => item.id !== listingId));
-    } catch (err) {
-      alert("Delete failed: " + err.message);
-    } finally {
-      setDeletingId(null);
+    const { error } = await supabase.from('listings').delete().eq('id', id);
+    if (!error) {
+      setListings(listings.filter(l => l.id !== id));
+    } else {
+      alert(error.message);
     }
   };
 
   return (
     <main className="my-listings-page">
-      <header className="management-header">
-        <button className="back-to-dash" onClick={() => navigate('/dashboard/student')}>
-          <ArrowLeft size={20} /> Dashboard
+      <section className="aurora-bg" aria-hidden="true">
+        <hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" />
+      </section>
+
+      <nav className="top-nav-bar">
+        <button className="back-btn" onClick={() => navigate('/dashboard/student')}>
+          <ArrowLeft size={20} /> Back to Dashboard
         </button>
-        <h1>Manage My Listings</h1>
+      </nav>
+
+      <header className="page-header">
+        <h1>My Listings</h1>
+        <p>Click a card to view full details and reviews, or use the trash icon to remove a post.</p>
       </header>
 
       {loading ? (
-        <section className="center-loader"><Loader2 className="spinner" /></section>
-      ) : myItems.length === 0 ? (
-        <section className="no-listings">
-          <PackageOpen size={60} />
-          <h2>You don&apos;t have any active listings.</h2>
-          <button onClick={() => navigate('/create-listing')}>Create a Listing</button>
+        <figure className="loading-state"><Loader2 className="spinner" /></figure>
+      ) : listings.length === 0 ? (
+        <section className="empty-state">
+          <PackageOpen size={64} />
+          <h2>You haven't posted anything yet.</h2>
+          <button onClick={() => navigate('/create-listing')}>Create your first post</button>
         </section>
       ) : (
-        <section className="manage-grid">
-          {myItems.map(item => (
-            <article key={item.id} className="manage-item-card">
-              <figure className="manage-item-img">
-                <img src={item.listing_images[0]?.image_url || '/placeholder.jpg'} alt="" />
+        <section className="my-listings-grid">
+          {listings.map(item => (
+            <article 
+              key={item.id} 
+              className="my-listing-card"
+              onClick={() => navigate(`/listing/${item.id}`)}
+              style={{ cursor: 'pointer' }}
+            >
+              <figure className="listing-img-box">
+                <img src={item.listing_images[0]?.image_url || '/placeholder.jpg'} alt={item.title} />
+                <button 
+                  className="delete-btn" 
+                  onClick={(e) => handleDelete(e, item.id)} 
+                  title="Delete Listing"
+                >
+                  <Trash2 size={18} />
+                </button>
               </figure>
-              
-              <section className="manage-item-details">
-                <header>
-                  <mark className="item-cat-badge">{item.categories?.name}</mark>
-                  <h3>{item.title}</h3>
-                  <p className="item-price-tag">R {item.price}</p>
-                </header>
 
-                <footer className="manage-item-actions">
-                  <button 
-                    className="item-delete-btn" 
-                    onClick={() => handleDelete(item.id, item.listing_images[0]?.image_url)}
-                    disabled={deletingId === item.id}
-                  >
-                    {deletingId === item.id ? <Loader2 className="spinner" size={16} /> : <Trash2 size={18} />}
-                    Delete Forever
-                  </button>
+              <section className="listing-details">
+                <header className="listing-header-main">
+                  <mark className="listing-cat">{item.categories?.name}</mark>
+                  <h3>{item.title}</h3>
+                  <p className="listing-price">R {item.price}</p>
+                </header>
+                
+                <footer className="listing-reviews-summary">
+                  <header className="rev-summary-header">
+                    <MessageSquare size={14} />
+                    <h4>{item.reviews?.length || 0} Reviews</h4>
+                  </header>
+
+                  {item.reviews && item.reviews.length > 0 ? (
+                    <ul className="compact-rev-list">
+                      {item.reviews.slice(0, 2).map(rev => ( // Show only top 2 in card
+                        <li key={rev.id} className="compact-rev-item">
+                          <header className="comp-rev-user">
+                            {rev.reviewer.avatar_url ? (
+                              <img src={rev.reviewer.avatar_url} alt="" className="tiny-avatar" />
+                            ) : (
+                              <figure className="tiny-placeholder"><User size={10} /></figure>
+                            )}
+                            <strong>{rev.reviewer.full_name.split(' ')[0]}</strong>
+                          </header>
+                          <p className="comp-rev-text">"{rev.comment}"</p>
+                        </li>
+                      ))}
+                      {item.reviews.length > 2 && (
+                        <p className="more-revs-hint">+{item.reviews.length - 2} more reviews...</p>
+                      )}
+                    </ul>
+                  ) : (
+                    <p className="no-rev-text">No feedback yet.</p>
+                  )}
                 </footer>
               </section>
             </article>
