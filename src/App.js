@@ -9,6 +9,7 @@ import AuthPage from "./pages/AuthPage";
 import CreateListing from "./pages/CreateListing";
 import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
+import MessagesPage from "./pages/Messages/MessagesPage";
 
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
@@ -132,11 +133,12 @@ export default function App() {
         <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
         <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
 
-        {/* Feature Pages from Main Branch */}
+        {/* Feature Pages */}
         <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<CreateListing profile={profile} />} />} />
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<ListingDetail profile={profile} />} />} />
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<MyListings profile={profile} />} />} />
-        
+        <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<MessagesPage profile={profile} />} />} />
+  
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Phone, Star, ShieldCheck, Briefcase, Edit3, MapPin } from 'lucide-react';
+import { Phone, Star, ShieldCheck, Briefcase, Edit3, MapPin } from 'lucide-react';
 import { supabase } from '../../supabase';
 import './MyProfile.css';
 
