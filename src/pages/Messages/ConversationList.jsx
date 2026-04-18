@@ -24,7 +24,7 @@ function ConversationList({ conversations, activeConversationId, onSelectConvers
           <li key={conversation.id}>
             <button
               type="button"
-              // Selecting a row updates the active thread in the right panel.
+              // Selecting a row updates the active thread in the right panel..
               onClick={() => onSelectConversation(conversation.id)}
               className={
                 conversation.id === activeConversationId
