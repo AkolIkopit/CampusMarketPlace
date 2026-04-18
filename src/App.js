@@ -66,6 +66,20 @@ async function ensureProfile(user) {
   return newProfile;
 }
 
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
 function getDashboardPath(role, status) {
   if (status === "pending") return "/waiting-room";
   if (role === "admin") return "/dashboard/admin";
@@ -77,10 +91,20 @@ function LoadingScreen() {
   return <div style={styles.loading}>Loading UniMart...</div>;
 }
 
+function SessionErrorScreen({ message }) {
+  return (
+    <div style={styles.loading}>
+      <h1>Something went wrong</h1>
+      <p>{message}</p>
+    </div>
+  );
+}
+
 // Security Wrapper to prevent crashes on dashboard and feature pages
-function ProtectedRoute({ loading, session, profile, requiredRole, element }) {
-  if (loading || (session && !profile)) return <LoadingScreen />; 
+function ProtectedRoute({ loading, session, profile, authError, requiredRole, element }) {
+  if (loading) return <LoadingScreen />;
   if (!session) return <Navigate to="/" replace />;
+  if (authError || !profile) return <SessionErrorScreen message={authError || "We could not load your profile. Please sign out and try again."} />;
 
   const role = normalizeRole(profile?.role) || "student";
   const status = profile?.application_status || "approved";
@@ -97,19 +121,40 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
     const syncSession = async (nextSession) => {
       if (!isMounted) return;
+
+      setAuthError("");
       setSession(nextSession);
       if (!nextSession) { setProfile(null); setLoading(false); return; }
 
       setLoading(true);
-      const nextProfile = await ensureProfile(nextSession.user);
-      if (isMounted) {
-        setProfile(nextProfile);
-        setLoading(false);
+      try {
+        const nextProfile = await withTimeout(
+          ensureProfile(nextSession.user),
+          10000,
+          "Timed out while loading your profile. Please try again."
+        );
+        if (isMounted) {
+          setProfile(nextProfile);
+          if (!nextProfile) {
+            setAuthError("We could not load your profile. Please sign out and try again.");
+          }
+        }
+      } catch (error) {
+        console.error("Session sync failed:", error);
+        if (isMounted) {
+          setProfile(null);
+          setAuthError("We could not load your profile. Please sign out and try again.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -120,24 +165,25 @@ export default function App() {
   }, []);
 
   if (loading && !session) return <LoadingScreen />;
+  if (session && !loading && !profile) return <SessionErrorScreen message={authError || "We could not load your profile. Please sign out and try again."} />;
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={!session ? <LandingPage /> : (!profile ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace />)} />
-        <Route path="/auth" element={!session ? <AuthPage /> : (!profile ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace />)} />
+        <Route path="/" element={!session ? <LandingPage /> : (loading ? <LoadingScreen /> : profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <SessionErrorScreen message={authError || "We could not load your profile. Please sign out and try again."} />)} />
+        <Route path="/auth" element={!session ? <AuthPage /> : (loading ? <LoadingScreen /> : profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <SessionErrorScreen message={authError || "We could not load your profile. Please sign out and try again."} />)} />
         <Route path="/waiting-room" element={<div style={styles.loading}><h1>Request Pending</h1><p>An admin is reviewing your role upgrade.</p></div>} />
         
         {/* Dashboards */}
-        <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
-        <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
-        <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
+        <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
+        <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
+        <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
 
         {/* Feature Pages */}
-        <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<CreateListing profile={profile} />} />} />
-        <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<ListingDetail profile={profile} />} />} />
-        <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<MyListings profile={profile} />} />} />
-        <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} element={<MessagesPage profile={profile} />} />} />
+        <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing profile={profile} />} />} />
+        <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail profile={profile} />} />} />
+        <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings profile={profile} />} />} />
+        <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage profile={profile} />} />} />
   
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
