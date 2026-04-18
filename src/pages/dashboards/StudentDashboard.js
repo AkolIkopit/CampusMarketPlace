@@ -119,15 +119,23 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
   // --- HANDLERS ---
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-  };
-
-  const handleSaveProfileSuccess = (updatedData) => {
-    setProfile((prev) => ({ ...prev, ...updatedData }));
-    setView('profile');
+  try {
+    // 1. Close the menu immediately for better UX
     setIsMenuOpen(false);
-  };
+    
+    // 2. Sign out from Supabase
+    // We don't need to call navigate('/') because App.js handles the redirect 
+    // automatically when it detects the session is null.
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) throw error;
+
+  } catch (err) {
+    console.error("Logout Error:", err.message);
+    // Fallback: If Supabase fails, force go to landing page
+    navigate('/');
+  }
+};
 
   return (
     <main className="dashboard-container">
