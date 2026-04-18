@@ -5,15 +5,13 @@ import {
   Plus, ShoppingBag, Box, MessageCircle, 
   Search, Menu, X, User, Settings, LogOut, Filter 
 } from 'lucide-react';
-import MyProfile from './MyProfile';
-import EditProfile from './EditProfile';
 import './StudentDashboard.css';
 
 const StaffDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
   
   const [view, setView] = useState('market'); 
-  const [profile, setProfile] = useState(initialProfile);
+  const [profile] = useState(initialProfile);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [recentListings, setRecentListings] = useState([]);
@@ -22,8 +20,8 @@ const StaffDashboard = ({ profile: initialProfile }) => {
 
   const [selectedCat, setSelectedCat] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
+  const [minPrice] = useState('');
+  const [maxPrice] = useState('');
 
   const campusOptions = ["Main Campus", "Education Campus", "Med Campus"];
 
