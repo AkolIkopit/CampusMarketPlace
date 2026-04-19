@@ -12,8 +12,15 @@ const CreateListing = () => {
   const [imagePreview, setImagePreview] = useState(null);
   
   const [formData, setFormData] = useState({
-    title: '', category_id: '', description: '', price: '', listing_type: 'sale'
+    title: '', 
+    category_id: '', 
+    description: '', 
+    price: '', 
+    listing_type: 'sale',
+    condition: 'Good' // Default condition
   });
+
+  const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -43,15 +50,8 @@ const CreateListing = () => {
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('listing-Images')
-        .upload(filePath, imageFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('listing-Images')
-        .getPublicUrl(filePath);
+      await supabase.storage.from('listing-Images').upload(filePath, imageFile);
+      const { data: { publicUrl } } = supabase.storage.from('listing-Images').getPublicUrl(filePath);
 
       const { data: listing, error: listingError } = await supabase
         .from('listings')
@@ -62,6 +62,7 @@ const CreateListing = () => {
           description: formData.description,
           price: parseFloat(formData.price),
           listing_type: formData.listing_type,
+          condition: formData.condition, // Added field
           status: 'active'
         }])
         .select().single();
@@ -85,17 +86,12 @@ const CreateListing = () => {
 
   return (
     <main className="create-listing-page">
-      {/* SHARED BACKGROUND ORBS */}
       <section className="aurora-bg" aria-hidden="true">
-        <hr className="orb orb-1" />
-        <hr className="orb orb-2" />
-        <hr className="orb orb-3" />
+        <hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" />
       </section>
 
       <nav className="top-nav-bar">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <ArrowLeft size={20} /> Back
-        </button>
+        <button className="back-btn" onClick={() => navigate(-1)}><ArrowLeft size={20} /> Back</button>
       </nav>
 
       <section className="create-card-container">
@@ -103,23 +99,12 @@ const CreateListing = () => {
           <header className="image-upload-box">
             <input type="file" id="pic-upload" accept="image/*" onChange={handleImageChange} hidden />
             <label htmlFor="pic-upload" className="upload-trigger">
-              {imagePreview ? (
-                <img src={imagePreview} alt="Preview" className="upload-preview" />
-              ) : (
-                <article className="placeholder-content">
-                  <Camera size={48} />
-                  <p>Add Picture</p>
-                </article>
-              )}
+              {imagePreview ? <img src={imagePreview} alt="Preview" className="upload-preview" /> : <article className="placeholder-content"><Camera size={48} /><p>Add Picture</p></article>}
             </label>
           </header>
 
           <fieldset className="form-fields-grid">
-            <article className="input-field">
-              <label>Title:</label>
-              <input type="text" required onChange={(e) => setFormData({...formData, title: e.target.value})} />
-            </article>
-
+            <article className="input-field"><label>Title:</label><input type="text" required onChange={(e) => setFormData({...formData, title: e.target.value})} /></article>
             <article className="input-field">
               <label>Category:</label>
               <select required onChange={(e) => setFormData({...formData, category_id: e.target.value})}>
@@ -127,29 +112,17 @@ const CreateListing = () => {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </article>
-
-            <article className="input-field full-width">
-              <label>Description:</label>
-              <textarea required rows="3" onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
-            </article>
-
             <article className="input-field">
-              <label>Price (R):</label>
-              <input type="number" required onChange={(e) => setFormData({...formData, price: e.target.value})} />
+              <label>Condition:</label>
+              <select value={formData.condition} onChange={(e) => setFormData({...formData, condition: e.target.value})}>
+                {conditionOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
             </article>
-
-            <article className="input-field radio-group">
-               <label>Listing Type:</label>
-               <nav className="radio-options">
-                  <label><input type="radio" name="type" value="sale" defaultChecked onChange={() => setFormData({...formData, listing_type: 'sale'})}/> Sale</label>
-                  <label><input type="radio" name="type" value="trade" onChange={() => setFormData({...formData, listing_type: 'trade'})}/> Trade</label>
-               </nav>
-            </article>
+            <article className="input-field"><label>Price (R):</label><input type="number" required onChange={(e) => setFormData({...formData, price: e.target.value})} /></article>
+            <article className="input-field full-width"><label>Description:</label><textarea required rows="3" onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea></article>
           </fieldset>
 
-          <button type="submit" className="post-btn" disabled={loading}>
-            {loading ? <Loader2 className="spinner" /> : "POST"}
-          </button>
+          <button type="submit" className="post-btn" disabled={loading}>{loading ? <Loader2 className="spinner" /> : "POST"}</button>
         </form>
       </section>
     </main>
