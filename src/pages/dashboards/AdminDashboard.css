@@ -1,0 +1,158 @@
+/* MAIN LAYOUT */
+/* PAGE LAYOUT */
+.dashboard-container {
+  min-height: 100vh;
+  background: #f6f8fb;
+  font-family: Arial, sans-serif;
+}
+
+/* HEADER */
+.main-header {
+  background: white;
+  padding: 20px 40px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* LOGO */
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+/* BURGER MENU */
+.burger-wrapper {
+  position: relative;
+}
+
+.burger-btn {
+  font-size: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #2c3e50;
+}
+
+/* DROPDOWN */
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 35px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  width: 150px;
+  overflow: hidden;
+  z-index: 100;
+}
+
+/* DROPDOWN ITEMS */
+.dropdown-item {
+  width: 100%;
+  padding: 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.dropdown-item:hover {
+  background: #f5f6f8;
+}
+
+/* LOGOUT BUTTON (RED) */
+.logout {
+  color: white;
+  background: #e74c3c;
+}
+
+.logout:hover {
+  background: #c0392b;
+}
+
+/* HERO SECTION */
+.hero-section {
+  padding: 60px 40px 30px;
+}
+
+.hero-kicker {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #888;
+  font-weight: bold;
+}
+
+.hero-title {
+  font-size: 36px;
+  margin: 10px 0;
+  color: #1f2d3d;
+}
+
+.hero-description {
+  font-size: 16px;
+  color: #666;
+  max-width: 600px;
+}
+
+/* ACTION GRID */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  padding: 40px;
+}
+
+/* CARDS */
+.action-block {
+  background: white;
+  border: none;
+  border-radius: 16px;
+  padding: 25px;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+}
+
+.action-block:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+
+.block-icon {
+  font-size: 26px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.action-block h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+.action-block p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #666;
+}

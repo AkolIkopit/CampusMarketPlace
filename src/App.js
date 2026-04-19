@@ -1,317 +1,217 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 import { supabase } from "./supabase";
-import {
-  clearAuthIntent,
-  getDefaultFullName,
-  normalizeRole,
-  readAuthIntent,
-} from "./auth";
+import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
 
+// Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
-import RolePicker from "./pages/RolePicker";
+import CreateListing from "./pages/CreateListing";
+import ListingDetail from "./pages/ListingDetail";
+import MyListings from "./pages/MyListings";
+import MessagesPage from "./pages/Messages/MessagesPage";
+import LoadingScreen from "./components/LoadingScreen";
 
+// Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 
-async function fetchProfile(userId) {
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .maybeSingle();
-
+export async function fetchProfile(userId) {
+  const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   return data || null;
 }
 
-async function syncExistingProfile(profile) {
-  const normalizedRole = normalizeRole(profile?.role);
-
-  if (!normalizedRole || normalizedRole === profile.role) {
-    return profile;
-  }
-
-  const { data } = await supabase
-    .from("profiles")
-    .update({ role: normalizedRole })
-    .eq("id", profile.id)
-    .select("*")
-    .maybeSingle();
-
-  return data || { ...profile, role: normalizedRole };
-}
-
-async function ensureProfile(user) {
+export async function ensureProfile(user) {
   const existingProfile = await fetchProfile(user.id);
+  const authIntent = readAuthIntent();
+  const provider = user.app_metadata.provider;
 
   if (existingProfile) {
     clearAuthIntent();
-    return syncExistingProfile(existingProfile);
+    return existingProfile;
   }
 
-  const authIntent = readAuthIntent();
-  const role =
-    normalizeRole(user?.user_metadata?.role) ||
-    normalizeRole(authIntent?.role);
-  const fullName = getDefaultFullName(user);
-
-  if (!role || !fullName) {
+  if (provider === 'google' && (!authIntent || authIntent.mode === "login")) {
+    await supabase.auth.signOut();
+    clearAuthIntent();
+    window.location.href = "/auth?mode=login&error=Account+not+found.+Please+sign+up+first.";
     return null;
   }
 
-  const { data } = await supabase
+  const fullName = 
+    user?.user_metadata?.full_name || 
+    user?.user_metadata?.name || 
+    user?.user_metadata?.display_name ||
+    getDefaultFullName(user) || "New Student";
+
+  const { data: newProfile, error: insertError } = await supabase
     .from("profiles")
-    .insert([
-      {
-        id: user.id,
-        full_name: fullName,
-        role,
-      },
-    ])
+    .insert([{
+      id: user.id,
+      full_name: fullName,
+      role: "student",
+      application_status: "approved",
+      requested_role: "student",
+      campus: 'Main Campus' 
+    }])
     .select("*")
     .maybeSingle();
 
-  if (data) {
-    clearAuthIntent();
-    return data;
-  }
+  if (insertError && insertError.code === '23505') return fetchProfile(user.id);
 
-  return fetchProfile(user.id);
+  clearAuthIntent();
+  return newProfile;
 }
 
-function getDashboardPath(role) {
-  if (role === "student") return "/dashboard/student";
-  if (role === "staff") return "/dashboard/staff";
+export function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
+export function getDashboardPath(role, status) {
+  if (status === "pending") return "/waiting-room";
   if (role === "admin") return "/dashboard/admin";
-  return null;
+  if (role === "staff") return "/dashboard/staff";
+  return "/dashboard/student";
 }
 
-function LoadingScreen() {
-  return <div style={styles.loading}>Loading...</div>;
-}
-
-function HomeRoute({ loading, session, profileRole }) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <LandingPage />;
-  }
-
-  return <Navigate to={getDashboardPath(profileRole) || "/complete-profile"} replace />;
-}
-
-function AuthRoute({ loading, session, profileRole }) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <AuthPage />;
-  }
-
-  return <Navigate to={getDashboardPath(profileRole) || "/complete-profile"} replace />;
-}
-
-function CompleteProfileRoute({ loading, session, profile, setProfile }) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!session) {
-    return <Navigate to="/" replace />;
-  }
-
-  const profileRole = normalizeRole(profile?.role);
-
-  if (profileRole) {
-    return <Navigate to={getDashboardPath(profileRole)} replace />;
-  }
-
+export function SessionErrorScreen({ message }) {
   return (
-    <RolePicker
-      session={session}
-      profile={profile}
-      onProfileCreated={setProfile}
-    />
+    <div style={{display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#fdfaf5", textAlign: "center", padding: "20px"}}>
+      <h1>Something went wrong</h1>
+      <p>{message}</p>
+      <button onClick={() => supabase.auth.signOut()} style={{marginTop: "20px", padding: "10px 20px", cursor: "pointer"}}>Sign Out</button>
+    </div>
   );
 }
 
-function ProtectedDashboardRoute({
-  loading,
-  session,
-  profile,
-  requiredRole,
-  element,
-}) {
-  if (loading) {
-    return <LoadingScreen />;
-  }
+export function ProtectedRoute({ loading, session, profile, authError, requiredRole, element }) {
+  if (loading) return <LoadingScreen />;
+  if (!session) return <Navigate to="/" replace />;
+  if (authError || !profile) return <SessionErrorScreen message={authError || "We could not load your profile."} />;
 
-  if (!session) {
-    return <Navigate to="/" replace />;
-  }
+  const role = normalizeRole(profile?.role) || "student";
+  const status = profile?.application_status || "approved";
 
-  const profileRole = normalizeRole(profile?.role);
-
-  if (!profileRole) {
-    return <Navigate to="/complete-profile" replace />;
-  }
-
-  if (profileRole !== requiredRole) {
-    return <Navigate to={getDashboardPath(profileRole)} replace />;
+  if (status === "pending") return <Navigate to="/waiting-room" replace />;
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to={getDashboardPath(role, status)} replace />;
   }
 
   return element;
-}
-
-function AppRoutes({ loading, session, profile, setProfile }) {
-  const profileRole = normalizeRole(profile?.role);
-
-  return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <HomeRoute
-            loading={loading}
-            session={session}
-            profileRole={profileRole}
-          />
-        }
-      />
-      <Route
-        path="/auth"
-        element={
-          <AuthRoute
-            loading={loading}
-            session={session}
-            profileRole={profileRole}
-          />
-        }
-      />
-      <Route
-        path="/complete-profile"
-        element={
-          <CompleteProfileRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            setProfile={setProfile}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/student"
-        element={
-          <ProtectedDashboardRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            requiredRole="student"
-            element={<StudentDashboard profile={{ ...profile, role: profileRole }} />}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/staff"
-        element={
-          <ProtectedDashboardRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            requiredRole="staff"
-            element={<StaffDashboard profile={{ ...profile, role: profileRole }} />}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/admin"
-        element={
-          <ProtectedDashboardRoute
-            loading={loading}
-            session={session}
-            profile={profile}
-            requiredRole="admin"
-            element={<AdminDashboard profile={{ ...profile, role: profileRole }} />}
-          />
-        }
-      />
-      <Route
-        path="*"
-        element={<Navigate to={session ? getDashboardPath(profileRole) || "/complete-profile" : "/"} replace />}
-      />
-    </Routes>
-  );
 }
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
+    // Tracks the latest resolved profile value so onAuthStateChange
+    // (e.g. a background token refresh) can check whether a profile
+    // is already loaded before deciding to show the loading screen.
+    let latestProfile = null;
+    const updateProfile = (p) => { latestProfile = p; setProfile(p); };
 
     const syncSession = async (nextSession) => {
       if (!isMounted) return;
 
+      setAuthError("");
       setSession(nextSession);
+      if (!nextSession) { updateProfile(null); setLoading(false); return; }
 
-      if (!nextSession) {
-        setProfile(null);
-        clearAuthIntent();
-        setLoading(false);
-        return;
+      // Only show the loading screen if we don't already have a profile.
+      // This prevents background token refreshes (e.g. on tab focus) from
+      // wiping out the UI with a full-screen loading flash.
+      if (!latestProfile) setLoading(true);
+      try {
+        // Minimum time for animation to be seen
+        const animationPromise = new Promise(res => setTimeout(res, 1800));
+        
+        const profilePromise = withTimeout(
+          ensureProfile(nextSession.user),
+          10000,
+          "Timed out while loading your profile."
+        );
+
+        const [nextProfile] = await Promise.all([profilePromise, animationPromise]);
+
+        if (isMounted) {
+          updateProfile(nextProfile);
+          if (!nextProfile) {
+            setAuthError("We could not load your profile. Please sign out and try again.");
+          }
+        }
+      } catch (error) {
+        console.error("Session sync failed:", error);
+        if (isMounted) {
+          updateProfile(null);
+          setAuthError("We could not load your profile. Please sign out and try again.");
+        }
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      setLoading(true);
-      const nextProfile = await ensureProfile(nextSession.user);
-
-      if (!isMounted) return;
-
-      setProfile(nextProfile);
-      setLoading(false);
     };
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      syncSession(currentSession);
+    supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // Ignore SIGNED_OUT events that fire while the tab is hidden.
+      // These are almost always spurious WebSocket disconnections caused by
+      // the browser suspending the tab — not real logouts. The session is
+      // still valid in localStorage and will be recovered on the next
+      // getSession() call. If the user genuinely signs out, the tab is
+      // visible and this guard does not trigger.
+      if (event === "SIGNED_OUT" && document.hidden) return;
+      syncSession(s);
     });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        syncSession(nextSession);
+    
+    // When the tab becomes visible again, re-validate the session.
+    // This catches cases where a SIGNED_OUT event was suppressed above
+    // and ensures the UI always reflects the true auth state.
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
       }
-    );
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
     };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => { isMounted = false; subscription.unsubscribe(); document.removeEventListener("visibilitychange", handleVisibilityChange); };
   }, []);
+
+  if (loading && !session) return <LoadingScreen />;
 
   return (
     <Router>
-      <AppRoutes
-        loading={loading}
-        session={session}
-        profile={profile}
-        setProfile={setProfile}
-      />
+      <Routes>
+        <Route path="/" element={!session ? <LandingPage /> : (loading ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile?.role, profile?.application_status)} replace />)} />
+        <Route path="/auth" element={!session ? <AuthPage /> : (loading ? <LoadingScreen /> : <Navigate to={getDashboardPath(profile?.role, profile?.application_status)} replace />)} />
+        <Route path="/waiting-room" element={<div style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></div>} />
+        
+        <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
+        <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
+        <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
+
+        <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
+        <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
+        <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
+        <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage />} />} />
+  
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Router>
   );
 }
 
 const styles = {
-  loading: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: "100vh",
-    fontSize: "18px",
-    color: "#6b7280",
-  },
+  loading: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", fontFamily: "sans-serif", backgroundColor: '#fdfaf5', color: "#6b7280" },
 };

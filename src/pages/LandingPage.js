@@ -9,15 +9,14 @@ const categories = [
   { icon: "👕", label: "Clothing" },
   { icon: "🎮", label: "Gaming" },
   { icon: "🚲", label: "Transport" },
-  { icon: "🎨", label: "Art & Craft" },
-  { icon: "📷", label: "Cameras" },
+  { icon: "🎨", label: "Art & Craft" }
 ];
 
 const marqueeItems = [
   "TEXTBOOKS", "ELECTRONICS", "FURNITURE", "CLOTHING", "GAMING",
-  "TRANSPORT", "CAMERAS", "ART", "SPORTS", "MUSIC",
+  "TRANSPORT", "ART", "SPORTS", "MUSIC",
   "TEXTBOOKS", "ELECTRONICS", "FURNITURE", "CLOTHING", "GAMING",
-  "TRANSPORT", "CAMERAS", "ART", "SPORTS", "MUSIC",
+  "TRANSPORT", "ART", "SPORTS", "MUSIC",
 ];
 
 const stats = [
