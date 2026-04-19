@@ -14,7 +14,6 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // URL Persistence: Refreshing keeps you on the same view
   const view = searchParams.get('view') || 'market';
   
   const [profile, setProfile] = useState(initialProfile);
@@ -25,14 +24,12 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const [loading, setLoading] = useState(true);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
-  // Filter States
   const [selectedCat, setSelectedCat] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
   const [selectedCondition, setSelectedCondition] = useState('all');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
-  // Fixed Options
   const campusOptions = ["Main Campus", "Education Campus", "Med Campus"];
   const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
 
@@ -42,10 +39,9 @@ const StudentDashboard = ({ profile: initialProfile }) => {
         const { data: catData } = await supabase.from('categories').select('*');
         setCategories(catData || []);
 
-        // Fetch 10 most recent listings
         const { data: recent } = await supabase
           .from('listings')
-          .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
+          .select(`*, profiles:seller_id(full_name, avatar_url), categories(name), listing_images(image_url)`)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(10);
@@ -61,7 +57,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
     const fetchMarket = async () => {
       let query = supabase
         .from('listings')
-        .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
+        .select(`*, profiles:seller_id(full_name, avatar_url), categories(name), listing_images(image_url)`)
         .eq('status', 'active');
 
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
@@ -71,8 +67,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
       const { data } = await query.order('created_at', { ascending: false });
       let filtered = data || [];
+      
+      // FIX: Filter based on listing.location (the item campus) instead of seller profile campus
       if (selectedCampus !== 'all') {
-        filtered = filtered.filter(i => i.profiles?.campus === selectedCampus);
+        filtered = filtered.filter(i => i.location === selectedCampus);
       }
       setMarketListings(filtered);
     };
@@ -80,64 +78,21 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   }, [selectedCat, selectedCampus, selectedCondition, minPrice, maxPrice]);
   
 
-  // --- UNREAD MESSAGE COUNT ---
   useEffect(() => {
     const userId = profile?.id;
-
-    if (!userId) {
-      setUnreadMessageCount(0);
-      return undefined;
-    }
-
+    if (!userId) { setUnreadMessageCount(0); return undefined; }
     let cancelled = false;
 
     const fetchUnreadMessageCount = async () => {
-      const { count, error } = await supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('receiver_id', userId)
-        .eq('is_read', false);
-
-      if (error) throw error;
-
-      if (!cancelled) {
-        setUnreadMessageCount(count || 0);
-      }
+      const { count, error } = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('receiver_id', userId).eq('is_read', false);
+      if (!error && !cancelled) setUnreadMessageCount(count || 0);
     };
 
-    fetchUnreadMessageCount().catch((err) => {
-      if (!cancelled) {
-        console.error('Unread message count error:', err.message);
-      }
-    });
+    fetchUnreadMessageCount();
+    const channel = supabase.channel(`dashboard-unreads-${userId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchUnreadMessageCount()).subscribe();
 
-    const channel = supabase
-      .channel(`student-dashboard-unreads-${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        (payload) => {
-          const row = payload.new || payload.old;
-          if (!row) return;
-
-          if (row.sender_id === userId || row.receiver_id === userId) {
-            fetchUnreadMessageCount().catch((err) => {
-              if (!cancelled) {
-                console.error('Unread message count refresh error:', err.message);
-              }
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [profile?.id]);
-
-  // --- HANDLERS ---
 
   const setView = (newView) => {
     setSearchParams({ view: newView });
@@ -153,22 +108,17 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
   return (
     <main className="dashboard-container">
-      <section className="aurora-bg" aria-hidden="true">
-        <hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" />
-      </section>
+      <section className="aurora-bg" aria-hidden="true"><hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" /></section>
       
       <header className="main-header">
         <nav className="header-nav">
           <section className="logo-section" onClick={() => setView('market')}>
-            <img src="/UniMartlogo.png" alt="Logo" className="header-logo" />
-            <h1 className="logo-text">UniMart</h1>
+            <img src="/UniMartlogo.png" alt="Logo" className="header-logo" /><h1 className="logo-text">UniMart</h1>
           </section>
-          <section className="header-actions">
+          <nav className="header-actions">
             <button className="icon-btn" onClick={() => navigate('/cart')}><ShoppingBag size={20} /></button>
-            <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </section>
+            <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
+          </nav>
         </nav>
       </header>
 
@@ -181,23 +131,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
         </aside>
       )}
 
-      {/* VIEW: PROFILE */}
-      {view === 'profile' && (
-        <MyProfile 
-          profile={profile} 
-          onEditClick={() => setView('edit')} 
-          onBack={() => setView('market')} 
-          navigate={navigate} 
-        />
-      )}
-
-      {view === 'edit' && (
-        <EditProfile 
-          profile={profile} 
-          onCancel={() => setView('profile')} 
-          onSaveSuccess={handleSaveProfileSuccess} 
-        />
-      )}
+      {view === 'profile' && <MyProfile profile={profile} onEditClick={() => setView('edit')} onBack={() => setView('market')} navigate={navigate} />}
+      {view === 'edit' && <EditProfile profile={profile} onCancel={() => setView('profile')} onSaveSuccess={handleSaveProfileSuccess} />}
       
       {view === 'market' && (
         <>
@@ -210,102 +145,63 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           </section>
 
           <section className="quick-actions-grid">
-            <article className="action-block" onClick={() => navigate('/my-listings')}>
-              <figure className="block-icon"><Box size={24} /></figure>
-              <h3>My Listings</h3>
-            </article>
-
-            <article
-              className="action-block"
-              onClick={() => navigate('/messages')}
-            >
-              <figure className="block-icon">
-                <MessageCircle size={24} />
-              </figure>
-              <header className="action-title-row">
+            <article className="action-block" onClick={() => navigate('/my-listings')}><figure className="block-icon"><Box size={24} /></figure><h3>My Listings</h3></article>
+            <article className="action-block" onClick={() => navigate('/messages')}>
+              <figure className="block-icon"><MessageCircle size={24} /></figure>
+              <nav className="action-title-row">
                 <h3>My Messages</h3>
-                {unreadMessageCount > 0 ? (
-                  <span
-                    className="message-count-badge"
-                    aria-label={`${unreadMessageCount} unread messages`}
-                  >
-                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
-                  </span>
-                ) : null}
-              </header>
-              <p>Chat with buyers.</p>
+                {unreadMessageCount > 0 && <mark className="message-count-badge">{unreadMessageCount}</mark>}
+              </nav>
             </article>
-            <article className="action-block" onClick={() => setView('profile')}>
-              <figure className="block-icon"><User size={24} /></figure>
-              <h3>My Profile</h3>
-            </article>
+            <article className="action-block" onClick={() => setView('profile')}><figure className="block-icon"><User size={24} /></figure><h3>My Profile</h3></article>
           </section>
 
           <section className="feed-outer-section">
             <header className="section-header"><h2>Recent Listings (Top 10)</h2></header>
-            <section className="listings-grid-layout">
-              {recentListings.map(item => <ListingCard key={item.id} item={item} />)}
-            </section>
+            <section className="listings-grid-layout">{recentListings.map(item => <ListingCard key={item.id} item={item} />)}</section>
           </section>
 
           <section className="market-layout">
             <aside className="filter-sidebar">
               <header className="sidebar-header"><Filter size={18} /><h3>Filters</h3></header>
               <form className="filter-form">
-                <fieldset className="filter-group">
-                  <legend>Campus</legend>
+                <fieldset className="filter-group"><legend>Campus</legend>
                   <select value={selectedCampus} onChange={(e) => setSelectedCampus(e.target.value)}>
                     <option value="all">All Campuses</option>
                     {campusOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </fieldset>
-
-                <fieldset className="filter-group">
-                  <legend>Condition</legend>
+                <fieldset className="filter-group"><legend>Condition</legend>
                   <select value={selectedCondition} onChange={(e) => setSelectedCondition(e.target.value)}>
                     <option value="all">Any Condition</option>
                     {conditionOptions.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </fieldset>
-
                 <fieldset className="filter-group">
                    <legend>Price Range (R)</legend>
                    <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
                    <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
                 </fieldset>
-
-                <fieldset className="filter-group">
-                  <legend>Category</legend>
+                <fieldset className="filter-group"><legend>Category</legend>
                   <select value={selectedCat} onChange={(e) => setSelectedCat(e.target.value)}>
                     <option value="all">All</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </fieldset>
-
-                <button type="button" className="reset-btn" onClick={() => {
-                   setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice('');
-                }}>Clear Filters</button>
+                <button type="button" className="reset-btn" onClick={() => { setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</button>
               </form>
             </aside>
             <section className="market-results">
               <header className="section-header"><h2>Market Feed</h2></header>
               <section className="listings-grid-layout">
-                {marketListings.length > 0 ? (
-                  marketListings.map(item => <ListingCard key={item.id} item={item} />)
-                ) : (
-                  <p className="empty-msg">No items found.</p>
-                )}
+                {marketListings.length > 0 ? marketListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">No items found.</p>}
               </section>
             </section>
           </section>
         </>
       )}
 
-      {view === 'market' && (
-        <button className="create-post-fab" onClick={() => navigate('/create-listing')}>
-          <Plus size={28} /><label>Create Post</label>
-        </button>
-      )}
+      {view === 'market' && <button className="create-post-fab" onClick={() => navigate('/create-listing')}><Plus size={28} /><label>Create Post</label></button>}
     </main>
   );
 };
@@ -315,24 +211,16 @@ const ListingCard = ({ item }) => {
   return (
     <article className="listing-card-item" onClick={() => navigate(`/listing/${item.id}`)}>
       <header className="listing-card-top">
-        <figure className="listing-img-container">
-          <img src={item.listing_images?.[0]?.image_url || '/placeholder.jpg'} alt="" />
-        </figure>
+        <figure className="listing-img-container"><img src={item.listing_images?.[0]?.image_url || '/placeholder.jpg'} alt="" /></figure>
         <section className="seller-mini-info">
-          {item.profiles?.avatar_url ? (
-            <img src={item.profiles.avatar_url} alt="" className="mini-avatar" />
-          ) : (
-            <User size={12} style={{color: '#f3a91e'}} />
-          )}
+          {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
           <p>{item.profiles?.full_name || 'Student'}</p>
         </section>
+        {/* FIX: Shows listing.location (the item campus) instead of seller campus */}
+        <section className="campus-badge"><MapPin size={10} /><p>{item.location || 'Main Campus'}</p></section>
       </header>
       <footer className="listing-card-bottom">
-        <section className="listing-info-main">
-          <h4>{item.title}</h4>
-          <mark className="category-tag">{item.categories?.name}</mark>
-          <p className="condition-tag">{item.condition}</p>
-        </section>
+        <section className="listing-info-main"><h4>{item.title}</h4><mark className="category-tag">{item.categories?.name}</mark><p className="condition-tag">{item.condition}</p></section>
         <p className="listing-price">R {item.price}</p>
       </footer>
     </article>

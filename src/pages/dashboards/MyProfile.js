@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Star, ShieldCheck, Briefcase, Edit3, MapPin, Send, ArrowLeft, Trash2, Clock, User, IdCard, Loader2, Box } from 'lucide-react';
+import { 
+  Phone, Star, ShieldCheck, Briefcase, Edit3, 
+  MapPin, Send, ArrowLeft, Trash2, Clock, 
+  User, IdCard, Loader2, Box 
+} from 'lucide-react';
 import { supabase } from '../../supabase';
 import LoadingScreen from '../../components/LoadingScreen';
 import './StudentDashboard.css'; 
@@ -33,6 +37,12 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate }) => {
     setLoading(false);
   };
 
+  const withdrawApplication = async () => {
+    if (!window.confirm("Withdraw application?")) return;
+    await supabase.from('role_applications').delete().eq('user_id', profile.id);
+    setExistingApp(null);
+  };
+
   if (view === 'apply_staff' || view === 'apply_admin') {
     const isStaff = view === 'apply_staff';
     return (
@@ -40,7 +50,7 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate }) => {
         <article className="application-form-card">
           <header className="form-header">
             <button onClick={() => setView('profile')} className="back-link-btn"><ArrowLeft size={16} /> Back</button>
-            <h2>{isStaff ? 'Staff Application' : 'Admin Application'}</h2>
+            <h2>{isStaff ? 'Apply for Trade Staff' : 'Apply for Campus Admin'}</h2>
           </header>
           <form onSubmit={(e) => submitApplication(e, isStaff ? 'staff' : 'admin')} className="application-main-form">
             <fieldset className="form-grid">
@@ -57,8 +67,12 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate }) => {
   return (
     <section className="profile-view-section">
       <nav className="profile-top-nav">
-        <button className="back-to-dash-btn" onClick={onBack}><ArrowLeft size={18} /> Back to Dashboard</button>
+        {/* FIX: Calls onBack to change view back to market */}
+        <button className="back-to-dash-btn" onClick={onBack}>
+          <ArrowLeft size={18} /> Back to Dashboard
+        </button>
       </nav>
+
       <header className="profile-header-card">
         <figure className="profile-avatar-large">
           {profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : <User size={60} color="#0077b6" />}
@@ -73,13 +87,27 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate }) => {
             <p><MapPin size={14} /> {profile.campus || 'Main Campus'}</p>
           </nav>
           <p className="profile-bio-text">{profile.bio || "No bio yet."}</p>
-          <button className="edit-profile-btn" onClick={onEditClick}><Edit3 size={16} /> Edit Profile</button>
+          <nav className="profile-btn-group">
+            <button className="edit-profile-btn" onClick={onEditClick}><Edit3 size={16} /> Edit Profile</button>
+            {existingApp && <button className="withdraw-btn-small" onClick={withdrawApplication}><Trash2 size={14} /> Withdraw</button>}
+          </nav>
         </article>
       </header>
+
       <footer className="profile-action-footer">
-        <article className="action-card-mini" onClick={() => navigate('/my-listings')}><Box size={22} /><strong>My Listings</strong></article>
-        <article className="action-card-mini" onClick={() => setView('apply_staff')}><Briefcase size={22} /><strong>Apply Staff</strong></article>
-        <article className="action-card-mini" onClick={() => setView('apply_admin')}><ShieldCheck size={22} /><strong>Apply Admin</strong></article>
+        <article className="action-card-mini" onClick={() => navigate('/my-listings')}>
+          <Box size={22} />
+          <strong>My Listings</strong>
+        </article>
+        <article className="action-card-mini" onClick={() => setView('apply_staff')}>
+          <Briefcase size={22} />
+          <strong>Apply Staff</strong>
+        </article>
+        <article className="action-card-mini" onClick={() => setView('apply_admin')}>
+          <ShieldCheck size={22} />
+          <strong>Apply Admin</strong>
+        </article>
+        {/* REVIEWS REMOVED FROM HERE */}
       </footer>
     </section>
   );
