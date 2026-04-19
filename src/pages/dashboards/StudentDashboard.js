@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabase';
 import { 
   Plus, ShoppingBag, Box, MessageCircle, 
-  Search, Menu, X, User, Settings, LogOut, Loader2, Filter, MapPin 
+  Search, Menu, X, User, LogOut, Filter, MapPin 
 } from 'lucide-react';
 import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
