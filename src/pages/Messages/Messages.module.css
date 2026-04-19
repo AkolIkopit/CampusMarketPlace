@@ -209,6 +209,24 @@
     box-shadow: var(--shadow-md);
 }
 
+.conversation-card.unread {
+    background: rgba(255, 251, 235, 0.92);
+    border-color: rgba(245, 158, 11, 0.16);
+    box-shadow: 0 10px 24px rgba(245, 158, 11, 0.08);
+}
+
+.conversation-card.unread .conversation-name,
+.conversation-card.unread .conversation-item,
+.conversation-card.unread .conversation-preview {
+    color: var(--text);
+    font-weight: 800;
+}
+
+.conversation-card.unread .conversation-time {
+    color: #92400e;
+    font-weight: 700;
+}
+
 .conversation-avatar {
     margin: 0;
     width: 2.75rem;
@@ -241,6 +259,14 @@
     margin-bottom: 0.35rem;
 }
 
+.conversation-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+
 .conversation-name {
     font-weight: 800;
     min-width: 0;
@@ -251,6 +277,21 @@
     flex: 0 0 auto;
     white-space: nowrap;
     color: var(--muted);
+}
+
+.unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--amber);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
 }
 
 .conversation-item {

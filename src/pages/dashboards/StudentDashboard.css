@@ -36,6 +36,9 @@
 .action-block:hover { transform: translateY(-5px); border-color: #f3a91e; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
 .block-icon { background: #f0f7ff; color: #0077b6; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px auto; }
 .action-block h3 { margin: 0; font-size: 0.9rem; color: #0a192f; }
+.action-title-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; }
+.action-title-row h3 { margin: 0; }
+.message-count-badge { min-width: 1.5rem; height: 1.5rem; padding: 0 0.45rem; border-radius: 999px; background: #d32f2f; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 800; line-height: 1; box-shadow: 0 6px 16px rgba(211, 47, 47, 0.28); }
 
 /* --- 6. GRID & SECTIONS (CARD SIZE OPTIMIZATION) --- */
 .feed-outer-section { padding: 30px 10% 15px 10%; position: relative; z-index: 1; }
