@@ -19,7 +19,36 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:run": "react-scripts test --watchAll=false",
+    "test:coverage": "react-scripts test --coverage --watchAll=false",
     "eject": "react-scripts eject"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}",
+      "!src/index.js",
+      "!src/reportWebVitals.js",
+      "!src/setupTests.js",
+      "!src/supabase.js",
+      "!src/pages/Messages/MessagesPage.jsx",
+      "!src/testUtils/**"
+    ],
+    "moduleNameMapper": {
+      "^react-router-dom$": "<rootDir>/src/testUtils/reactRouterDomMock.js"
+    },
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
+    },
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "json-summary"
+    ]
   },
   "eslintConfig": {
     "extends": [

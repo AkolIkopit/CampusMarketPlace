@@ -17,12 +17,12 @@ import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 
-async function fetchProfile(userId) {
+export async function fetchProfile(userId) {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   return data || null;
 }
 
-async function ensureProfile(user) {
+export async function ensureProfile(user) {
   const existingProfile = await fetchProfile(user.id);
   const authIntent = readAuthIntent();
   const provider = user.app_metadata.provider;
@@ -64,7 +64,7 @@ async function ensureProfile(user) {
   return newProfile;
 }
 
-function withTimeout(promise, timeoutMs, timeoutMessage) {
+export function withTimeout(promise, timeoutMs, timeoutMessage) {
   let timeoutId;
   const timeoutPromise = new Promise((_, reject) => {
     timeoutId = window.setTimeout(() => {
@@ -76,14 +76,14 @@ function withTimeout(promise, timeoutMs, timeoutMessage) {
   });
 }
 
-function getDashboardPath(role, status) {
+export function getDashboardPath(role, status) {
   if (status === "pending") return "/waiting-room";
   if (role === "admin") return "/dashboard/admin";
   if (role === "staff") return "/dashboard/staff";
   return "/dashboard/student";
 }
 
-function SessionErrorScreen({ message }) {
+export function SessionErrorScreen({ message }) {
   return (
     <div style={{display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#fdfaf5", textAlign: "center", padding: "20px"}}>
       <h1>Something went wrong</h1>
@@ -93,7 +93,7 @@ function SessionErrorScreen({ message }) {
   );
 }
 
-function ProtectedRoute({ loading, session, profile, authError, requiredRole, element }) {
+export function ProtectedRoute({ loading, session, profile, authError, requiredRole, element }) {
   if (loading) return <LoadingScreen />;
   if (!session) return <Navigate to="/" replace />;
   if (authError || !profile) return <SessionErrorScreen message={authError || "We could not load your profile."} />;
