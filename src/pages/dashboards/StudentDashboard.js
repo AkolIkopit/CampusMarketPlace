@@ -34,6 +34,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const [recentListings, setRecentListings] = useState([]);
   const [marketListings, setMarketListings] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   // --- FILTER STATES ---
   const [selectedCat, setSelectedCat] = useState('all');
@@ -116,6 +117,63 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
     fetchMarket();
   }, [selectedCat, selectedCampus, minPrice, maxPrice]);
+
+  // --- UNREAD MESSAGE COUNT ---
+  useEffect(() => {
+    const userId = profile?.id;
+
+    if (!userId) {
+      setUnreadMessageCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const fetchUnreadMessageCount = async () => {
+      const { count, error } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('receiver_id', userId)
+        .eq('is_read', false);
+
+      if (error) throw error;
+
+      if (!cancelled) {
+        setUnreadMessageCount(count || 0);
+      }
+    };
+
+    fetchUnreadMessageCount().catch((err) => {
+      if (!cancelled) {
+        console.error('Unread message count error:', err.message);
+      }
+    });
+
+    const channel = supabase
+      .channel(`student-dashboard-unreads-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload) => {
+          const row = payload.new || payload.old;
+          if (!row) return;
+
+          if (row.sender_id === userId || row.receiver_id === userId) {
+            fetchUnreadMessageCount().catch((err) => {
+              if (!cancelled) {
+                console.error('Unread message count refresh error:', err.message);
+              }
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id]);
 
   // --- HANDLERS ---
 
@@ -280,7 +338,17 @@ const StudentDashboard = ({ profile: initialProfile }) => {
               <figure className="block-icon">
                 <MessageCircle size={24} />
               </figure>
-              <h3>My Messages</h3>
+              <header className="action-title-row">
+                <h3>My Messages</h3>
+                {unreadMessageCount > 0 ? (
+                  <span
+                    className="message-count-badge"
+                    aria-label={`${unreadMessageCount} unread messages`}
+                  >
+                    {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                  </span>
+                ) : null}
+              </header>
               <p>Chat with buyers.</p>
             </article>
 
