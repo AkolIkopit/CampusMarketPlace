@@ -117,14 +117,23 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
+    // Tracks the latest resolved profile value so onAuthStateChange
+    // (e.g. a background token refresh) can check whether a profile
+    // is already loaded before deciding to show the loading screen.
+    let latestProfile = null;
+    const updateProfile = (p) => { latestProfile = p; setProfile(p); };
+
     const syncSession = async (nextSession) => {
       if (!isMounted) return;
 
       setAuthError("");
       setSession(nextSession);
-      if (!nextSession) { setProfile(null); setLoading(false); return; }
+      if (!nextSession) { updateProfile(null); setLoading(false); return; }
 
-      setLoading(true);
+      // Only show the loading screen if we don't already have a profile.
+      // This prevents background token refreshes (e.g. on tab focus) from
+      // wiping out the UI with a full-screen loading flash.
+      if (!latestProfile) setLoading(true);
       try {
         // Minimum time for animation to be seen
         const animationPromise = new Promise(res => setTimeout(res, 1800));
@@ -138,20 +147,45 @@ export default function App() {
         const [nextProfile] = await Promise.all([profilePromise, animationPromise]);
 
         if (isMounted) {
-          setProfile(nextProfile);
-          if (!nextProfile) setAuthError("Profile sync failed.");
+          updateProfile(nextProfile);
+          if (!nextProfile) {
+            setAuthError("We could not load your profile. Please sign out and try again.");
+          }
         }
       } catch (error) {
-        if (isMounted) setAuthError(error.message);
+        console.error("Session sync failed:", error);
+        if (isMounted) {
+          updateProfile(null);
+          setAuthError("We could not load your profile. Please sign out and try again.");
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
     supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => syncSession(s));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // Ignore SIGNED_OUT events that fire while the tab is hidden.
+      // These are almost always spurious WebSocket disconnections caused by
+      // the browser suspending the tab — not real logouts. The session is
+      // still valid in localStorage and will be recovered on the next
+      // getSession() call. If the user genuinely signs out, the tab is
+      // visible and this guard does not trigger.
+      if (event === "SIGNED_OUT" && document.hidden) return;
+      syncSession(s);
+    });
     
-    return () => { isMounted = false; subscription.unsubscribe(); };
+    // When the tab becomes visible again, re-validate the session.
+    // This catches cases where a SIGNED_OUT event was suppressed above
+    // and ensures the UI always reflects the true auth state.
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => { isMounted = false; subscription.unsubscribe(); document.removeEventListener("visibilitychange", handleVisibilityChange); };
   }, []);
 
   if (loading && !session) return <LoadingScreen />;
@@ -177,3 +211,7 @@ export default function App() {
     </Router>
   );
 }
+
+const styles = {
+  loading: { display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", fontFamily: "sans-serif", backgroundColor: '#fdfaf5', color: "#6b7280" },
+};

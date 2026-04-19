@@ -28,8 +28,8 @@ function ConversationList({ conversations, activeConversationId, onSelectConvers
               onClick={() => onSelectConversation(conversation.id)}
               className={
                 conversation.id === activeConversationId
-                  ? `${styles["conversation-card"]} ${styles.active}`
-                  : styles["conversation-card"]
+                  ? `${styles["conversation-card"]} ${styles.active}${conversation.unreadCount > 0 ? ` ${styles.unread}` : ""}`
+                  : `${styles["conversation-card"]}${conversation.unreadCount > 0 ? ` ${styles.unread}` : ""}`
               }
               aria-pressed={conversation.id === activeConversationId} // Exposes selected state to assistive tech.
             >
@@ -43,7 +43,14 @@ function ConversationList({ conversations, activeConversationId, onSelectConvers
               <article className={styles["conversation-text"]}>
                 <header className={styles["conversation-top"]}>
                   <h3 className={styles["conversation-name"]}>{conversation.name}</h3>
-                  <time className={styles["conversation-time"]}>{conversation.time}</time>
+                  <section className={styles["conversation-meta"]}>
+                    {conversation.unreadCount > 0 ? (
+                      <span className={styles["unread-badge"]} aria-label={`${conversation.unreadCount} unread messages`}>
+                        {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+                      </span>
+                    ) : null}
+                    <time className={styles["conversation-time"]}>{conversation.time}</time>
+                  </section>
                 </header>
                 <p className={styles["conversation-item"]}>{conversation.item}</p>
                 <p className={styles["conversation-preview"]}>{conversation.message}</p>

@@ -234,6 +234,7 @@ function MessagesPage({ profile }) {
             message: message.message_text || (message.attachment_url ? "Attachment" : ""),
             dateLabel: formatDateLabel(message.created_at),
             lastCreatedAt: message.created_at,
+            unreadCount: 0,
             messages: [],
           });
         }
@@ -250,6 +251,10 @@ function MessagesPage({ profile }) {
           attachmentUrl: message.attachment_url || null,
           attachmentLabel: getAttachmentLabelFromUrl(message.attachment_url),
         });
+
+        if (incoming && !message.is_read) {
+          conversation.unreadCount += 1;
+        }
 
         // Track latest message so sidebar preview/time is always current.
         if (!conversation.lastCreatedAt || new Date(message.created_at) > new Date(conversation.lastCreatedAt)) {
