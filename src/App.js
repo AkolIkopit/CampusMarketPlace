@@ -16,7 +16,7 @@ import RoleApproval from "./pages/dashboards/RoleApproval";
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
-
+import UserManagement from "./pages/dashboards/UserManagement";
 export async function fetchProfile(userId) {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   return data || null;
@@ -203,6 +203,10 @@ export default function App() {
         <Route
   path="/dashboard/admin/role-approval"
   element={session ? <RoleApproval /> : <Navigate to="/" />}
+/>
+<Route
+  path="/dashboard/admin/users"
+  element={session ? <UserManagement /> : <Navigate to="/" />}
 />
         <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />

@@ -1,10 +1,15 @@
 import { useState } from "react";
 import "./AdminDashboard.css";
 import { useNavigate } from "react-router-dom";
-
+import { supabase } from "../../supabase";
 export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate(); // ✅ ADD THIS
+ const navigate = useNavigate();
+
+const handleLogout = async () => {
+  await supabase.auth.signOut();
+  navigate("/");
+};
 
   return (
     <main className="dashboard-container">
@@ -31,7 +36,7 @@ export default function AdminDashboard() {
             {menuOpen && (
               <section className="dropdown-menu">
                 <button className="dropdown-item">Edit Profile</button>
-                <button className="dropdown-item logout" onClick={() => navigate("/auth")}>
+                <button className="dropdown-item logout" onClick={handleLogout}>
                   Logout
                 </button>
               </section>
