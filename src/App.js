@@ -11,12 +11,12 @@ import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
 import MessagesPage from "./pages/Messages/MessagesPage";
 import LoadingScreen from "./components/LoadingScreen";
-
+import RoleApproval from "./pages/dashboards/RoleApproval";
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
-
+import UserManagement from "./pages/dashboards/UserManagement";
 export async function fetchProfile(userId) {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   return data || null;
@@ -28,6 +28,12 @@ export async function ensureProfile(user) {
   const provider = user.app_metadata.provider;
 
   if (existingProfile) {
+    if (existingProfile.is_banned) {
+        await supabase.auth.signOut();
+        alert("Your account has been suspended.");
+        return null;
+    }
+
     clearAuthIntent();
     return existingProfile;
   }
@@ -162,7 +168,7 @@ export default function App() {
         if (isMounted) setLoading(false);
       }
     };
-
+   
     supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       // Ignore SIGNED_OUT events that fire while the tab is hidden.
@@ -200,7 +206,14 @@ export default function App() {
         <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
         <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
         <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
-
+        <Route
+  path="/dashboard/admin/role-approval"
+  element={session ? <RoleApproval /> : <Navigate to="/" />}
+/>
+<Route
+  path="/dashboard/admin/users"
+  element={session ? <UserManagement /> : <Navigate to="/" />}
+/>
         <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
