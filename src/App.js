@@ -28,6 +28,12 @@ export async function ensureProfile(user) {
   const provider = user.app_metadata.provider;
 
   if (existingProfile) {
+    if (existingProfile.is_banned) {
+        await supabase.auth.signOut();
+        alert("Your account has been suspended.");
+        return null;
+    }
+
     clearAuthIntent();
     return existingProfile;
   }
