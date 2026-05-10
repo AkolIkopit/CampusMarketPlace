@@ -9,7 +9,6 @@ function ChatWindow({
   onSendMessage,
   isSending,
   isSelfConversation = false,
-  onRequestBooking,
   onBackToList,
 }) {
   return (
@@ -48,15 +47,6 @@ function ChatWindow({
           </button>
         </nav>
       </header>
-
-      {conversation.listingId && !isSelfConversation ? (
-        <section className={styles["booking-banner"]}>
-          <p>Agree on a price, then lock in a safe trade facility slot for the listing below.</p>
-          <button type="button" className={styles["booking-button"]} onClick={onRequestBooking}>
-            Request facility booking
-          </button>
-        </section>
-      ) : null}
 
       <section className={styles["messages-stream"]} aria-label="Messages">
         <p className={styles.timestamp}>{conversation.dateLabel}</p>

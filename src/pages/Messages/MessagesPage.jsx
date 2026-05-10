@@ -398,19 +398,6 @@ function MessagesPage({ profile }) {
   const activeConversation = conversations.find((conversation) => conversation.id === activeConversationId) || null;
   const isSelfConversation = Boolean(currentUserId && activeConversation?.userId === currentUserId);
 
-  const handleRequestBooking = () => {
-    if (!activeConversation?.listingId || !activeConversation?.userId) return;
-
-    const query = new URLSearchParams({
-      listing: activeConversation.listingId,
-      seller: activeConversation.userId,
-      name: activeConversation.name,
-      item: activeConversation.item,
-    }).toString();
-
-    navigate(`/bookings/new?${query}`);
-  };
-
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 900px)");
 
@@ -620,7 +607,6 @@ function MessagesPage({ profile }) {
                 onSendMessage={handleSendMessage}
                 isSending={sending}
                 isSelfConversation={isSelfConversation}
-                onRequestBooking={handleRequestBooking}
                 onBackToList={handleBackToConversations}
               />
             ) : (

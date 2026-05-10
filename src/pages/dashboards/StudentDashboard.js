@@ -3,8 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabase';
 import { 
   Plus, ShoppingBag, Box, MessageCircle, 
-   Menu, X, User, LogOut, Filter, MapPin,
-   PartyPopper, Loader2, OctagonX, Clock
+   Menu, X, User, LogOut, Filter, MapPin 
 } from 'lucide-react';
 import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
@@ -24,11 +23,6 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
-
-  // --- ROLE POPUP STATES ---
-  const [approvedApp, setApprovedApp] = useState(null);
-  const [showPopup, setShowPopup] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const [selectedCat, setSelectedCat] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
@@ -52,63 +46,12 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           .order('created_at', { ascending: false })
           .limit(10);
         setRecentListings(recent || []);
-
-        // CHECK FOR ROLE APPROVAL
-        await checkApprovalStatus();
-
       } finally {
         setLoading(false); 
       }
     };
     fetchData();
   }, []);
-
-  const checkApprovalStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('role_applications')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('status', 'approved')
-      .maybeSingle();
-
-    if (data) {
-      setApprovedApp(data);
-      if (!sessionStorage.getItem('skipRolePopup')) {
-        setShowPopup(true);
-      }
-    }
-  };
-
-  const handleAcceptRole = async () => {
-    setIsProcessing(true);
-    try {
-      const targetRole = approvedApp.requested_role;
-      await supabase.from('profiles').update({ role: targetRole }).eq('id', approvedApp.user_id);
-      await supabase.from('role_applications').update({ status: 'completed' }).eq('id', approvedApp.id);
-      sessionStorage.removeItem('skipRolePopup');
-      window.location.href = targetRole === 'admin' ? '/dashboard/admin' : '/dashboard/staff';
-    } catch (err) {
-      alert("Error: " + err.message);
-      setIsProcessing(false);
-    }
-  };
-
-  const handleRejectRole = async () => {
-    if (!window.confirm("Permanently decline this upgrade?")) return;
-    setIsProcessing(true);
-    await supabase.from('role_applications').delete().eq('id', approvedApp.id);
-    setShowPopup(false);
-    setIsProcessing(false);
-    window.location.reload(); 
-  };
-
-  const handleLater = () => {
-    sessionStorage.setItem('skipRolePopup', 'true');
-    setShowPopup(false);
-  };
 
   useEffect(() => {
     const fetchMarket = async () => {
@@ -124,6 +67,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
       const { data } = await query.order('created_at', { ascending: false });
       let filtered = data || [];
+      
+      // FIX: Filter based on listing.location (the item campus) instead of seller profile campus
       if (selectedCampus !== 'all') {
         filtered = filtered.filter(i => i.location === selectedCampus);
       }
@@ -135,17 +80,28 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
   useEffect(() => {
     const userId = profile?.id;
-    if (!userId) return;
-    const fetchUnread = async () => {
-      const { count } = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('receiver_id', userId).eq('is_read', false);
-      setUnreadMessageCount(count || 0);
+    if (!userId) { setUnreadMessageCount(0); return undefined; }
+    let cancelled = false;
+
+    const fetchUnreadMessageCount = async () => {
+      const { count, error } = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('receiver_id', userId).eq('is_read', false);
+      if (!error && !cancelled) setUnreadMessageCount(count || 0);
     };
-    fetchUnread();
+
+    fetchUnreadMessageCount();
+    const channel = supabase.channel(`dashboard-unreads-${userId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => fetchUnreadMessageCount()).subscribe();
+
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [profile?.id]);
 
   const setView = (newView) => {
     setSearchParams({ view: newView });
     setIsMenuOpen(false);
+  };
+
+  const handleSaveProfileSuccess = (updatedData) => {
+    setProfile(prev => ({ ...prev, ...updatedData }));
+    setView('profile');
   };
 
   if (loading && !profile) return <LoadingScreen />;
@@ -175,8 +131,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
         </aside>
       )}
 
-      {view === 'profile' && <MyProfile profile={profile} onEditClick={() => setView('edit')} onBack={() => setView('market')} navigate={navigate} onOpenRolePopup={() => setShowPopup(true)} />}
-      {view === 'edit' && <EditProfile profile={profile} onCancel={() => setView('profile')} onSaveSuccess={(d) => { setProfile({...profile, ...d}); setView('profile'); }} />}
+      {view === 'profile' && <MyProfile profile={profile} onEditClick={() => setView('edit')} onBack={() => setView('market')} navigate={navigate} />}
+      {view === 'edit' && <EditProfile profile={profile} onCancel={() => setView('profile')} onSaveSuccess={handleSaveProfileSuccess} />}
       
       {view === 'market' && (
         <>
@@ -246,46 +202,6 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       )}
 
       {view === 'market' && <button className="create-post-fab" onClick={() => navigate('/create-listing')}><Plus size={28} /><label>Create Post</label></button>}
-
-      {/* --- ROLE ACCEPTANCE POPUP (NAVY & ORANGE THEME) --- */}
-      {showPopup && approvedApp && (
-        <div className="role-popup-overlay" style={{position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)'}}>
-          <div className="role-popup-card" style={{background: '#0d1b2a', padding: '40px', borderRadius: '30px', textAlign: 'center', maxWidth: '450px', width: '90%', border: '2px solid #f0a500', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>
-            <div className="confetti-icon" style={{marginBottom: '20px'}}><PartyPopper size={50} color="#f0a500" /></div>
-            
-            <h2 style={{color: '#f0a500', fontSize: '24px', marginBottom: '15px'}}>Accept your new job as {approvedApp.requested_role.toUpperCase()}</h2>
-            
-            <p style={{color: '#F7F3EC', opacity: 0.9, marginBottom: '30px', fontSize: '16px'}}>You have been handpicked to join the UniMart management team.</p>
-            
-            <div className="popup-options-vertical" style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                <button 
-                  onClick={handleAcceptRole} 
-                  disabled={isProcessing} 
-                  style={{background: '#f0a500', color: '#0d1b2a', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: '900', fontSize: '16px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px'}}
-                >
-                    {isProcessing ? <Loader2 className="spinner" /> : "Accept & Activate Now"}
-                </button>
-                
-                <div style={{display: 'flex', gap: '10px'}}>
-                    <button 
-                      onClick={handleLater} 
-                      disabled={isProcessing}
-                      style={{flex: 1, padding: '12px', background: 'rgba(247, 243, 236, 0.1)', color: '#F7F3EC', border: '1px solid rgba(247, 243, 236, 0.3)', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}
-                    >
-                        <Clock size={16} /> Later
-                    </button>
-                    <button 
-                      onClick={handleRejectRole} 
-                      disabled={isProcessing}
-                      style={{flex: 1, padding: '12px', background: 'rgba(230, 57, 70, 0.1)', color: '#e63946', border: '1px solid #e63946', borderRadius: '10px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}
-                    >
-                        <OctagonX size={16} /> Decline
-                    </button>
-                </div>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 };
@@ -300,6 +216,7 @@ const ListingCard = ({ item }) => {
           {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
           <p>{item.profiles?.full_name || 'Student'}</p>
         </section>
+        {/* FIX: Shows listing.location (the item campus) instead of seller campus */}
         <section className="campus-badge"><MapPin size={10} /><p>{item.location || 'Main Campus'}</p></section>
       </header>
       <footer className="listing-card-bottom">

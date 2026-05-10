@@ -1,15 +1,8 @@
 import { useState } from "react";
 import "./AdminDashboard.css";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "../../supabase";
+
 export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
- const navigate = useNavigate();
-
-const handleLogout = async () => {
-  await supabase.auth.signOut();
-  navigate("/");
-};
 
   return (
     <main className="dashboard-container">
@@ -25,7 +18,7 @@ const handleLogout = async () => {
           </section>
 
           {/* BURGER MENU */}
-          <section className="burger-wrapper">
+          <div className="burger-wrapper">
             <button
               className="burger-btn"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -34,14 +27,12 @@ const handleLogout = async () => {
             </button>
 
             {menuOpen && (
-              <section className="dropdown-menu">
+              <div className="dropdown-menu">
                 <button className="dropdown-item">Edit Profile</button>
-                <button className="dropdown-item logout" onClick={handleLogout}>
-                  Logout
-                </button>
-              </section>
+                <button className="dropdown-item logout">Logout</button>
+              </div>
             )}
-          </section>
+          </div>
 
         </nav>
       </header>
@@ -60,41 +51,25 @@ const handleLogout = async () => {
       {/* ACTIONS */}
       <section className="quick-actions-grid">
 
-        {/* ✅ ROLE REQUESTS */}
-        <button
-          className="action-block"
-         onClick={() => navigate("/dashboard/admin/role-approval")}
-        >
+        <button className="action-block">
           <span className="block-icon">📄</span>
           <h3>Role Requests</h3>
           <p>Review and approve user role upgrades.</p>
         </button>
 
-        {/* USER MANAGEMENT */}
-        <button
-          className="action-block"
-          onClick={() => navigate("/dashboard/admin/users")}
-        >
+        <button className="action-block">
           <span className="block-icon">👤</span>
           <h3>User Management</h3>
           <p>View and manage platform users.</p>
         </button>
 
-        {/* COMMUNICATION */}
-        <button
-          className="action-block"
-          onClick={() => navigate("/dashboard/admin/messages")}
-        >
+        <button className="action-block">
           <span className="block-icon">💬</span>
           <h3>Communicate</h3>
           <p>Message users and staff.</p>
         </button>
 
-        {/* ANALYTICS */}
-        <button
-          className="action-block"
-          onClick={() => navigate("/dashboard/admin/analytics")}
-        >
+        <button className="action-block">
           <span className="block-icon">📊</span>
           <h3>Analytics</h3>
           <p>Monitor platform activity.</p>

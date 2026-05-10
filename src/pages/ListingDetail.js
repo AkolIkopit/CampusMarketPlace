@@ -92,18 +92,7 @@ const ListingDetail = () => {
                 </nav>
               </header>
               <footer className="purchase-actions">
-                <button
-                  className="msg-seller-btn"
-                  onClick={() => navigate(`/messages?${new URLSearchParams({
-                    user: listing.seller_id,
-                    listing: id,
-                    name: listing.profiles.full_name,
-                    item: listing.title,
-                  }).toString()}`)}
-                  disabled={isOwnListing}
-                >
-                  <MessageCircle size={18} /> {isOwnListing ? 'Your Listing' : 'Message'}
-                </button>
+                <button className="msg-seller-btn" onClick={() => navigate(`/messages?user=${listing.seller_id}`)} disabled={isOwnListing}><MessageCircle size={18} /> {isOwnListing ? 'Your Listing' : 'Message'}</button>
                 <button className="add-cart-btn"><ShoppingCart size={18} /> Add to Cart</button>
               </footer>
             </section>
