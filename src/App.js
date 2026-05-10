@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
+import ManageListings from "./pages/dashboards/ManageListings";
 import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 import { supabase } from "./supabase";
 import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
+import Analytics from "./pages/dashboards/Analytics";
 
 // Page Imports
 import LandingPage from "./pages/LandingPage";
@@ -205,10 +208,19 @@ export default function App() {
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
         <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage />} />} />
+        <Route 
+  path="/dashboard/admin/analytics" 
+  element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<Analytics />} />} 
+/>
+<Route 
+  path="/dashboard/admin/manage-listings" 
+  element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<ManageListings />} />} 
+/>
         <Route path="/cart" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CartPage />} />} />
         <Route path="/payment-status" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<PaymentStatus />} />} />
   
         <Route path="*" element={<Navigate to="/" replace />} />
+        
       </Routes>
     </Router>
   );

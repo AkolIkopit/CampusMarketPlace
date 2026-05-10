@@ -2,22 +2,21 @@ import { useState } from "react";
 import "./AdminDashboard.css";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
+
 export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
- const navigate = useNavigate();
+  const navigate = useNavigate();
 
-const handleLogout = async () => {
-  await supabase.auth.signOut();
-  navigate("/");
-};
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   return (
     <main className="dashboard-container">
-
       {/* HEADER */}
       <header className="main-header">
         <nav className="header-nav">
-
           {/* LOGO */}
           <section className="logo-section">
             <img src="/logo.png" alt="logo" className="header-logo" />
@@ -42,7 +41,6 @@ const handleLogout = async () => {
               </section>
             )}
           </section>
-
         </nav>
       </header>
 
@@ -59,11 +57,10 @@ const handleLogout = async () => {
 
       {/* ACTIONS */}
       <section className="quick-actions-grid">
-
         {/* ✅ ROLE REQUESTS */}
         <button
           className="action-block"
-         onClick={() => navigate("/dashboard/admin/role-approval")}
+          onClick={() => navigate("/dashboard/admin/role-approval")}
         >
           <span className="block-icon">📄</span>
           <h3>Role Requests</h3>
@@ -80,14 +77,14 @@ const handleLogout = async () => {
           <p>View and manage platform users.</p>
         </button>
 
-        {/* COMMUNICATION */}
+        {/* ✅ MANAGE LISTINGS (Changed from Communicate) */}
         <button
           className="action-block"
-          onClick={() => navigate("/dashboard/admin/messages")}
+          onClick={() => navigate("/dashboard/admin/manage-listings")}
         >
-          <span className="block-icon">💬</span>
-          <h3>Communicate</h3>
-          <p>Message users and staff.</p>
+          <span className="block-icon">📦</span>
+          <h3>Manage Listings</h3>
+          <p>Review, flag, or remove marketplace items.</p>
         </button>
 
         {/* ANALYTICS */}
@@ -99,9 +96,7 @@ const handleLogout = async () => {
           <h3>Analytics</h3>
           <p>Monitor platform activity.</p>
         </button>
-
       </section>
-
     </main>
   );
 }

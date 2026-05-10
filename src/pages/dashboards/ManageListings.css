@@ -1,0 +1,164 @@
+/* Container & Content */
+.listings-admin-content {
+    padding: 30px 40px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Theme Header Styling */
+.admin-navy-header {
+    background: #0d1b2a !important;
+    border-bottom: 2px solid #f0a500 !important;
+}
+
+.back-btn-gold {
+    background: none;
+    border: none;
+    color: #f0a500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.gold-text {
+    color: #f0a500 !important;
+}
+
+/* Search Box */
+.admin-search-box {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid #f0a500;
+    padding: 8px 15px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 300px;
+}
+
+.admin-search-box input {
+    background: none;
+    border: none;
+    color: white;
+    outline: none;
+    width: 100%;
+}
+
+.admin-search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Stats Pill */
+.admin-stats-summary {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-pill {
+    background: #0d1b2a;
+    color: #f0a500;
+    padding: 6px 16px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(240, 165, 0, 0.3);
+}
+
+.stat-pill.flagged {
+    color: #e63946;
+    border-color: #e63946;
+}
+
+/* Table Design */
+.admin-table-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(13, 27, 42, 0.1);
+    border: 1px solid #eee;
+}
+
+.manage-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.manage-table th {
+    background: #0d1b2a;
+    color: #f0a500;
+    padding: 20px 25px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.manage-table td {
+    padding: 20px 25px;
+    border-bottom: 1px solid #f8f9fa;
+    color: #0d1b2a;
+}
+
+/* Item Cell Info */
+.item-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-title {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.item-price {
+    font-size: 13px;
+    color: #666;
+}
+
+/* Status Tags */
+.status-tag {
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.status-tag.active { background: #dcfce7; color: #166534; }
+.status-tag.flagged { background: #fee2e2; color: #e63946; }
+
+/* Actions */
+.action-cell {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.action-cell button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.action-cell button:hover {
+    transform: scale(1.2);
+}
+
+/* Flagged Row Highlight */
+.row-is-flagged {
+    background: #fff8f8;
+}
+
+.loading-container {
+    padding: 100px;
+    text-align: center;
+    color: #0d1b2a;
+    font-weight: bold;
+}
