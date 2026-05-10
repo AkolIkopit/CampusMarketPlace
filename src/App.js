@@ -17,6 +17,8 @@ import StudentDashboard from "./pages/dashboards/StudentDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import UserManagement from "./pages/dashboards/UserManagement";
 import TradeStaffDashboard from "./pages/dashboards/TradeStaffDashboard";
+import MarketTrades from "./pages/dashboards/MarketTrades";
+import MyTrades from "./pages/dashboards/MyTrades";
 export async function fetchProfile(userId) {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   return data || null;
@@ -217,9 +219,40 @@ export default function App() {
 <Route
   path="/dashboard/staff"
   element={
-    session
-      ? <TradeStaffDashboard />
-      : <Navigate to="/" />
+    <ProtectedRoute
+      loading={loading}
+      session={session}
+      profile={profile}
+      authError={authError}
+      requiredRole="staff"
+      element={<TradeStaffDashboard profile={profile} />}
+    />
+  }
+/>
+<Route
+  path="/dashboard/staff/market"
+  element={
+    <ProtectedRoute
+      loading={loading}
+      session={session}
+      profile={profile}
+      authError={authError}
+      requiredRole="staff"
+      element={<MarketTrades />}
+    />
+  }
+/>
+<Route
+  path="/dashboard/staff/my-trades"
+  element={
+    <ProtectedRoute
+      loading={loading}
+      session={session}
+      profile={profile}
+      authError={authError}
+      requiredRole="staff"
+      element={<MyTrades />}
+    />
   }
 />
         <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
