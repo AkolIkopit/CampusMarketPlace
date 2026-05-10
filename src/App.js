@@ -9,6 +9,7 @@ import AuthPage from "./pages/AuthPage";
 import CreateListing from "./pages/CreateListing";
 import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
+import BookingRequest from "./pages/BookingRequest";
 import MessagesPage from "./pages/Messages/MessagesPage";
 import LoadingScreen from "./components/LoadingScreen";
 import RoleApproval from "./pages/dashboards/RoleApproval";
@@ -218,7 +219,7 @@ export default function App() {
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
         <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage />} />} />
-  
+        <Route path="/bookings/new" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<BookingRequest />} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
