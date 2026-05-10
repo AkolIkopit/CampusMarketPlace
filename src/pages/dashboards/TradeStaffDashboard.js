@@ -2,13 +2,19 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "./AdminDashboard.css";
-
+import { supabase } from "../../supabase";
 export default function TradeStaffDashboard() {
 
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navigate = useNavigate();
+const handleLogout = async () => {
 
+  await supabase.auth.signOut();
+
+  navigate("/");
+
+};
   return (
     <main className="dashboard-container">
 
@@ -49,9 +55,12 @@ export default function TradeStaffDashboard() {
               Edit Profile
             </button>
 
-            <button className="dropdown-item logout">
-              Logout
-            </button>
+            <button
+  className="dropdown-item logout"
+  onClick={handleLogout}
+>
+  Logout
+</button>
 
           </section>
         )}
