@@ -440,6 +440,36 @@
     box-shadow: var(--shadow-sm);
 }
 
+.booking-banner {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.booking-banner p {
+    margin: 0;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.booking-button {
+    width: fit-content;
+    border: none;
+    border-radius: 1rem;
+    padding: 0.85rem 1.2rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, var(--amber) 0%, var(--amber-warm) 100%);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.booking-button:hover {
+    opacity: 0.95;
+}
+
 .messages-stream {
     overflow-y: auto;
     overflow-x: hidden;
