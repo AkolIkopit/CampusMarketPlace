@@ -136,11 +136,54 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   useEffect(() => {
     const userId = profile?.id;
     if (!userId) return;
+
     const fetchUnread = async () => {
-      const { count } = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('receiver_id', userId).eq('is_read', false);
+      const { count } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('receiver_id', userId)
+        .eq('is_read', false);
       setUnreadMessageCount(count || 0);
     };
+
     fetchUnread();
+
+    const channel = supabase
+      .channel(`unread-messages-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const newRow = payload.new;
+          if (!newRow) return;
+          if (newRow.receiver_id === userId && newRow.is_read === false) {
+            setUnreadMessageCount((current) => current + 1);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages' },
+        (payload) => {
+          const newRow = payload.new;
+          const oldRow = payload.old;
+          if (!newRow || !oldRow) return;
+
+          if (newRow.receiver_id === userId) {
+            if (oldRow.is_read === false && newRow.is_read === true) {
+              setUnreadMessageCount((current) => Math.max(0, current - 1));
+            }
+            if (oldRow.is_read === true && newRow.is_read === false) {
+              setUnreadMessageCount((current) => current + 1);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [profile?.id]);
 
   const setView = (newView) => {
