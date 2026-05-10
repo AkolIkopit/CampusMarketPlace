@@ -90,28 +90,37 @@
   background: #c0392b;
 }
 
-/* HERO SECTION */
+/* HERO SECTION - THE NAVY BLUE STRIP */
 .hero-section {
-  padding: 60px 40px 30px;
+  padding: 60px 40px; /* Balanced padding */
+  background: #0d1b2a; /* THE NAVY BLUE STRIP */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .hero-kicker {
   font-size: 12px;
   letter-spacing: 2px;
-  color: #888;
+  color: #ffffff; /* SMALL TEXT WHITE */
   font-weight: bold;
+  text-transform: uppercase;
+  opacity: 0.8;
 }
 
 .hero-title {
   font-size: 36px;
-  margin: 10px 0;
-  color: #1f2d3d;
+  margin: 0;
+  color: #f0a500; /* BIG HEADING ORANGE */
+  font-weight: 900;
 }
 
 .hero-description {
   font-size: 16px;
-  color: #666;
+  color: #ffffff; /* SMALL TEXT WHITE */
   max-width: 600px;
+  line-height: 1.5;
+  opacity: 0.9;
 }
 
 /* ACTION GRID */
