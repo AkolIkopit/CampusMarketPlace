@@ -14,9 +14,9 @@ import LoadingScreen from "./components/LoadingScreen";
 import RoleApproval from "./pages/dashboards/RoleApproval";
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
-import StaffDashboard from "./pages/dashboards/StaffDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import UserManagement from "./pages/dashboards/UserManagement";
+import TradeStaffDashboard from "./pages/dashboards/TradeStaffDashboard";
 export async function fetchProfile(userId) {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   return data || null;
@@ -204,7 +204,7 @@ export default function App() {
         <Route path="/waiting-room" element={<div style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></div>} />
         
         <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
-        <Route path="/dashboard/staff" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="staff" element={<StaffDashboard profile={profile} />} />} />
+     
         <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
         <Route
   path="/dashboard/admin/role-approval"
@@ -213,6 +213,14 @@ export default function App() {
 <Route
   path="/dashboard/admin/users"
   element={session ? <UserManagement /> : <Navigate to="/" />}
+/>
+<Route
+  path="/dashboard/staff"
+  element={
+    session
+      ? <TradeStaffDashboard />
+      : <Navigate to="/" />
+  }
 />
         <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
