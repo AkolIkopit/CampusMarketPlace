@@ -75,7 +75,7 @@ export default function MarketTrades() {
     const { error } = await supabase
       .from("bookings")
       .update({
-        assigned_staff_id: currentUser.id,
+        staff_id: currentUser.id,
         status: "assigned"
       })
       .eq("id", tradeId);
@@ -157,12 +157,12 @@ export default function MarketTrades() {
               <p>
                 Staff:
                 {" "}
-                {trade.assigned_staff_id
+                {trade.staff_id
                   ? "TAKEN"
                   : "FREE"}
               </p>
 
-              {!trade.assigned_staff_id && (
+              {!trade.staff_id && (
 
                 <button
                   className="suspend-btn"

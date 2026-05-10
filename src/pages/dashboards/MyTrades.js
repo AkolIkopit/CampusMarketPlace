@@ -35,7 +35,7 @@ export default function MyTrades() {
     const { data, error } = await supabase
       .from("bookings")
       .select("*")
-      .eq("assigned_staff_id", userId)
+      .eq("staff_id", userId)
       .neq("status", "completed")
       .order("created_at", { ascending: false });
 

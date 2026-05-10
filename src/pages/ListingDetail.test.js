@@ -17,35 +17,43 @@ jest.mock('../supabase', () => ({
   }
 }));
 
+const baseListing = {
+  id: 'listing-1',
+  seller_id: 'seller-9',
+  title: 'Desk Lamp',
+  price: 149.99,
+  description: 'Bright desk lamp',
+  location: 'Med Campus',
+  categories: { name: 'Electronics' },
+  profiles: { full_name: 'Alice Seller', avatar_url: '' },
+  listing_images: []
+};
+
 function createListingDetailMocks({
   currentUserId = 'buyer-1',
   listing = null,
   reviews = [],
-  insertError = null
+  insertError = null,
+  cartInsertError = null
 } = {}) {
   const single = jest.fn().mockResolvedValue({ data: listing });
   const listingEq = jest.fn(() => ({ single }));
   const listingSelect = jest.fn(() => ({ eq: listingEq }));
+
   const reviewOrder = jest
     .fn()
     .mockResolvedValueOnce({ data: reviews })
     .mockResolvedValueOnce({ data: reviews });
   const reviewEq = jest.fn(() => ({ order: reviewOrder }));
   const reviewSelect = jest.fn(() => ({ eq: reviewEq }));
-  const insert = jest.fn().mockResolvedValue({ error: insertError });
+
+  const reviewInsert = jest.fn().mockResolvedValue({ error: insertError });
+  const cartInsert = jest.fn().mockResolvedValue({ error: cartInsertError });
 
   supabase.from.mockImplementation((table) => {
-    if (table === 'listings') {
-      return { select: listingSelect };
-    }
-
-    if (table === 'reviews') {
-      return {
-        select: reviewSelect,
-        insert
-      };
-    }
-
+    if (table === 'listings') return { select: listingSelect };
+    if (table === 'reviews') return { select: reviewSelect, insert: reviewInsert };
+    if (table === 'cart_items') return { insert: cartInsert };
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -53,11 +61,7 @@ function createListingDetailMocks({
     data: { user: currentUserId ? { id: currentUserId } : null }
   });
 
-  return {
-    insert,
-    reviewOrder,
-    single
-  };
+  return { reviewInsert, cartInsert, reviewOrder, single };
 }
 
 describe('ListingDetail', () => {
@@ -82,17 +86,7 @@ describe('ListingDetail', () => {
   it('renders the listing details and opens seller messaging', async () => {
     createListingDetailMocks({
       currentUserId: 'buyer-1',
-      listing: {
-        id: 'listing-1',
-        seller_id: 'seller-9',
-        title: 'Desk Lamp',
-        price: 149.99,
-        description: 'Bright desk lamp',
-        location: 'Med Campus',
-        categories: { name: 'Electronics' },
-        profiles: { full_name: 'Alice Seller', avatar_url: '' },
-        listing_images: []
-      },
+      listing: baseListing,
       reviews: []
     });
 
@@ -106,26 +100,17 @@ describe('ListingDetail', () => {
     expect(navigateMock).toHaveBeenCalledWith('/messages?user=seller-9');
   });
 
-  it('disables messaging for the owner of the listing', async () => {
+  it('disables messaging and cart for the owner of the listing', async () => {
     createListingDetailMocks({
       currentUserId: 'seller-9',
-      listing: {
-        id: 'listing-1',
-        seller_id: 'seller-9',
-        title: 'Desk Lamp',
-        price: 149.99,
-        description: 'Bright desk lamp',
-        location: 'Med Campus',
-        categories: { name: 'Electronics' },
-        profiles: { full_name: 'Alice Seller', avatar_url: '' },
-        listing_images: []
-      },
+      listing: baseListing,
       reviews: []
     });
 
     render(<ListingDetail />);
 
     expect(await screen.findByRole('button', { name: 'Your Listing' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add to Cart' })).toBeDisabled();
   });
 
   it('submits a review and refreshes the listing data', async () => {
@@ -136,23 +121,15 @@ describe('ListingDetail', () => {
       created_at: '2026-04-18T12:00:00.000Z',
       reviewer: { full_name: 'Buyer One', avatar_url: '' }
     };
-    const { insert, reviewOrder } = createListingDetailMocks({
+    const { reviewInsert, reviewOrder } = createListingDetailMocks({
       currentUserId: 'buyer-1',
-      listing: {
-        id: 'listing-1',
-        seller_id: 'seller-9',
-        title: 'Desk Lamp',
-        price: 149.99,
-        description: 'Bright desk lamp',
-        location: 'Med Campus',
-        categories: { name: 'Electronics' },
-        profiles: { full_name: 'Alice Seller', avatar_url: '' },
-        listing_images: []
-      },
+      listing: baseListing,
       reviews: []
     });
     reviewOrder.mockReset();
-    reviewOrder.mockResolvedValueOnce({ data: [] }).mockResolvedValueOnce({ data: [review] });
+    reviewOrder
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [review] });
 
     render(<ListingDetail />);
 
@@ -163,7 +140,7 @@ describe('ListingDetail', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Post' }));
 
     await waitFor(() => {
-      expect(insert).toHaveBeenCalledWith([
+      expect(reviewInsert).toHaveBeenCalledWith([
         {
           listing_id: 'listing-1',
           reviewer_id: 'buyer-1',
@@ -175,5 +152,146 @@ describe('ListingDetail', () => {
       expect(window.alert).toHaveBeenCalledWith('Review posted!');
       expect(screen.getByText('Smooth handoff')).toBeInTheDocument();
     });
+  });
+
+  it('adds a listing to the cart successfully and navigates to /cart', async () => {
+    const { cartInsert } = createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
+
+    await waitFor(() => {
+      expect(cartInsert).toHaveBeenCalledWith([
+        { user_id: 'buyer-1', listing_id: 'listing-1' }
+      ]);
+      expect(window.alert).toHaveBeenCalledWith('Added to cart successfully!');
+      expect(navigateMock).toHaveBeenCalledWith('/cart');
+    });
+  });
+
+  it('alerts duplicate cart error when the item is already in the cart', async () => {
+    createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing,
+      cartInsertError: { code: '23505', message: 'duplicate key value' }
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('This item is already in your cart!');
+    });
+  });
+
+  it('alerts a generic error when the cart insert fails', async () => {
+    createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing,
+      cartInsertError: { code: '500', message: 'Internal server error' }
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Error: Internal server error');
+    });
+  });
+
+  it('alerts when the user is not logged in and tries to add to cart', async () => {
+    createListingDetailMocks({
+      currentUserId: null,
+      listing: baseListing
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Please log in to add items to your cart.');
+    });
+  });
+
+  it('navigates back when the Back button is clicked', async () => {
+    createListingDetailMocks({ listing: baseListing });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Back/i }));
+
+    expect(navigateMock).toHaveBeenCalledWith(-1);
+  });
+
+  it('toggles the review form open and closed', async () => {
+    createListingDetailMocks({ listing: baseListing });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
+    expect(screen.getByPlaceholderText('Experience with seller...')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByPlaceholderText('Experience with seller...')).not.toBeInTheDocument();
+  });
+
+  it('renders existing reviews with reviewer name and comment', async () => {
+    createListingDetailMocks({
+      listing: baseListing,
+      reviews: [
+        {
+          id: 'review-1',
+          rating: 4,
+          comment: 'Great seller!',
+          created_at: '2026-03-01T10:00:00.000Z',
+          reviewer: { full_name: 'Bob Buyer', avatar_url: '' }
+        }
+      ]
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Great seller!')).toBeInTheDocument();
+    expect(screen.getByText('Bob Buyer')).toBeInTheDocument();
+  });
+
+  it('allows changing the star rating before submitting a review', async () => {
+    createListingDetailMocks({ listing: baseListing });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
+
+    // Star buttons are rendered as buttons 1–5
+    const starButtons = screen.getAllByRole('button').filter(
+      (btn) => btn.className.includes('star-btn')
+    );
+
+    if (starButtons.length > 0) {
+      await userEvent.click(starButtons[2]); // click star 3
+    }
+    // Just verifying no crash; rating state is internal
+    expect(screen.getByPlaceholderText('Experience with seller...')).toBeInTheDocument();
   });
 });

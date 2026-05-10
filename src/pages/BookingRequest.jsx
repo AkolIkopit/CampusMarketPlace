@@ -162,9 +162,30 @@ function BookingRequest() {
       ]);
 
       if (insertError) throw insertError;
-      setSuccess("Booking request submitted. The seller and facility staff can now confirm the slot.");
+
+      const notificationText = `Booking request created for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
+      const { error: notificationError } = await supabase.from("messages").insert([
+        {
+          listing_id: listing.id,
+          sender_id: currentUserId,
+          receiver_id: seller.id,
+          message_text: notificationText,
+          is_read: false,
+        },
+      ]);
+
+      if (notificationError) {
+        console.error("Booking notification error:", notificationError);
+      }
+
+      setSuccess("Booking request submitted. The seller has been notified and facility staff can now confirm the slot.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to request booking.");
+      console.error("Booking insert error:", err);
+      if (err && typeof err === "object" && "message" in err) {
+        setError(err.message);
+      } else {
+        setError("Failed to request booking. Check the browser console for details.");
+      }
     } finally {
       setSubmitting(false);
     }
