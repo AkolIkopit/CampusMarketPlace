@@ -10,7 +10,12 @@ jest.mock('../../supabase', () => ({
     auth: {
       getUser: jest.fn(),
       signOut: jest.fn()
-    }
+    },
+    channel: jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn()
+    })),
+    removeChannel: jest.fn()
   }
 }));
 
