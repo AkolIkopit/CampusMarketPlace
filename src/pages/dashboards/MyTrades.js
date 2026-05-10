@@ -33,7 +33,7 @@ export default function MyTrades() {
   const fetchTrades = async (userId) => {
 
     const { data, error } = await supabase
-      .from("trade_bookings")
+      .from("bookings")
       .select("*")
       .eq("assigned_staff_id", userId)
       .neq("status", "completed")
@@ -56,7 +56,7 @@ export default function MyTrades() {
   ) => {
 
     const { error } = await supabase
-      .from("trade_bookings")
+      .from("bookings")
       .update({
         status: newStatus
       })

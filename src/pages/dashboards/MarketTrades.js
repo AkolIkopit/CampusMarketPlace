@@ -34,7 +34,7 @@ export default function MarketTrades() {
     // PENDING + ASSIGNED
     const { data: pendingData, error: pendingError } =
       await supabase
-        .from("trade_bookings")
+        .from("bookings")
         .select("*")
         .neq("status", "completed")
         .order("created_at", { ascending: false });
@@ -42,7 +42,7 @@ export default function MarketTrades() {
     // COMPLETED
     const { data: completedData, error: completedError } =
       await supabase
-        .from("trade_bookings")
+        .from("bookings")
         .select("*")
         .eq("status", "completed")
         .order("created_at", { ascending: false })
@@ -73,7 +73,7 @@ export default function MarketTrades() {
     if (!confirmed) return;
 
     const { error } = await supabase
-      .from("trade_bookings")
+      .from("bookings")
       .update({
         assigned_staff_id: currentUser.id,
         status: "assigned"
