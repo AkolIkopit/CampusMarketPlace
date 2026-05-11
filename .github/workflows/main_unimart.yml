@@ -28,7 +28,7 @@ jobs:
         run: npm install
 
       - name: Run tests with coverage
-        run: CI=true react-scripts test --watchAll=false --coverage --coverageReporters=lcov
+        run: CI=true npx react-scripts test --watchAll=false --coverage --coverageReporters=lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
