@@ -31,7 +31,10 @@ jobs:
       - name: Run tests with coverage
         # continue-on-error ensures the workflow doesn't stop here if tests fail
         continue-on-error: true
-        run: CI=true npm run test:coverage
+        run: |
+          mkdir -p coverage
+          touch coverage/lcov.info
+          CI=true npm run test:coverage
 
       - name: Upload coverage to Codecov
         # if: always() ensures this runs even if the previous step failed
