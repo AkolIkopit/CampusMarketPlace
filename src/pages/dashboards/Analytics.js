@@ -5,21 +5,27 @@ import {
   PieChart, Pie, Cell, AreaChart, Area 
 } from 'recharts';
 import { 
-  ArrowLeft, FileText, Table as TableIcon, TrendingUp, ShieldAlert, Calendar 
+  ArrowLeft, FileText, Table as TableIcon, TrendingUp, ShieldAlert, Calendar, Trash2, CheckCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import './Analytics.css'; // IMPORTING THE NEW UNIQUE CSS
+import LoadingScreen from '../../components/LoadingScreen';
+import './Analytics.css';
 
 const Analytics = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+
+  // --- DATA STATES ---
   const [categoryData, setCategoryData] = useState([]);
   const [tradeUtilization, setTradeUtilization] = useState([]);
-  const [moderationSummary, setModerationSummary] = useState([]);
+  const [statusComparison, setStatusComparison] = useState([]); // Active vs Flagged
+  const [flagReasons, setFlagReasons] = useState([]);
+  const [deleteReasons, setDeleteReasons] = useState([]);
 
-  const COLORS = ['#0d1b2a', '#f0a500', '#1b263b', '#e67e22', '#3e5c76'];
+  // VIBRANT COLOR PALETTE
+  const COLORS = ['#3498db', '#f0a500', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f', '#0d1b2a'];
 
   useEffect(() => {
     fetchAllReports();
@@ -28,16 +34,37 @@ const Analytics = () => {
   const fetchAllReports = async () => {
     setLoading(true);
     try {
-      // 1. Popular Categories
-      const { data: listings } = await supabase.from('listings').select('category_id, categories(name)');
+      // 1. Popular Categories (from listings)
+      const { data: listings } = await supabase.from('listings').select('categories(name)');
       const catMap = {};
       listings?.forEach(item => {
-        const name = item.categories?.name || 'Uncategorized';
+        const name = item.categories?.name || 'Other';
         catMap[name] = (catMap[name] || 0) + 1;
       });
       setCategoryData(Object.keys(catMap).map(key => ({ name: key, value: catMap[key] })));
 
-      // 2. Trade Facility Utilization (Mock)
+      // 2. Status Comparison (Active vs Flagged)
+      const { data: statusData } = await supabase.from('listings').select('status');
+      const sMap = { active: 0, flagged: 0 };
+      statusData?.forEach(item => sMap[item.status]++);
+      setStatusComparison([
+        { name: 'Active', value: sMap.active, fill: '#2ecc71' },
+        { name: 'Flagged', value: sMap.flagged, fill: '#e74c3c' }
+      ]);
+
+      // 3. Flagging Reasons (from moderation_logs)
+      const { data: fLogs } = await supabase.from('moderation_logs').select('reason_category').eq('action_taken', 'flagged');
+      const fMap = {};
+      fLogs?.forEach(log => { fMap[log.reason_category] = (fMap[log.reason_category] || 0) + 1; });
+      setFlagReasons(Object.keys(fMap).map(key => ({ reason: key, count: fMap[key] })));
+
+      // 4. Deleting Reasons (from moderation_logs - The Ghost Data)
+      const { data: dLogs } = await supabase.from('moderation_logs').select('reason_category').eq('action_taken', 'deleted');
+      const dMap = {};
+      dLogs?.forEach(log => { dMap[log.reason_category] = (dMap[log.reason_category] || 0) + 1; });
+      setDeleteReasons(Object.keys(dMap).map(key => ({ reason: key, count: dMap[key] })));
+
+      // 5. Trade Facility Utilization (Mock Data)
       setTradeUtilization([
         { day: 'Mon', booked: 12, capacity: 20 },
         { day: 'Tue', booked: 18, capacity: 20 },
@@ -46,75 +73,71 @@ const Analytics = () => {
         { day: 'Fri', booked: 9, capacity: 20 },
       ]);
 
-      // 3. Moderation Summary
-      const { data: flags } = await supabase.from('role_applications').select('status');
-      const modMap = { approved: 0, pending: 0, rejected: 0 };
-      flags?.forEach(f => modMap[f.status]++);
-      setModerationSummary([
-        { name: 'Approved', value: modMap.approved },
-        { name: 'Pending', value: modMap.pending },
-        { name: 'Rejected', value: modMap.rejected },
-      ]);
-    } catch (error) { console.error(error); } finally { setLoading(false); }
+    } catch (error) {
+      console.error("Fetch Error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const exportToCSV = (data, filename) => {
-    if (!data.length) return;
-    const csvRows = [Object.keys(data[0]).join(','), ...data.map(row => Object.values(row).join(','))];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.csv`;
-    a.click();
+    if (!data || data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => `"${row[h]}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.click();
   };
 
   const exportToPDF = (title, data) => {
-    if (!data.length) return;
+    if (!data || data.length === 0) return;
     const doc = new jsPDF();
-    doc.text(title, 20, 10);
-    doc.autoTable({ head: [Object.keys(data[0])], body: data.map(item => Object.values(item)), startY: 20 });
-    doc.save(`${title.replace(/\s+/g, '_').toLowerCase()}.pdf`);
+    doc.setFontSize(18);
+    doc.text(title, 14, 20);
+    const headers = [Object.keys(data[0])];
+    const body = data.map(item => Object.values(item));
+    doc.autoTable({ head: headers, body: body, startY: 30, theme: 'grid' });
+    doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}.pdf`);
   };
+
+  if (loading) return <LoadingScreen />;
 
   return (
     <main className="analytics-page-container">
-      {/* AURORA BG */}
       <section className="aurora-bg" aria-hidden="true">
         <hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" />
       </section>
 
       <header className="main-header">
         <nav className="header-nav">
-          <button onClick={() => navigate(-1)} style={{background: 'none', border: 'none', color: '#0d1b2a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '16px', fontWeight: 'bold'}}>
+          <button onClick={() => navigate(-1)} className="back-panel-btn">
             <ArrowLeft size={18} /> Back to Panel
           </button>
-          <h1 className="logo-text">Platform Analytics</h1>
+          <h1 className="logo-text">Administrative Insights</h1>
         </nav>
       </header>
 
-      <section className="hero-section" style={{paddingBottom: '0'}}>
-        <h1 className="hero-title">Report Hub</h1>
-        <p className="hero-description">Real-time insights and exportable data summaries.</p>
-      </section>
-
-      {/* USING THE NEW UNIQUE NAMES FROM Analytics.css */}
       <section className="analytics-page-grid">
         
-        {/* CHART 1: CATEGORIES */}
+        {/* 1. ACTIVE VS FLAGGED (PIE) */}
         <article className="analytics-chart-card">
           <div className="report-header">
-            <h3 className="report-title"><TrendingUp size={20} color="#f0a500"/> Popular Categories</h3>
+            <h3 className="report-title"><ShieldAlert size={20} color="#e74c3c"/> Marketplace Health</h3>
             <div className="export-btn-group">
-               <button onClick={() => exportToCSV(categoryData, 'categories')} className="export-btn" title="CSV"><TableIcon size={16}/></button>
-               <button onClick={() => exportToPDF('Category Report', categoryData)} className="export-btn" title="PDF"><FileText size={16}/></button>
+               <button onClick={() => exportToCSV(statusComparison, 'health_status')} className="export-btn"><TableIcon size={14}/></button>
             </div>
           </div>
           <div style={{width: '100%', height: 250}}>
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={categoryData} innerRadius={60} outerRadius={80} dataKey="value">
-                  {categoryData.map((e, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={statusComparison} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {statusComparison.map((entry, index) => <Cell key={index} fill={entry.fill} />)}
                 </Pie>
                 <Tooltip />
                 <Legend />
@@ -123,52 +146,88 @@ const Analytics = () => {
           </div>
         </article>
 
-        {/* CHART 2: FACILITY USAGE */}
+        {/* 2. POPULAR CATEGORIES (PIE) */}
         <article className="analytics-chart-card">
           <div className="report-header">
-            <h3 className="report-title"><Calendar size={20} color="#f0a500"/> Facility Usage</h3>
+            <h3 className="report-title"><TrendingUp size={20} color="#3498db"/> Popular Categories</h3>
             <div className="export-btn-group">
-               <button onClick={() => exportToCSV(tradeUtilization, 'facility_usage')} className="export-btn"><TableIcon size={16}/></button>
-               <button onClick={() => exportToPDF('Trade Facility Usage', tradeUtilization)} className="export-btn"><FileText size={16}/></button>
+               <button onClick={() => exportToCSV(categoryData, 'category_stats')} className="export-btn"><TableIcon size={14}/></button>
             </div>
           </div>
           <div style={{width: '100%', height: 250}}>
             <ResponsiveContainer>
-              <BarChart data={tradeUtilization}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                <XAxis dataKey="day" />
-                <YAxis />
+              <PieChart>
+                <Pie data={categoryData} cx="50%" cy="50%" outerRadius={80} label dataKey="value">
+                  {categoryData.map((entry, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                </Pie>
                 <Tooltip />
-                <Bar dataKey="booked" fill="#f0a500" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="capacity" fill="#0d1b2a" radius={[4, 4, 0, 0]} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        {/* 3. FLAGGING REASONS (BAR) */}
+        <article className="analytics-chart-card">
+          <div className="report-header">
+            <h3 className="report-title"><ShieldAlert size={20} color="#f0a500"/> Flagging Reasons</h3>
+            <div className="export-btn-group">
+               <button onClick={() => exportToPDF('Flagging Reasons Report', flagReasons)} className="export-btn"><FileText size={14}/></button>
+            </div>
+          </div>
+          <div style={{width: '100%', height: 250}}>
+            <ResponsiveContainer>
+              <BarChart data={flagReasons} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="reason" type="category" width={100} tick={{fontSize: 12}} />
+                <Tooltip cursor={{fill: 'transparent'}}/>
+                <Bar dataKey="count" radius={[0, 5, 5, 0]}>
+                  {flagReasons.map((entry, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </article>
 
-        {/* CHART 3: MODERATION */}
+        {/* 4. DELETION REASONS (BAR) */}
+        <article className="analytics-chart-card">
+          <div className="report-header">
+            <h3 className="report-title"><Trash2 size={20} color="#e74c3c"/> Deletion History (Ghost Data)</h3>
+            <div className="export-btn-group">
+               <button onClick={() => exportToPDF('Deletion Audit Report', deleteReasons)} className="export-btn"><FileText size={14}/></button>
+            </div>
+          </div>
+          <div style={{width: '100%', height: 250}}>
+            <ResponsiveContainer>
+              <BarChart data={deleteReasons}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="reason" tick={{fontSize: 10}} />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" radius={[5, 5, 0, 0]}>
+                  {deleteReasons.map((entry, index) => <Cell key={index} fill={COLORS[(index + 3) % COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        {/* 5. FACILITY USAGE (AREA) */}
         <article className="analytics-chart-card full-width-report">
           <div className="report-header">
-            <h3 className="report-title"><ShieldAlert size={20} color="#f0a500"/> Moderation Activity</h3>
-            <div className="export-btn-group">
-               <button onClick={() => exportToCSV(moderationSummary, 'moderation_stats')} className="export-btn"><TableIcon size={16}/></button>
-               <button onClick={() => exportToPDF('Moderation Report', moderationSummary)} className="export-btn"><FileText size={16}/></button>
-            </div>
+            <h3 className="report-title"><Calendar size={20} color="#1abc9c"/> Trade Facility Utilization</h3>
+            <button onClick={() => exportToCSV(tradeUtilization, 'facility_usage')} className="export-btn"><TableIcon size={14}/></button>
           </div>
           <div style={{width: '100%', height: 300}}>
             <ResponsiveContainer>
-              <AreaChart data={moderationSummary}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f0a500" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#f0a500" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="name" />
-                <YAxis />
+              <AreaChart data={tradeUtilization}>
                 <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
                 <Tooltip />
-                <Area type="monotone" dataKey="value" stroke="#f0a500" fillOpacity={1} fill="url(#colorVal)" />
+                <Area type="monotone" dataKey="booked" stroke="#f0a500" fill="#f0a500" fillOpacity={0.6} />
+                <Area type="monotone" dataKey="capacity" stroke="#0d1b2a" fill="#0d1b2a" fillOpacity={0.2} />
+                <Legend />
               </AreaChart>
             </ResponsiveContainer>
           </div>
