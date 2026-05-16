@@ -1,29 +1,31 @@
-/* Unique layout for the Analytics Page only */
 .analytics-page-container {
   min-height: 100vh;
   background: #f6f8fb;
-  font-family: Arial, sans-serif;
+  font-family: 'Inter', Arial, sans-serif;
 }
 
 .analytics-page-grid {
   display: grid;
-  /* This allows charts to be side-by-side or stack depending on screen size */
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); 
-  gap: 30px;
-  padding: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+  gap: 25px;
+  padding: 30px 40px;
+  position: relative;
+  z-index: 10;
 }
 
-/* Unique card style for charts */
 .analytics-chart-card {
   background: white;
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-  border: 1px solid #eaeaea;
-  transition: transform 0.3s ease;
+  border-radius: 24px;
+  padding: 25px;
+  box-shadow: 0 10px 40px rgba(13, 27, 42, 0.06);
+  border: 1px solid rgba(13, 27, 42, 0.05);
+  transition: transform 0.2s ease;
 }
 
-/* Full width for the bottom chart */
+.analytics-chart-card:hover {
+  transform: translateY(-5px);
+}
+
 .full-width-report {
   grid-column: 1 / -1;
 }
@@ -32,37 +34,63 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .report-title {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 800;
   color: #0d1b2a;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  margin: 0;
 }
 
 .export-btn-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .export-btn {
   padding: 8px;
-  background: #f1f3f5;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1.5px solid #eee;
+  border-radius: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: #2c3e50;
-  transition: 0.2s;
+  color: #0d1b2a;
+  transition: all 0.2s;
 }
 
 .export-btn:hover {
-  background: #e9ecef;
-  border-color: #f0a500;
+  background: #0d1b2a;
   color: #f0a500;
+  border-color: #0d1b2a;
+}
+
+.back-panel-btn {
+  background: #0d1b2a;
+  color: #f0a500;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity 0.2s;
+}
+
+.back-panel-btn:hover {
+  opacity: 0.9;
+}
+
+/* Custom responsiveness for smaller screens */
+@media (max-width: 900px) {
+  .analytics-page-grid {
+    grid-template-columns: 1fr;
+  }
 }
