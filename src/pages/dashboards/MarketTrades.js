@@ -161,7 +161,21 @@ export default function MarketTrades() {
                   ? "TAKEN"
                   : "FREE"}
               </p>
+                  <p>
+  Drop-Off:
+  {" "}
+  {trade.dropoff_time
+    ? new Date(trade.dropoff_time).toLocaleString()
+    : "Not Scheduled"}
+</p>
 
+<p>
+  Collection:
+  {" "}
+  {trade.collection_time
+    ? new Date(trade.collection_time).toLocaleString()
+    : "Not Scheduled"}
+</p>
               {!trade.staff_id && (
 
                 <button
@@ -208,7 +222,21 @@ export default function MarketTrades() {
               <h3>
                 Trade #{trade.id.slice(0, 6)}
               </h3>
+<p>
+  Drop-Off:
+  {" "}
+  {trade.dropoff_time
+    ? new Date(trade.dropoff_time).toLocaleString()
+    : "Not Scheduled"}
+</p>
 
+<p>
+  Collection:
+  {" "}
+  {trade.collection_time
+    ? new Date(trade.collection_time).toLocaleString()
+    : "Not Scheduled"}
+</p>
               <p>
                 COMPLETED
               </p>
