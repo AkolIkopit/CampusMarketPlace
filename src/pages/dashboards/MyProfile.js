@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Phone, Star, ShieldCheck, Briefcase, Edit3, 
   MapPin, Send, ArrowLeft, Trash2, Clock, 
-  User, IdCard, Loader2, Box, ShoppingCart, DollarSign, Package, Calendar, Plus
+  User, IdCard, Loader2, Box, ShoppingCart, Package, Calendar, Plus
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import LoadingScreen from '../../components/LoadingScreen';
@@ -60,7 +60,7 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
 
     const { data: bookingsData, error: bookingsError } = await supabase
       .from('bookings')
-      .select('id, transaction_id, listing_id, buyer_id, seller_id, status, collection_time, item_received, item_released')
+      .select('id, transaction_id, listing_id, buyer_id, seller_id, status, collection_time, item_received, item_released, cash_shortfall')
       .or(`buyer_id.eq.${profile.id},seller_id.eq.${profile.id}`)
       .order('created_at', { ascending: false });
 
@@ -82,8 +82,21 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
     booking?.item_received
   );
 
-  const canBookCollection = (booking) => (
+  const getOutstandingBalance = (transaction, booking) => {
+    const transactionShortfall = transaction?.cash_shortfall_due;
+    const bookingShortfall = booking?.cash_shortfall;
+    const fallbackAmount = transaction?.agreed_amount ?? transaction?.amount ?? 0;
+    return Number(transactionShortfall ?? bookingShortfall ?? fallbackAmount) || 0;
+  };
+
+  const isPaymentComplete = (transaction, booking) => (
+    (transaction?.payment_status || '').toLowerCase() === 'fully_paid' ||
+    getOutstandingBalance(transaction, booking) <= 0
+  );
+
+  const canBookCollection = (transaction, booking) => (
     isCollectionReady(booking) &&
+    isPaymentComplete(transaction, booking) &&
     !booking.collection_time &&
     !booking.item_released
   );
@@ -102,8 +115,9 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
     });
   };
 
-  const isPaymentPending = (transaction) => (
-    paymentPendingStatuses.includes((transaction.payment_status || '').toLowerCase())
+  const isPaymentPending = (transaction, booking) => (
+    paymentPendingStatuses.includes((transaction.payment_status || '').toLowerCase()) ||
+    getOutstandingBalance(transaction, booking) > 0
   );
 
   const canOpenPayment = (transaction, booking) => {
@@ -113,7 +127,8 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
     return (
       transaction?.id &&
       transaction.buyer_id === profile.id &&
-      isPaymentPending(transaction) &&
+      isPaymentPending(transaction, booking) &&
+      getOutstandingBalance(transaction, booking) > 0 &&
       hasPaymentStageBooking &&
       !['pending_seller_acceptance', 'declined_by_seller', 'cancelled', 'completed'].includes(transaction.status)
     );
@@ -130,7 +145,8 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
     if (transactionStatus === 'declined_by_seller') return 'declined';
     if (transactionStatus === 'cancelled' || bookingStatus === 'cancelled') return 'cancelled';
     if (transactionStatus === 'completed' || booking?.item_released) return 'completed';
-    if (isPaymentPending(transaction) && bookingStatus && !['not_booked', 'cancelled', 'expired'].includes(bookingStatus)) return 'pending payment';
+    if (isCollectionReady(booking) && !isPaymentComplete(transaction, booking)) return 'pay remaining balance';
+    if (isPaymentPending(transaction, booking) && bookingStatus && !['not_booked', 'cancelled', 'expired'].includes(bookingStatus)) return 'pending payment';
     if (isCollectionReady(booking) && booking?.collection_time) return 'collection booked';
     if (isCollectionReady(booking)) return 'awaiting buyer collection';
     if (bookingStatus === 'requested') return 'facility booking requested';
@@ -370,7 +386,7 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
         <ul className="history-list" style={{listStyle: 'none', padding: 0}}>
           {(historyTab === 'orders' ? myOrders : mySales).map(t => {
             const booking = getOrderBooking(t);
-            const collectionReady = historyTab === 'orders' && canBookCollection(booking);
+            const collectionReady = historyTab === 'orders' && canBookCollection(t, booking);
             const collectionBooked = historyTab === 'orders' && hasBookedCollection(booking);
             const itemStatus = getItemStatus(t, booking);
             const showPaymentButton = canOpenPayment(t, booking);

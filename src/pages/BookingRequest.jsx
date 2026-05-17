@@ -41,6 +41,16 @@ function parseSlotTime(slot) {
   return date;
 }
 
+async function getProfileName(userId, fallback = "A student") {
+  if (!userId) return fallback;
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.full_name || fallback;
+}
+
 function BookingRequest() {
   const [searchParams] = useSearchParams();
   const listingId = searchParams.get("listing");
@@ -94,7 +104,7 @@ function BookingRequest() {
       if (bookingMode === "collection") {
         const { data: bookingData, error: bookingError } = await supabase
           .from("bookings")
-          .select("id, transaction_id, listing_id, buyer_id, seller_id, status, agreed_price, collection_time, item_received, item_released")
+          .select("id, transaction_id, listing_id, buyer_id, seller_id, status, agreed_price, collection_time, item_received, item_released, cash_shortfall")
           .eq("id", bookingId)
           .maybeSingle();
 
@@ -116,6 +126,35 @@ function BookingRequest() {
           setError("This order is not ready for collection.");
           setLoading(false);
           return;
+        }
+
+        if (Number(bookingData.cash_shortfall || 0) > 0) {
+          setError("Payment must be completed before booking a collection slot.");
+          setLoading(false);
+          return;
+        }
+
+        if (bookingData.transaction_id) {
+          const { data: transactionData, error: transactionError } = await supabase
+            .from("transactions")
+            .select("cash_shortfall_due, payment_status")
+            .eq("id", bookingData.transaction_id)
+            .maybeSingle();
+
+          if (transactionError) {
+            setError("Unable to verify payment status before collection.");
+            setLoading(false);
+            return;
+          }
+
+          const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+          const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
+
+          if (transactionShortfall > 0 || !paymentComplete) {
+            setError("Payment must be completed before booking a collection slot.");
+            setLoading(false);
+            return;
+          }
         }
 
         setExistingBooking(bookingData);
@@ -213,7 +252,8 @@ function BookingRequest() {
 
         if (updateError) throw updateError;
 
-        const notificationText = `${SYSTEM_MESSAGE_PREFIX}Buyer booked a collection slot for ${listing.title} at ${selectedSlot}.`;
+        const buyerName = await getProfileName(currentUserId, "The buyer");
+        const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot}.`;
         const { error: notificationError } = await supabase.from("messages").insert([
           {
             listing_id: listing.id,
@@ -292,7 +332,9 @@ function BookingRequest() {
           .eq("id", transactionId);
       }
 
-      const notificationText = `${SYSTEM_MESSAGE_PREFIX}Seller requested a trade facility booking for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
+      const requesterName = await getProfileName(currentUserId, currentUserId === seller.id ? seller.full_name : "A student");
+      const buyerName = await getProfileName(bookingBuyerId, "the buyer");
+      const notificationText = `${SYSTEM_MESSAGE_PREFIX}${requesterName} requested a trade facility booking for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}${currentUserId === seller.id ? ` for ${buyerName}` : ""}.`;
       // Notify the counterparty: seller if buyer initiated, buyer if seller initiated.
       const notificationReceiver = currentUserId === seller.id ? bookingBuyerId : seller.id;
       const { error: notificationError } = await supabase.from("messages").insert([

@@ -13,7 +13,12 @@ export default function SellerPopup({ userId }) {
   const checkForCompletion = async (id) => {
     const { data, error } = await supabase
       .from("bookings")
-      .select("id, listing_id")
+      .select(`
+        id,
+        listing_id,
+        listings ( title ),
+        buyer:profiles!bookings_buyer_id_fkey ( full_name )
+      `)
       .eq("seller_id", id)
       .eq("seller_notified", false)
       .eq("status", "completed");
@@ -55,7 +60,7 @@ export default function SellerPopup({ userId }) {
         <ul className="popup-list">
           {pendingBookings.map((booking) => (
             <li key={booking.id} className="popup-list-item">
-              Booking #{booking.id.slice(0, 6)}
+              {booking.buyer?.full_name || "The buyer"} collected {booking.listings?.title || `booking #${booking.id.slice(0, 6)}`}
             </li>
           ))}
         </ul>

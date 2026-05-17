@@ -68,17 +68,23 @@ const fetchTransaction = async () => {
 
 const handlePayment = async () => {
   const amount = parseFloat(payAmount);
+  const outstanding = Number(outstandingAmount || 0);
 
   if (!amount || amount <= 0) {
     setError("Please enter a valid amount.");
     return;
   }
 
+  if (amount > outstanding) {
+    setError("Payment amount cannot be more than the outstanding balance.");
+    return;
+  }
+
   const fields = {
     merchant_id: MERCHANT_ID,
     merchant_key: MERCHANT_KEY,
-    return_url: `${RETURN_URL}?transaction=${transactionId}`,
-    cancel_url: CANCEL_URL,
+    return_url: `${RETURN_URL}?transaction=${transactionId}&amount=${amount.toFixed(2)}`,
+    cancel_url: `${CANCEL_URL}?transaction=${transactionId}`,
     notify_url: NOTIFY_URL,
     amount: amount.toFixed(2),
     item_name: "UniMart Purchase",
@@ -169,7 +175,7 @@ console.log("Rendering — payAmount:", payAmount);
         </ul>
        
 
-        {transaction.payment_status === "FULLY_PAID" ? (
+        {String(transaction.payment_status || "").toLowerCase() === "fully_paid" ? (
 
           <section className="payment-complete">
             <p>✅ Payment complete. No outstanding balance.</p>
