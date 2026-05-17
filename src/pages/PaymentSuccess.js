@@ -13,18 +13,16 @@ export default function PaymentSuccess() {
     handlePaymentSuccess();
   }, []);
 
- const handlePaymentSuccess = async () => {
-  const transactionId = searchParams.get("transaction");
-  console.log("Transaction ID from URL:", transactionId);
-  if (!transactionId) { setUpdated(true); return; }
+  const handlePaymentSuccess = async () => {
+    const transactionId = searchParams.get("transaction");
+    const paymentId = searchParams.get("pf_payment_id");
 
-  const { data: transaction } = await supabase
-    .from("transactions")
-    .select("id, agreed_amount, cash_shortfall_due, listing_id, buyer_id")
-    .eq("id", transactionId)
-    .maybeSingle();
+    if (!transactionId) {
+      setUpdated(true);
+      return;
+    }
 
-    let transactionQuery = supabase
+    const { data: transaction } = await supabase
       .from("transactions")
       .select(`
         id,
@@ -32,56 +30,58 @@ export default function PaymentSuccess() {
         seller_id,
         listing_id,
         agreed_amount,
-        cash_shortfall_due,
         listings ( title )
       `)
-      .eq("buyer_id", user.id);
+      .eq("id", transactionId)
+      .maybeSingle();
 
-    if (transactionId) {
-      transactionQuery = transactionQuery.eq("id", transactionId);
-    } else {
-      transactionQuery = transactionQuery
-        .in("payment_status", ["pending", "pending_payment", "PARTIAL_PAID"])
-        .order("created_at", { ascending: false })
-        .limit(1);
+    if (!transaction) {
+      setUpdated(true);
+      return;
     }
 
-    const { data: transaction } = await transactionQuery.maybeSingle();
-  console.log("Transaction data:", transaction);
+    await supabase
+      .from("transactions")
+      .update({
+        payment_status: "FULLY_PAID",
+        cash_shortfall_due: 0,
+        payment_reference: paymentId || "sandbox",
+      })
+      .eq("id", transaction.id);
 
-  if (!transaction) { setUpdated(true); return; }
+    await supabase
+      .from("bookings")
+      .update({
+        amount_paid: parseFloat(transaction.agreed_amount || 0),
+        cash_shortfall: 0,
+      })
+      .eq("transaction_id", transaction.id);
 
-  await supabase
-    .from("transactions")
-    .update({
-      payment_status: "FULLY_PAID",
-      cash_shortfall_due: 0,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", transactionId);
+    const itemTitle = transaction.listings?.title || "the item";
+    const paidAmount = parseFloat(transaction.agreed_amount || 0).toFixed(2);
 
-  console.log("Updating booking with listing_id:", transaction.listing_id, "buyer_id:", transaction.buyer_id);
+    await supabase.from("messages").insert([
+      {
+        listing_id: transaction.listing_id,
+        sender_id: transaction.buyer_id,
+        receiver_id: transaction.seller_id,
+        message_text: `${SYSTEM_MESSAGE_PREFIX}Payment of R${paidAmount} has been made for ${itemTitle}.`,
+        transaction_id: transaction.id,
+        is_read: false,
+      },
+    ]);
 
-  const { data: bookingData, error: bookingError } = await supabase
-    .from("bookings")
-    .update({
-      amount_paid: parseFloat(transaction.agreed_amount),
-      cash_shortfall: 0,
-      payment_status: "FULLY_PAID",
-    })
-    .eq("listing_id", transaction.listing_id)
-    .eq("buyer_id", transaction.buyer_id)
-    .select();
-
-  console.log("Booking update result:", bookingData, "Error:", bookingError);
-
-  setUpdated(true);
-};
+    setUpdated(true);
+  };
 
   return (
     <main style={{ textAlign: "center", padding: "80px 20px" }}>
       <h1 style={{ color: "#27500A" }}>✅ Payment Successful</h1>
-      <p>Your payment has been received. The trade facility staff will be notified.</p>
+      <p>
+        {updated
+          ? "Your payment has been received. The trade facility staff will be notified."
+          : "Finalising your payment update..."}
+      </p>
       <button
         onClick={() => navigate("/messages")}
         style={{
