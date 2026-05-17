@@ -9,8 +9,6 @@ const MERCHANT_ID = "10048982";
 const MERCHANT_KEY = "8fr5hx4alngq6";
 const PASSPHRASE = "andre12345678";
 const NOTIFY_URL = "https://pjqoghabztvrywvwvfdp.supabase.co/functions/v1/payfast-notify";
-const RETURN_URL = "http://localhost:3000/payment/success";
-const CANCEL_URL = "http://localhost:3000/payment/cancel";
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -77,8 +75,8 @@ const handlePayment = async () => {
   const fields = {
     merchant_id: MERCHANT_ID,
     merchant_key: MERCHANT_KEY,
-    return_url: RETURN_URL,
-    cancel_url: CANCEL_URL,
+    return_url: `${window.location.origin}/payment/success?transaction=${transaction.id}`,
+    cancel_url: `${window.location.origin}/payment/cancel?transaction=${transaction.id}`,
     notify_url: NOTIFY_URL,
     amount: amount.toFixed(2),
     item_name: "UniMart Purchase",
@@ -168,7 +166,7 @@ console.log("Rendering — payAmount:", payAmount);
           </li>
         </ul>
 
-        {transaction.payment_status === "FULLY_PAID" ? (
+        {String(transaction.payment_status || "").toLowerCase() === "fully_paid" ? (
 
           <section className="payment-complete">
             <p>✅ Payment complete. No outstanding balance.</p>
