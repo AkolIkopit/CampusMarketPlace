@@ -30,12 +30,12 @@ jobs:
 
       - name: Run tests with coverage
         # continue-on-error ensures the workflow doesn't stop here if tests fail
-        continue-on-error: true
+        #continue-on-error: true
         run: |
-          CI=true npm run test:coverage -- --runInBand --watchAll=false || true
+          CI=true npm run test:coverage -- --runInBand
           echo "Working directory: $(pwd)"
           echo "Coverage directory contents:"
-          find coverage -maxdepth 2 -type f | sort || true
+          find coverage -maxdepth 2 -type f | sort
 
       - name: Upload coverage to Codecov
         # if: always() ensures this runs even if the previous step failed
