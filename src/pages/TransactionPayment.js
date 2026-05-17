@@ -167,6 +167,7 @@ console.log("Rendering — payAmount:", payAmount);
             <span className="payment-info-value">{transaction.transaction_type}</span>
           </li>
         </ul>
+       
 
         {transaction.payment_status === "FULLY_PAID" ? (
 
