@@ -9,6 +9,8 @@ const MERCHANT_ID = "10048982";
 const MERCHANT_KEY = "8fr5hx4alngq6";
 const PASSPHRASE = "andre12345678";
 const NOTIFY_URL = "https://pjqoghabztvrywvwvfdp.supabase.co/functions/v1/payfast-notify";
+const RETURN_URL = "http://localhost:3000/payment/success";
+const CANCEL_URL = "http://localhost:3000/payment/cancel";
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -167,7 +169,7 @@ console.log("Rendering — payAmount:", payAmount);
         </ul>
        
 
-        {String(transaction.payment_status || "").toLowerCase() === "fully_paid" ? (
+        {transaction.payment_status === "FULLY_PAID" ? (
 
           <section className="payment-complete">
             <p>✅ Payment complete. No outstanding balance.</p>
