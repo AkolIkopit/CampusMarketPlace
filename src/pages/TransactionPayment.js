@@ -165,6 +165,7 @@ console.log("Rendering — payAmount:", payAmount);
             <span className="payment-info-value">{transaction.transaction_type}</span>
           </li>
         </ul>
+       
 
         {String(transaction.payment_status || "").toLowerCase() === "fully_paid" ? (
 
