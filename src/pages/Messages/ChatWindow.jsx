@@ -20,7 +20,7 @@ function ChatWindow({
   const isSeller = !isSelfConversation && currentUserId === conversation.sellerId;
   const isBuyer = !isSelfConversation && currentUserId && currentUserId !== conversation.sellerId;
   const transactionStatus = conversation.transactionStatus || "";
-  const paymentStatus = (conversation.paymentStatus || "").toLowerCase();
+  const paymentStatus = conversation.paymentStatus || "unpaid";
   const hasPendingTransaction = Boolean(
     conversation.transactionId &&
     isSeller &&
@@ -41,7 +41,7 @@ function ChatWindow({
     conversation.transactionId &&
     isBuyer &&
     hasExistingBooking &&
-    (paymentStatus === "pending" || paymentStatus === "pending_payment")
+    (paymentStatus === "unpaid" || paymentStatus === "pending" || !paymentStatus)
   );
   const requestText =
     conversation.transactionRequestText ||
