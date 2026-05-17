@@ -13,6 +13,7 @@ import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
 import BookingRequest from "./pages/BookingRequest";
 import MessagesPage from "./pages/Messages/MessagesPage";
+import TransactionPayment from "./pages/TransactionPayment";
 import PaymentStatus from "./pages/PaymentStatus";
 import LoadingScreen from "./components/LoadingScreen";
 import RoleApproval from "./pages/dashboards/RoleApproval";
@@ -252,6 +253,7 @@ export default function App() {
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
         <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage />} />} />
         <Route path="/bookings/new" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<BookingRequest />} />} />
+        <Route path="/transactions/:transactionId/payment" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<TransactionPayment />} />} />
         <Route 
   path="/dashboard/admin/analytics" 
   element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<Analytics />} />} 

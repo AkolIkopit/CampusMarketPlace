@@ -11,10 +11,7 @@ jest.mock('../../supabase', () => ({
       getUser: jest.fn(),
       signOut: jest.fn()
     },
-    channel: jest.fn(() => ({
-      on: jest.fn().mockReturnThis(),
-      subscribe: jest.fn()
-    })),
+    channel: jest.fn(),
     removeChannel: jest.fn()
   }
 }));
@@ -118,6 +115,10 @@ describe('StudentDashboard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    const realtimeChannel = {};
+    realtimeChannel.on = jest.fn(() => realtimeChannel);
+    realtimeChannel.subscribe = jest.fn(() => realtimeChannel);
+    supabase.channel.mockReturnValue(realtimeChannel);
     navigateMock = jest.fn();
     __resetRouterMocks();
     __setNavigateMock(navigateMock);
@@ -160,22 +161,6 @@ describe('StudentDashboard', () => {
 
     await userEvent.click(screen.getByText('Browse All').closest('article'));
     expect(navigateMock).toHaveBeenCalledWith('/browse');
-  });
-
-  it('navigates to /cart when the shopping bag icon is clicked', async () => {
-    createStudentDashboardMocks();
-
-    render(<StudentDashboard profile={profile} />);
-
-    await screen.findByText(/WELCOME BACK/i);
-
-    const cartBtn = screen.getAllByRole('button').find(
-      (btn) => btn.querySelector('[data-icon="ShoppingBag"]')
-    );
-    if (cartBtn) {
-      await userEvent.click(cartBtn);
-      expect(navigateMock).toHaveBeenCalledWith('/cart');
-    }
   });
 
   it('navigates to /create-listing from the FAB button', async () => {

@@ -2,10 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import {
-  ArrowLeft, MessageCircle, ShoppingCart, User,
+  ArrowLeft, MessageCircle, User,
   Star, MapPin, Loader2, Send
 } from 'lucide-react';
+import MakeOfferModal from './MakeOfferModal';
 import './ListingDetail.css';
+
+const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
 const ListingDetail = () => {
   const { id } = useParams();
@@ -13,13 +16,15 @@ const ListingDetail = () => {
   const [listing, setListing] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [addingToCart, setAddingToCart] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
 
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [modalType, setModalType] = useState(null);
+  const [transactionLoading, setTransactionLoading] = useState(false);
+  const [transactionError, setTransactionError] = useState("");
 
   const fetchAllData = useCallback(async () => {
     setLoading(true);
@@ -70,40 +75,115 @@ const ListingDetail = () => {
     }
   };
 
-  const handleAddToCart = async () => {
-    if (addingToCart) return;
-    setAddingToCart(true);
+  const closeModal = () => {
+    setModalType(null);
+    setTransactionError("");
+  };
+
+  const navigateToMessages = (transactionId, action) => {
+    const query = new URLSearchParams({
+      user: listing.seller_id,
+      listing: id,
+      name: listing.profiles.full_name,
+      item: listing.title,
+      transaction: transactionId,
+      action
+    }).toString();
+
+    navigate(`/messages?${query}`);
+  };
+
+  const createTransaction = async ({ type, action, amount, cashAmount = 0, tradeItem = '' }) => {
+    setTransactionLoading(true);
+    setTransactionError("");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        alert("Please log in to add items to your cart.");
-        return;
-      }
+      if (!user?.id) throw new Error('Unable to determine buyer account.');
 
-      const { error } = await supabase
-        .from('cart_items')
-        .insert([{ 
-          user_id: user.id, 
-          listing_id: id 
+      const payload = {
+        buyer_id: user.id,
+        seller_id: listing.seller_id,
+        listing_id: id,
+        amount: amount ?? 0,
+        agreed_amount: amount ?? 0,
+        cash_shortfall_due: type === 'trade' ? cashAmount : 0,
+        status: 'pending_seller_acceptance',
+        transaction_type: type === 'offer' ? 'sale' : type,
+        payment_status: 'unpaid',
+        booking_status: 'not_booked'
+      };
+
+      const { data: transaction, error: transactionError } = await supabase
+        .from('transactions')
+        .insert([payload])
+        .select('*')
+        .maybeSingle();
+
+      if (transactionError || !transaction) throw transactionError || new Error('Could not create transaction.');
+
+      try {
+        const messageText =
+          type === 'sale'
+            ? `${SYSTEM_MESSAGE_PREFIX}Buyer has requested to buy ${listing.title} for R${listing.price}. Transaction ID: ${transaction.id}`
+            : type === 'offer'
+            ? `${SYSTEM_MESSAGE_PREFIX}Buyer has made an offer of R${amount} for ${listing.title}. Transaction ID: ${transaction.id}`
+            : `${SYSTEM_MESSAGE_PREFIX}Buyer has requested a trade for ${listing.title} with cash supplement R${cashAmount}. Transaction ID: ${transaction.id}`;
+
+        await supabase.from('messages').insert([{
+          listing_id: id,
+          sender_id: user.id,
+          receiver_id: listing.seller_id,
+          message_text: messageText,
+          transaction_id: transaction.id,
+          is_read: false,
         }]);
-
-      if (error) {
-        if (error.code === '23505') {
-          alert("This item is already in your cart!");
-        } else {
-          alert("Error: " + error.message);
-        }
-      } else {
-        alert("Added to cart successfully!");
-        navigate('/cart');
+      } catch (messageError) {
+        // Do not block transaction flow if message creation fails.
+        console.warn('Could not create initial transaction message', messageError);
       }
-    } catch (err) {
-      alert("System Error: " + err.message);
+
+      closeModal();
+      navigateToMessages(transaction.id, action);
+    } catch (error) {
+      setTransactionError(error?.message || 'Could not create transaction.');
     } finally {
-      setAddingToCart(false);
+      setTransactionLoading(false);
     }
+  };
+
+  const handleBuyNow = () => {
+    createTransaction({
+      type: 'sale',
+      action: 'buy',
+      amount: listing.price
+    });
+  };
+
+  const handleModalSubmit = async ({ amount, cashAmount, tradeItem }) => {
+    if (modalType === 'offer') {
+      await createTransaction({
+        type: 'offer',
+        action: 'offer',
+        amount
+      });
+    } else if (modalType === 'trade') {
+      await createTransaction({
+        type: 'trade',
+        action: 'trade',
+        amount: cashAmount ?? 0,
+        cashAmount,
+        tradeItem
+      });
+    }
+  };
+
+  const handleTransactionIntent = (intent) => {
+    if (intent === 'buy') {
+      handleBuyNow();
+      return;
+    }
+    setModalType(intent);
   };
 
   const isOwnListing = Boolean(currentUserId && listing?.seller_id === currentUserId);
@@ -160,7 +240,28 @@ const ListingDetail = () => {
                 </nav>
               </header>
               
-              <footer className="purchase-actions">
+              <footer className="purchase-actions multi-action">
+                <button
+                  className="buy-now-btn"
+                  onClick={() => handleTransactionIntent('buy')}
+                  disabled={isOwnListing}
+                >
+                  Buy Now
+                </button>
+                <button
+                  className="make-offer-btn"
+                  onClick={() => handleTransactionIntent('offer')}
+                  disabled={isOwnListing}
+                >
+                  Make Offer
+                </button>
+                <button
+                  className="request-trade-btn"
+                  onClick={() => handleTransactionIntent('trade')}
+                  disabled={isOwnListing}
+                >
+                  Request Trade
+                </button>
                 <button
                   className="msg-seller-btn"
                   onClick={() => navigate(`/messages?${new URLSearchParams({
@@ -171,16 +272,7 @@ const ListingDetail = () => {
                   }).toString()}`)}
                   disabled={isOwnListing}
                 >
-                  <MessageCircle size={18} /> {isOwnListing ? 'Your Listing' : 'Message'}
-                </button>
-                
-                <button 
-                  type="button"
-                  className="add-cart-btn" 
-                  onClick={handleAddToCart} 
-                  disabled={addingToCart || isOwnListing}
-                >
-                  {addingToCart ? <Loader2 className="spinner" /> : <><ShoppingCart size={18} /> Add to Cart</>}
+                  <MessageCircle size={18} /> {isOwnListing ? 'Your Listing' : 'Message Seller'}
                 </button>
               </footer>
             </section>
@@ -260,6 +352,15 @@ const ListingDetail = () => {
           </ul>
         </section>
       </section>
+      <MakeOfferModal
+        type={modalType}
+        listing={listing}
+        visible={Boolean(modalType)}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+        loading={transactionLoading}
+        error={transactionError}
+      />
     </main>
   );
 };

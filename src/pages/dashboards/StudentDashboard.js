@@ -44,6 +44,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
 
   useEffect(() => {
+    if (!profile?.id) return;
+
     const fetchData = async () => {
       try {
         const { data: catData } = await supabase.from('categories').select('*');
@@ -63,7 +65,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       }
     };
     fetchData();
-  }, []);
+  }, [profile?.id]);
 
   const checkApprovalStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -84,6 +86,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   };
 
   useEffect(() => {
+    if (!profile?.id) return;
+
     const fetchMarket = async () => {
       let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).eq('status', 'active');
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
@@ -97,7 +101,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       setMarketListings(filtered);
     };
     fetchMarket();
-  }, [selectedCat, selectedCampus, selectedCondition, minPrice, maxPrice]);
+  }, [profile?.id, selectedCat, selectedCampus, selectedCondition, minPrice, maxPrice]);
 
   useEffect(() => {
     const userId = profile?.id;
@@ -169,7 +173,6 @@ const StudentDashboard = ({ profile: initialProfile }) => {
             <img src="/UniMartlogo.png" alt="Logo" className="header-logo" /><h1 className="logo-text">UniMart</h1>
           </section>
           <nav className="header-actions">
-            <button className="icon-btn" onClick={() => navigate('/cart')}><ShoppingBag size={20} /></button>
             <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
           </nav>
         </nav>

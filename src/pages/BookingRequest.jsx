@@ -11,6 +11,7 @@ const AVAILABLE_SLOTS = [
   "Tomorrow 14:00",
   "Next Monday 10:00",
 ];
+const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
 function parseSlotTime(slot) {
   const now = new Date();
@@ -44,6 +45,8 @@ function BookingRequest() {
   const [searchParams] = useSearchParams();
   const listingId = searchParams.get("listing");
   const sellerId = searchParams.get("seller");
+  const buyerParam = searchParams.get("buyer");
+  const transactionId = searchParams.get("transaction");
   const contextItem = searchParams.get("item") || "Listing";
   const contextName = searchParams.get("name") || "Seller";
   const [listing, setListing] = useState(null);
@@ -110,12 +113,13 @@ function BookingRequest() {
         return;
       }
 
+          // Removed unused activeBuyerId variable
       setSeller(sellerData);
       setLoading(false);
     };
 
     fetchData();
-  }, [listingId, sellerId]);
+  }, [listingId, sellerId, buyerParam]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -132,8 +136,11 @@ function BookingRequest() {
       return;
     }
 
-    if (currentUserId === seller.id) {
-      setError("You cannot request a booking for your own listing.");
+    // Determine booking buyer (either param or current viewer).
+    const bookingBuyerId = buyerParam || currentUserId;
+
+    if (!bookingBuyerId || bookingBuyerId === seller.id) {
+      setError("Invalid booking: buyer must be specified and different from seller.");
       return;
     }
 
@@ -148,8 +155,9 @@ function BookingRequest() {
     try {
       const { error: insertError } = await supabase.from("bookings").insert([
         {
+          transaction_id: transactionId || null,
           listing_id: listing.id,
-          buyer_id: currentUserId,
+          buyer_id: bookingBuyerId,
           seller_id: seller.id,
           requested_slot: selectedSlot,
           slot_time: slotTime.toISOString(),
@@ -163,13 +171,27 @@ function BookingRequest() {
 
       if (insertError) throw insertError;
 
-      const notificationText = `Booking request created for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
+      if (transactionId) {
+        await supabase
+          .from("transactions")
+          .update({
+            booking_status: "requested",
+            agreed_amount: agreedPrice,
+            cash_shortfall_due: Math.max(agreedPrice, 0),
+          })
+          .eq("id", transactionId);
+      }
+
+      const notificationText = `${SYSTEM_MESSAGE_PREFIX}Seller requested a trade facility booking for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
+      // Notify the counterparty: seller if buyer initiated, buyer if seller initiated.
+      const notificationReceiver = currentUserId === seller.id ? bookingBuyerId : seller.id;
       const { error: notificationError } = await supabase.from("messages").insert([
         {
           listing_id: listing.id,
           sender_id: currentUserId,
-          receiver_id: seller.id,
+          receiver_id: notificationReceiver,
           message_text: notificationText,
+          transaction_id: transactionId || null,
           is_read: false,
         },
       ]);
@@ -178,7 +200,7 @@ function BookingRequest() {
         console.error("Booking notification error:", notificationError);
       }
 
-      setSuccess("Booking request submitted. The seller has been notified and facility staff can now confirm the slot.");
+      setSuccess("Booking request submitted. The other party has been notified and facility staff can now confirm the slot.");
     } catch (err) {
       console.error("Booking insert error:", err);
       if (err && typeof err === "object" && "message" in err) {

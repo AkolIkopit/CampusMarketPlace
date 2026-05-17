@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Phone, Star, ShieldCheck, Briefcase, Edit3, 
   MapPin, Send, ArrowLeft, Trash2, Clock, 
-  User, IdCard, Loader2, Box, ShoppingCart, DollarSign, Package
+  User, IdCard, Loader2, Box, DollarSign, Package
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import LoadingScreen from '../../components/LoadingScreen';
