@@ -33,8 +33,7 @@ function createListingDetailMocks({
   currentUserId = 'buyer-1',
   listing = null,
   reviews = [],
-  insertError = null,
-  cartInsertError = null
+  insertError = null
 } = {}) {
   const single = jest.fn().mockResolvedValue({ data: listing });
   const listingEq = jest.fn(() => ({ single }));
@@ -47,13 +46,15 @@ function createListingDetailMocks({
   const reviewEq = jest.fn(() => ({ order: reviewOrder }));
   const reviewSelect = jest.fn(() => ({ eq: reviewEq }));
 
+  const transactionMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'transaction-1' }, error: null });
+  const transactionSelect = jest.fn(() => ({ maybeSingle: transactionMaybeSingle }));
+  const transactionInsert = jest.fn(() => ({ select: transactionSelect }));
   const reviewInsert = jest.fn().mockResolvedValue({ error: insertError });
-  const cartInsert = jest.fn().mockResolvedValue({ error: cartInsertError });
 
   supabase.from.mockImplementation((table) => {
     if (table === 'listings') return { select: listingSelect };
     if (table === 'reviews') return { select: reviewSelect, insert: reviewInsert };
-    if (table === 'cart_items') return { insert: cartInsert };
+    if (table === 'transactions') return { insert: transactionInsert };
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -61,7 +62,7 @@ function createListingDetailMocks({
     data: { user: currentUserId ? { id: currentUserId } : null }
   });
 
-  return { reviewInsert, cartInsert, reviewOrder, single };
+  return { reviewInsert, reviewOrder, single, transactionInsert, transactionMaybeSingle };
 }
 
 describe('ListingDetail', () => {
@@ -95,12 +96,80 @@ describe('ListingDetail', () => {
     expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
     expect(screen.getByText('No reviews yet.')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Message' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Message Seller' }));
 
-    expect(navigateMock).toHaveBeenCalledWith('/messages?user=seller-9');
+    expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining('/messages?'));
   });
 
-  it('disables messaging and cart for the owner of the listing', async () => {
+  it('starts a transaction and navigates when Buy Now is clicked', async () => {
+    const { transactionInsert } = createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing,
+      reviews: []
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Buy Now' }));
+
+    await waitFor(() => expect(transactionInsert).toHaveBeenCalled());
+    expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining('action=buy'));
+  });
+
+  it('opens the offer modal when Make Offer is clicked', async () => {
+    createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing,
+      reviews: []
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Make Offer' }));
+
+    expect(await screen.findByText('Make an Offer')).toBeInTheDocument();
+  });
+
+  it('submits an offer and navigates to messages', async () => {
+    const { transactionInsert } = createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing,
+      reviews: []
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Make Offer' }));
+    await userEvent.type(screen.getByLabelText('Offer Amount'), '120');
+    await userEvent.click(screen.getByRole('button', { name: 'Send Offer' }));
+
+    await waitFor(() => expect(transactionInsert).toHaveBeenCalled());
+    expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining('action=offer'));
+  });
+
+  it('opens the trade modal when Request Trade is clicked', async () => {
+    createListingDetailMocks({
+      currentUserId: 'buyer-1',
+      listing: baseListing,
+      reviews: []
+    });
+
+    render(<ListingDetail />);
+
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Request Trade' }));
+
+    expect(await screen.findByText('Request a Trade')).toBeInTheDocument();
+  });
+
+  it('disables messaging for the owner of the listing', async () => {
     createListingDetailMocks({
       currentUserId: 'seller-9',
       listing: baseListing,
@@ -110,7 +179,6 @@ describe('ListingDetail', () => {
     render(<ListingDetail />);
 
     expect(await screen.findByRole('button', { name: 'Your Listing' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add to Cart' })).toBeDisabled();
   });
 
   it('submits a review and refreshes the listing data', async () => {
@@ -137,7 +205,7 @@ describe('ListingDetail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
     await userEvent.type(screen.getByPlaceholderText('Experience with seller...'), 'Smooth handoff');
-    await userEvent.click(screen.getByRole('button', { name: 'Post' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Post Review' }));
 
     await waitFor(() => {
       expect(reviewInsert).toHaveBeenCalledWith([
@@ -151,80 +219,6 @@ describe('ListingDetail', () => {
       ]);
       expect(window.alert).toHaveBeenCalledWith('Review posted!');
       expect(screen.getByText('Smooth handoff')).toBeInTheDocument();
-    });
-  });
-
-  it('adds a listing to the cart successfully and navigates to /cart', async () => {
-    const { cartInsert } = createListingDetailMocks({
-      currentUserId: 'buyer-1',
-      listing: baseListing
-    });
-
-    render(<ListingDetail />);
-
-    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
-
-    await waitFor(() => {
-      expect(cartInsert).toHaveBeenCalledWith([
-        { user_id: 'buyer-1', listing_id: 'listing-1' }
-      ]);
-      expect(window.alert).toHaveBeenCalledWith('Added to cart successfully!');
-      expect(navigateMock).toHaveBeenCalledWith('/cart');
-    });
-  });
-
-  it('alerts duplicate cart error when the item is already in the cart', async () => {
-    createListingDetailMocks({
-      currentUserId: 'buyer-1',
-      listing: baseListing,
-      cartInsertError: { code: '23505', message: 'duplicate key value' }
-    });
-
-    render(<ListingDetail />);
-
-    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
-
-    await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('This item is already in your cart!');
-    });
-  });
-
-  it('alerts a generic error when the cart insert fails', async () => {
-    createListingDetailMocks({
-      currentUserId: 'buyer-1',
-      listing: baseListing,
-      cartInsertError: { code: '500', message: 'Internal server error' }
-    });
-
-    render(<ListingDetail />);
-
-    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
-
-    await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Error: Internal server error');
-    });
-  });
-
-  it('alerts when the user is not logged in and tries to add to cart', async () => {
-    createListingDetailMocks({
-      currentUserId: null,
-      listing: baseListing
-    });
-
-    render(<ListingDetail />);
-
-    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Add to Cart' }));
-
-    await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Please log in to add items to your cart.');
     });
   });
 

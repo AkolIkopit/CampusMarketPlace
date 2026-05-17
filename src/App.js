@@ -13,8 +13,7 @@ import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
 import BookingRequest from "./pages/BookingRequest";
 import MessagesPage from "./pages/Messages/MessagesPage";
-import CartPage from "./pages/CartPage";
-import PaymentStatus from "./pages/PaymentStatus";
+import TransactionPayment from "./pages/TransactionPayment";
 import LoadingScreen from "./components/LoadingScreen";
 import RoleApproval from "./pages/dashboards/RoleApproval";
 
@@ -253,6 +252,7 @@ export default function App() {
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
         <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage />} />} />
         <Route path="/bookings/new" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<BookingRequest />} />} />
+        <Route path="/transactions/:transactionId/payment" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<TransactionPayment />} />} />
         <Route 
   path="/dashboard/admin/analytics" 
   element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<Analytics />} />} 
@@ -261,9 +261,6 @@ export default function App() {
   path="/dashboard/admin/manage-listings" 
   element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<ManageListings />} />} 
 />
-        <Route path="/cart" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CartPage />} />} />
-        <Route path="/payment-status" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<PaymentStatus />} />} />
-  
         <Route path="*" element={<Navigate to="/" replace />} />
         
       </Routes>

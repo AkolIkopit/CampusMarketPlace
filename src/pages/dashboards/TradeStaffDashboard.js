@@ -1,20 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "./AdminDashboard.css";
+import EditProfile from "./EditProfile";
 import { supabase } from "../../supabase";
-export default function TradeStaffDashboard() {
-
+export default function TradeStaffDashboard({ profile }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [view, setView] = useState("dashboard");
+  const [currentProfile, setCurrentProfile] = useState(profile);
+
+  useEffect(() => {
+    setCurrentProfile(profile);
+  }, [profile]);
 
   const navigate = useNavigate();
-const handleLogout = async () => {
+  const handleLogout = async () => {
 
   await supabase.auth.signOut();
 
   navigate("/");
 
 };
+  if (view === "edit") {
+    return (
+      <EditProfile
+        profile={currentProfile}
+        onCancel={() => setView("dashboard")}
+        onSaveSuccess={(updatedData) => {
+          setCurrentProfile((prev) => ({ ...prev, ...updatedData }));
+          setView("dashboard");
+        }}
+      />
+    );
+  }
+
   return (
     <main className="dashboard-container">
 
@@ -51,16 +70,16 @@ const handleLogout = async () => {
         {menuOpen && (
           <section className="dropdown-menu">
 
-            <button className="dropdown-item">
+            <button className="dropdown-item" onClick={() => { setView("edit"); setMenuOpen(false); }}>
               Edit Profile
             </button>
 
             <button
-  className="dropdown-item logout"
-  onClick={handleLogout}
->
-  Logout
-</button>
+              className="dropdown-item logout"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
 
           </section>
         )}
@@ -152,7 +171,7 @@ const handleLogout = async () => {
     </button>
 
     {/* PROFILE */}
-    <button className="action-block">
+    <button className="action-block" onClick={() => setView("edit")}>
 
       <span className="block-icon">
         👤
