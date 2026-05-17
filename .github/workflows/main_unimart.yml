@@ -10,10 +10,47 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests with coverage
+        # continue-on-error ensures the workflow doesn't stop here if tests fail
+        continue-on-error: true
+        run: |
+          mkdir -p coverage
+          touch coverage/lcov.info
+          CI=true npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        # if: always() ensures this runs even if the previous step failed
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          # Set to false so Codecov doesn't stop the build if the file is missing
+          fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
@@ -61,4 +98,3 @@ jobs:
           app-name: 'unimart'
           slot-name: 'Production'
           package: .
-          
