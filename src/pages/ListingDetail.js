@@ -33,7 +33,7 @@ const ListingDetail = () => {
 
     const { data: listData } = await supabase
       .from('listings')
-      .select(`*, profiles!inner(id, full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
+      .select(`*, profiles!inner(id, full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
       .eq('id', id)
       .single();
 
@@ -190,7 +190,9 @@ const ListingDetail = () => {
 
   if (loading) return <main className="detail-loading-screen"><Loader2 className="spinner" /></main>;
   if (!listing) return <main className="detail-loading-screen"><h2>Listing not found.</h2></main>;
-//testing commits
+
+  const primaryImage = listing.listing_images?.find((img) => img.is_primary) || listing.listing_images?.[0];
+
   return (
     <main className="listing-detail-page">
       <section className="aurora-bg" aria-hidden="true">
@@ -206,7 +208,11 @@ const ListingDetail = () => {
       <section className="detail-layout">
         <section className="product-essential-grid">
           <figure className="detail-image-gallery">
-            <img src={listing.listing_images[0]?.image_url || '/placeholder.jpg'} alt={listing.title} />
+            <img
+              src={primaryImage?.image_url || '/placeholder.jpg'}
+              alt={listing.title}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
+            />
           </figure>
           
           <section className="detail-content">

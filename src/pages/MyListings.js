@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { ArrowLeft, Trash2, Loader2, PackageOpen, User, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Trash2, Loader2, PackageOpen, User, MessageSquare, Edit3 } from 'lucide-react';
 import './MyListings.css';
 
 const MyListings = () => {
@@ -16,13 +16,13 @@ const MyListings = () => {
   const fetchUserListings = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     const { data, error } = await supabase
       .from('listings')
       .select(`
         *, 
         categories(name), 
-        listing_images(image_url),
+        listing_images(image_url, is_primary),
         reviews(
           id, 
           rating, 
@@ -39,14 +39,13 @@ const MyListings = () => {
   };
 
   const handleDelete = async (e, id) => {
-    // Prevent the card click (navigation) from firing when clicking delete
     e.stopPropagation();
 
-    if (!window.confirm("Delete this listing permanently?")) return;
-    
+    if (!window.confirm('Delete this listing permanently?')) return;
+
     const { error } = await supabase.from('listings').delete().eq('id', id);
     if (!error) {
-      setListings(listings.filter(l => l.id !== id));
+      setListings(listings.filter((l) => l.id !== id));
     } else {
       alert(error.message);
     }
@@ -66,7 +65,7 @@ const MyListings = () => {
 
       <header className="page-header">
         <h1>My Listings</h1>
-        <p>Click a card to view full details and reviews, or use the trash icon to remove a post.</p>
+        <p>Click a card to view full details and reviews, or use the edit or delete buttons to manage a listing.</p>
       </header>
 
       {loading ? (
@@ -79,18 +78,37 @@ const MyListings = () => {
         </section>
       ) : (
         <section className="my-listings-grid">
-          {listings.map(item => (
-            <article 
-              key={item.id} 
+          {listings.map((item) => (
+            <article
+              key={item.id}
               className="my-listing-card"
               onClick={() => navigate(`/listing/${item.id}`)}
               style={{ cursor: 'pointer' }}
             >
               <figure className="listing-img-box">
-                <img src={item.listing_images[0]?.image_url || '/placeholder.jpg'} alt={item.title} />
-                <button 
-                  className="delete-btn" 
-                  onClick={(e) => handleDelete(e, item.id)} 
+                {(() => {
+                  const primaryImage = item.listing_images?.find((img) => img.is_primary) || item.listing_images?.[0];
+                  return (
+                    <img
+                      src={primaryImage?.image_url || '/placeholder.jpg'}
+                      alt={item.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
+                    />
+                  );
+                })()}
+                <button
+                  className="edit-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/create-listing?listing=${item.id}`);
+                  }}
+                  title="Edit Listing"
+                >
+                  <Edit3 size={18} />
+                </button>
+                <button
+                  className="delete-btn"
+                  onClick={(e) => handleDelete(e, item.id)}
                   title="Delete Listing"
                 >
                   <Trash2 size={18} />
@@ -103,7 +121,7 @@ const MyListings = () => {
                   <h3>{item.title}</h3>
                   <p className="listing-price">R {item.price}</p>
                 </header>
-                
+
                 <footer className="listing-reviews-summary">
                   <header className="rev-summary-header">
                     <MessageSquare size={14} />
@@ -112,7 +130,7 @@ const MyListings = () => {
 
                   {item.reviews && item.reviews.length > 0 ? (
                     <ul className="compact-rev-list">
-                      {item.reviews.slice(0, 2).map(rev => ( // Show only top 2 in card
+                      {item.reviews.slice(0, 2).map((rev) => (
                         <li key={rev.id} className="compact-rev-item">
                           <header className="comp-rev-user">
                             {rev.reviewer.avatar_url ? (

@@ -37,7 +37,7 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
   const fetchTransactions = async () => {
     const { data, error } = await supabase
       .from('transactions')
-      .select(`*, listings(title, listing_images(image_url))`)
+      .select(`*, listings(title, listing_images(image_url, is_primary))`)
       .order('created_at', { ascending: false });
     if (!error) setTransactions(data || []);
   };
@@ -189,7 +189,10 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
         <ul className="history-list" style={{listStyle: 'none', padding: 0}}>
           {(historyTab === 'orders' ? myOrders : mySales).map(t => (
             <li key={t.id} style={{display: 'flex', alignItems: 'center', gap: '20px', padding: '15px', background: 'white', borderRadius: '20px', marginBottom: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.02)'}}>
-              <img src={t.listings?.listing_images[0]?.image_url || '/placeholder.jpg'} alt="" style={{width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover'}} />
+              {(() => {
+                const primaryImage = t.listings?.listing_images?.find((img) => img.is_primary) || t.listings?.listing_images?.[0];
+                return <img src={primaryImage?.image_url || '/placeholder.jpg'} alt="" style={{width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover'}} />;
+              })()}
               <nav style={{flex: 1}}>
                 <strong style={{display: 'block', color: '#0a192f'}}>{t.listings?.title}</strong>
                 <time style={{fontSize: '0.8rem', color: '#aaa'}}>{new Date(t.created_at).toLocaleDateString()}</time>

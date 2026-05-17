@@ -53,7 +53,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
         const { data: recent } = await supabase
           .from('listings')
-          .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
+          .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(10);
@@ -89,7 +89,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
     if (!profile?.id) return;
 
     const fetchMarket = async () => {
-      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url)`).eq('status', 'active');
+      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).eq('status', 'active');
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
       if (selectedCondition !== 'all') query = query.eq('condition', selectedCondition);
       if (minPrice) query = query.gte('price', Number(minPrice));
@@ -261,10 +261,17 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
 const ListingCard = ({ item }) => {
   const navigate = useNavigate();
+  const primaryImage = item.listing_images?.find((img) => img.is_primary) || item.listing_images?.[0];
   return (
     <article className="listing-card-item" onClick={() => navigate(`/listing/${item.id}`)}>
       <header className="listing-card-top">
-        <figure className="listing-img-container"><img src={item.listing_images?.[0]?.image_url || '/placeholder.jpg'} alt="" /></figure>
+        <figure className="listing-img-container">
+          <img
+            src={primaryImage?.image_url || '/placeholder.jpg'}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
+          />
+        </figure>
         <section className="seller-mini-info">
           {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
           <p>{item.profiles?.full_name || 'Student'}</p>
