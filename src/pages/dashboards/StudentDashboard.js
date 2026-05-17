@@ -10,6 +10,8 @@ import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
 import LoadingScreen from '../../components/LoadingScreen';
 import './StudentDashboard.css';
+import BuyerPopup from "./BuyerPopup";
+import Seller_Popup from "./Seller_Popup";
 
 const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
@@ -155,7 +157,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   if (loading && !profile) return <LoadingScreen />;
 
   return (
+   
+
     <main className="dashboard-container">
+
       <section className="aurora-bg" aria-hidden="true"><hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" /></section>
       
       <header className="main-header">
@@ -245,6 +250,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           </article>
         </aside>
       )}
+      <BuyerPopup userId={profile?.id} />
+      <Seller_Popup userId={profile?.id} />
     </main>
   );
 };
