@@ -1,0 +1,151 @@
+
+
+.market-page {
+  min-height: 100vh;
+  background: #f8f5f0;
+  padding-bottom: 60px;
+}
+
+.market-hero {
+  padding: 70px 10%;
+}
+
+.market-kicker {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #7c3aed;
+}
+
+.market-title {
+  font-size: 3rem;
+  margin-top: 10px;
+  color: #111827;
+}
+
+.market-description {
+  margin-top: 15px;
+  font-size: 1.1rem;
+  color: #6b7280;
+  max-width: 700px;
+}
+
+.market-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  padding: 0 10%;
+}
+
+.market-column {
+  background: white;
+  border-radius: 22px;
+  padding: 25px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+
+.column-header {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.pending-header {
+  color: #7c3aed;
+}
+
+.completed-header {
+  color: #059669;
+}
+
+.trade-card {
+  background: #fafafa;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #ececec;
+}
+
+.completed-card {
+  opacity: 0.92;
+}
+
+.trade-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.status-tag {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.free {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.taken {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.done {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.listing-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #111827;
+}
+
+.listing-description {
+  color: #6b7280;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.trade-details p {
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.claim-btn {
+  margin-top: 15px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #7c3aed;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.claim-btn:hover {
+  transform: translateY(-2px);
+  opacity: 0.92;
+}
+
+.empty-text {
+  color: #6b7280;
+}
+
+@media (max-width: 900px) {
+
+  .market-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .market-title {
+    font-size: 2.2rem;
+  }
+}
+

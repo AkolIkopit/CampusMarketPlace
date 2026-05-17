@@ -2,21 +2,23 @@ import { useState } from "react";
 import "./AdminDashboard.css";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
-
+import Seller_Popup from "./Seller_Popup";
 export default function AdminDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
+ const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
+const handleLogout = async () => {
+  await supabase.auth.signOut();
+  navigate("/");
+};
 
   return (
     <main className="dashboard-container">
+
       {/* HEADER */}
       <header className="main-header">
         <nav className="header-nav">
+
           {/* LOGO */}
           <section className="logo-section">
             <img src="/logo.png" alt="logo" className="header-logo" />
@@ -40,7 +42,8 @@ export default function AdminDashboard() {
                 </button>
               </section>
             )}
-          </section>
+          </section>                              
+
         </nav>
       </header>
 
@@ -57,10 +60,11 @@ export default function AdminDashboard() {
 
       {/* ACTIONS */}
       <section className="quick-actions-grid">
+
         {/* ✅ ROLE REQUESTS */}
         <button
           className="action-block"
-          onClick={() => navigate("/dashboard/admin/role-approval")}
+         onClick={() => navigate("/dashboard/admin/role-approval")}
         >
           <span className="block-icon">📄</span>
           <h3>Role Requests</h3>
@@ -77,14 +81,14 @@ export default function AdminDashboard() {
           <p>View and manage platform users.</p>
         </button>
 
-        {/* ✅ MANAGE LISTINGS (Changed from Communicate) */}
+        {/* COMMUNICATION */}
         <button
           className="action-block"
-          onClick={() => navigate("/dashboard/admin/manage-listings")}
+          onClick={() => navigate("/dashboard/admin/messages")}
         >
-          <span className="block-icon">📦</span>
-          <h3>Manage Listings</h3>
-          <p>Review, flag, or remove marketplace items.</p>
+          <span className="block-icon">💬</span>
+          <h3>Communicate</h3>
+          <p>Message users and staff.</p>
         </button>
 
         {/* ANALYTICS */}
@@ -96,7 +100,9 @@ export default function AdminDashboard() {
           <h3>Analytics</h3>
           <p>Monitor platform activity.</p>
         </button>
+
       </section>
+
     </main>
   );
 }
