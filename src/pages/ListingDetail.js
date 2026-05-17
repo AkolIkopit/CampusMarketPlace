@@ -190,7 +190,7 @@ const ListingDetail = () => {
 
   if (loading) return <main className="detail-loading-screen"><Loader2 className="spinner" /></main>;
   if (!listing) return <main className="detail-loading-screen"><h2>Listing not found.</h2></main>;
-
+//testing commits
   return (
     <main className="listing-detail-page">
       <section className="aurora-bg" aria-hidden="true">
