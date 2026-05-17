@@ -7,20 +7,22 @@ const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 export default function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [done, setDone] = useState(false);
+  const [updated, setUpdated] = useState(false);
 
   useEffect(() => {
     handlePaymentSuccess();
   }, []);
 
-  const handlePaymentSuccess = async () => {
-    // PayFast appends these to the return_url
-    const paymentId = searchParams.get("pf_payment_id");
-    const transactionId = searchParams.get("transaction");
+ const handlePaymentSuccess = async () => {
+  const transactionId = searchParams.get("transaction");
+  console.log("Transaction ID from URL:", transactionId);
+  if (!transactionId) { setUpdated(true); return; }
 
-    // get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const { data: transaction } = await supabase
+    .from("transactions")
+    .select("id, agreed_amount, cash_shortfall_due, listing_id, buyer_id")
+    .eq("id", transactionId)
+    .maybeSingle();
 
     let transactionQuery = supabase
       .from("transactions")
@@ -45,50 +47,36 @@ export default function PaymentSuccess() {
     }
 
     const { data: transaction } = await transactionQuery.maybeSingle();
+  console.log("Transaction data:", transaction);
 
-    if (!transaction) {
-      setDone(true);
-      return;
-    }
+  if (!transaction) { setUpdated(true); return; }
 
-    // for sandbox testing assume full payment
-    const newShortfall = 0;
-    const newPaymentStatus = "FULLY_PAID";
+  await supabase
+    .from("transactions")
+    .update({
+      payment_status: "FULLY_PAID",
+      cash_shortfall_due: 0,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", transactionId);
 
-    // update transaction
-    await supabase
-      .from("transactions")
-      .update({
-        payment_status: newPaymentStatus,
-        cash_shortfall_due: newShortfall,
-        payment_reference: paymentId || "sandbox",
-      })
-      .eq("id", transaction.id);
+  console.log("Updating booking with listing_id:", transaction.listing_id, "buyer_id:", transaction.buyer_id);
 
-    // update linked booking
-    await supabase
-      .from("bookings")
-      .update({
-        amount_paid: parseFloat(transaction.agreed_amount),
-        cash_shortfall: 0,
-      })
-      .eq("transaction_id", transaction.id);
+  const { data: bookingData, error: bookingError } = await supabase
+    .from("bookings")
+    .update({
+      amount_paid: parseFloat(transaction.agreed_amount),
+      cash_shortfall: 0,
+      payment_status: "FULLY_PAID",
+    })
+    .eq("listing_id", transaction.listing_id)
+    .eq("buyer_id", transaction.buyer_id)
+    .select();
 
-    const itemTitle = transaction.listings?.title || "the item";
-    const paidAmount = parseFloat(transaction.agreed_amount || 0).toFixed(2);
-    await supabase.from("messages").insert([
-      {
-        listing_id: transaction.listing_id,
-        sender_id: transaction.buyer_id,
-        receiver_id: transaction.seller_id,
-        message_text: `${SYSTEM_MESSAGE_PREFIX}Payment of R${paidAmount} has been made for ${itemTitle}.`,
-        transaction_id: transaction.id,
-        is_read: false,
-      },
-    ]);
+  console.log("Booking update result:", bookingData, "Error:", bookingError);
 
-    setDone(true);
-  };
+  setUpdated(true);
+};
 
   return (
     <main style={{ textAlign: "center", padding: "80px 20px" }}>
@@ -104,7 +92,7 @@ export default function PaymentSuccess() {
           border: "none",
           borderRadius: "10px",
           fontWeight: "700",
-          cursor: "pointer"
+          cursor: "pointer",
         }}
       >
         Back to Messages
