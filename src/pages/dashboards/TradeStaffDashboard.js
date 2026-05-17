@@ -70,10 +70,7 @@ export default function TradeStaffDashboard({ profile }) {
         {menuOpen && (
           <section className="dropdown-menu">
 
-            <button className="dropdown-item" onClick={() => { setView("edit"); setMenuOpen(false); }}>
-              Edit Profile
-            </button>
-
+           
             <button
               className="dropdown-item logout"
               onClick={handleLogout}
@@ -98,11 +95,11 @@ export default function TradeStaffDashboard({ profile }) {
     </span>
 
     <h1 className="hero-title">
-      Manage marketplace trades and exchanges.
+      Manage marketplace sales or trades and exchanges.
     </h1>
 
     <p className="hero-description">
-      Claim trades, manage collections, and oversee secure marketplace transactions.
+      Claim trades,sales, manage collections, and oversee secure marketplace transactions.
     </p>
 
   </section>
@@ -125,7 +122,7 @@ export default function TradeStaffDashboard({ profile }) {
       </h3>
 
       <p>
-        View all active marketplace trades and claim responsibility.
+        View all active marketplace trades or sales and claim responsibility.
       </p>
 
     </button>
@@ -141,11 +138,11 @@ export default function TradeStaffDashboard({ profile }) {
       </span>
 
       <h3>
-        My Trades
+        My Assigned Trades & Sales
       </h3>
 
       <p>
-        Manage the trades currently assigned to you.
+        Manage the trades and sales currently assigned to you.
       </p>
 
     </button>
@@ -161,7 +158,7 @@ export default function TradeStaffDashboard({ profile }) {
       </span>
 
       <h3>
-        Completed Trades
+        Completed Trades & Sales
       </h3>
 
       <p>
