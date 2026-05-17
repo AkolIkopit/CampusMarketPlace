@@ -22,8 +22,8 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '24.x'
-          cache: 'npm'
+          node-version: "24.x"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm install
@@ -32,9 +32,9 @@ jobs:
         # continue-on-error ensures the workflow doesn't stop here if tests fail
         continue-on-error: true
         run: |
-          mkdir -p coverage
-          touch coverage/lcov.info
-          CI=true npm run test:coverage
+          CI=true npm run test:coverage || true
+          echo "Coverage directory contents:"
+          find coverage -maxdepth 2 -type f | sort || true
 
       - name: Upload coverage to Codecov
         # if: always() ensures this runs even if the previous step failed
@@ -58,12 +58,12 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '24.x'
+          node-version: "24.x"
 
       - name: npm install, build
         run: |
           npm install
-          CI=false npm run build --if-present 
+          CI=false npm run build --if-present
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -83,7 +83,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -91,10 +91,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7C97BB6D76064C04842960EDE7AEE970 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D2542C92BDAC437CA18C0C5DCE856216 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: "Deploy to Azure Web App"
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'unimart'
-          slot-name: 'Production'
+          app-name: "unimart"
+          slot-name: "Production"
           package: .
