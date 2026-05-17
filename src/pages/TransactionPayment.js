@@ -77,7 +77,7 @@ const handlePayment = async () => {
   const fields = {
     merchant_id: MERCHANT_ID,
     merchant_key: MERCHANT_KEY,
-    return_url: RETURN_URL,
+    return_url: `${RETURN_URL}?transaction=${transactionId}`,
     cancel_url: CANCEL_URL,
     notify_url: NOTIFY_URL,
     amount: amount.toFixed(2),
