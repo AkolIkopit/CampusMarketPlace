@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Phone, Star, ShieldCheck, Briefcase, Edit3, 
   MapPin, Send, ArrowLeft, Trash2, Clock, 
-  User, IdCard, Loader2, Box, DollarSign, Package, Calendar, Plus
+  User, IdCard, Loader2, Box, ShoppingCart, DollarSign, Package, Calendar, Plus
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import LoadingScreen from '../../components/LoadingScreen';
@@ -15,8 +15,6 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
   const [existingApp, setExistingApp] = useState(null);
   const [isFetchingApp, setIsFetchingApp] = useState(true);
   const [transactions, setTransactions] = useState([]);
-  const [orderBookings, setOrderBookings] = useState([]);
-  const paymentPendingStatuses = ['pending', 'pending_payment'];
 
   // --- CONSTANTS ---
   const campuses = ["Main Campus", "Education Campus", "Med Campus"];
@@ -57,99 +55,6 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
       .select(`*, listings(title, listing_images(image_url, is_primary))`)
       .order('created_at', { ascending: false });
     if (!error) setTransactions(data || []);
-
-    const { data: bookingsData, error: bookingsError } = await supabase
-      .from('bookings')
-      .select('id, transaction_id, listing_id, buyer_id, seller_id, status, collection_time, item_received, item_released')
-      .or(`buyer_id.eq.${profile.id},seller_id.eq.${profile.id}`)
-      .order('created_at', { ascending: false });
-
-    if (!bookingsError) setOrderBookings(bookingsData || []);
-  };
-
-  const getOrderBooking = (transaction) => (
-    orderBookings.find((booking) => booking.transaction_id === transaction.id) ||
-    orderBookings.find((booking) => booking.listing_id === transaction.listing_id)
-  );
-
-  const canBookCollection = (booking) => (
-    booking?.status === 'ready_for_collection' &&
-    !booking.collection_time &&
-    !booking.item_released
-  );
-
-  const hasBookedCollection = (booking) => (
-    booking?.status === 'ready_for_collection' &&
-    Boolean(booking.collection_time) &&
-    !booking.item_released
-  );
-
-  const formatCollectionTime = (collectionTime) => {
-    if (!collectionTime) return '';
-    return new Date(collectionTime).toLocaleString([], {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  };
-
-  const isPaymentPending = (transaction) => (
-    paymentPendingStatuses.includes((transaction.payment_status || '').toLowerCase())
-  );
-
-  const canOpenPayment = (transaction, booking) => {
-    const bookingStatus = booking?.status || transaction.booking_status || '';
-    const hasPaymentStageBooking = bookingStatus && !['not_booked', 'cancelled', 'expired'].includes(bookingStatus);
-
-    return (
-      transaction?.id &&
-      transaction.buyer_id === profile.id &&
-      isPaymentPending(transaction) &&
-      hasPaymentStageBooking &&
-      !['pending_seller_acceptance', 'declined_by_seller', 'cancelled', 'completed'].includes(transaction.status)
-    );
-  };
-
-  const getDisplayAmount = (transaction) => (
-    transaction.agreed_amount ?? transaction.amount ?? 0
-  );
-
-  const getItemStatus = (transaction, booking) => {
-    const transactionStatus = transaction.status || '';
-    const bookingStatus = booking?.status || transaction.booking_status || '';
-
-    if (transactionStatus === 'declined_by_seller') return 'declined';
-    if (transactionStatus === 'cancelled' || bookingStatus === 'cancelled') return 'cancelled';
-    if (transactionStatus === 'completed' || booking?.item_released) return 'completed';
-    if (isPaymentPending(transaction) && bookingStatus && !['not_booked', 'cancelled', 'expired'].includes(bookingStatus)) return 'pending payment';
-    if (bookingStatus === 'ready_for_collection' && booking?.collection_time) return 'collection booked';
-    if (bookingStatus === 'ready_for_collection') return 'awaiting buyer collection';
-    if (bookingStatus === 'item_received' || booking?.item_received) return 'item dropped off';
-    if (bookingStatus === 'requested') return 'facility booking requested';
-    if (bookingStatus === 'confirmed') return 'facility booking confirmed';
-    if (transactionStatus === 'accepted_pending_booking' || transactionStatus === 'pending_booking') return 'awaiting seller booking';
-    if (transactionStatus === 'pending_seller_acceptance' || transactionStatus === 'pending') return 'awaiting seller acceptance';
-    if (transactionStatus === 'sold') return 'sold';
-
-    return transactionStatus || 'pending';
-  };
-
-  const openCollectionBooking = (transaction, booking) => {
-    const query = new URLSearchParams({
-      mode: 'collection',
-      booking: booking.id,
-      listing: transaction.listing_id,
-      seller: transaction.seller_id,
-      buyer: profile.id,
-      transaction: transaction.id,
-      item: transaction.listings?.title || 'Listing',
-      name: 'Seller',
-    });
-
-    navigate(`/bookings/new?${query.toString()}`);
-  };
-
-  const openPayment = (transaction) => {
-    navigate(`/transactions/${transaction.id}/payment`);
   };
 
   const submitApplication = async (e, role) => {
@@ -359,56 +264,22 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
         </nav>
 
         <ul className="history-list" style={{listStyle: 'none', padding: 0}}>
-          {(historyTab === 'orders' ? myOrders : mySales).map(t => {
-            const booking = historyTab === 'orders' ? getOrderBooking(t) : null;
-            const visibleBooking = getOrderBooking(t);
-            const collectionReady = canBookCollection(booking);
-            const collectionBooked = hasBookedCollection(booking);
-            const itemStatus = getItemStatus(t, visibleBooking);
-            const showPaymentButton = canOpenPayment(t, visibleBooking);
-            return (
-              <li key={t.id} className="history-item">
-                {(() => {
-                  const primaryImage = t.listings?.listing_images?.find((img) => img.is_primary) || t.listings?.listing_images?.[0];
-                  return <img src={primaryImage?.image_url || '/placeholder.jpg'} alt="" className="history-item-image" />;
-                })()}
-                <nav className="history-item-main">
-                  <strong>{t.listings?.title}</strong>
-                  <time>{new Date(t.created_at).toLocaleDateString()}</time>
-                  {collectionReady ? (
-                    <p className="collection-ready-note">Ready for collection at the trade facility.</p>
-                  ) : null}
-                  {collectionBooked ? (
-                    <p className="collection-booked-note">
-                      Collection booked for {formatCollectionTime(booking.collection_time)}.
-                    </p>
-                  ) : null}
-                </nav>
-                <aside className="history-item-side">
-                  <p>R {getDisplayAmount(t)}</p>
-                  <mark>{itemStatus}</mark>
-                  {showPaymentButton ? (
-                    <button
-                      type="button"
-                      className="payment-route-btn"
-                      onClick={() => openPayment(t)}
-                    >
-                      Make payment
-                    </button>
-                  ) : null}
-                  {collectionReady ? (
-                    <button
-                      type="button"
-                      className="collection-slot-btn"
-                      onClick={() => openCollectionBooking(t, booking)}
-                    >
-                      <Calendar size={16} /> Book collection slot
-                    </button>
-                  ) : null}
-                </aside>
-              </li>
-            );
-          })}
+          {(historyTab === 'orders' ? myOrders : mySales).map(t => (
+            <li key={t.id} style={{display: 'flex', alignItems: 'center', gap: '20px', padding: '15px', background: 'white', borderRadius: '20px', marginBottom: '10px', border: '2px solid #0d1b2a', boxShadow: '0 4px 15px rgba(0,0,0,0.02)'}}>
+              {(() => {
+                const primaryImage = t.listings?.listing_images?.find((img) => img.is_primary) || t.listings?.listing_images?.[0];
+                return <img src={primaryImage?.image_url || '/placeholder.jpg'} alt="" style={{width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover'}} />;
+              })()}
+              <nav style={{flex: 1}}>
+                <strong style={{display: 'block', color: '#0a192f'}}>{t.listings?.title}</strong>
+                <time style={{fontSize: '0.8rem', color: '#666'}}>{new Date(t.created_at).toLocaleDateString()}</time>
+              </nav>
+              <aside style={{textAlign: 'right'}}>
+                <p style={{margin: 0, fontWeight: '900', color: '#0a192f'}}>R {t.amount || '0'}</p>
+                <mark style={{background: '#e6fffa', color: '#00a884', fontSize: '0.6rem', padding: '3px 8px', borderRadius: '10px', textTransform: 'uppercase', fontWeight: 'bold'}}>{t.status}</mark>
+              </aside>
+            </li>
+          ))}
           {(historyTab === 'orders' ? myOrders : mySales).length === 0 && <p style={{textAlign: 'center', color: '#ccc', padding: '40px'}}>No {historyTab} found.</p>}
         </ul>
       </section>
