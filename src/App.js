@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-d
 import { supabase } from "./supabase";
 import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
 import Analytics from "./pages/dashboards/Analytics";
-
+import FacilitySettings from "./pages/dashboards/FacilitySettings";
 // Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
@@ -204,6 +204,11 @@ export default function App() {
         <Route
   path="/dashboard/admin/role-approval"
   element={session ? <RoleApproval /> : <Navigate to="/" />}
+/>
+
+<Route 
+  path="/dashboard/admin/facility-settings" 
+  element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<FacilitySettings />} />} 
 />
 <Route
   path="/dashboard/admin/users"

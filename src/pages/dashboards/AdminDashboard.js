@@ -96,6 +96,17 @@ export default function AdminDashboard() {
           <h3>Analytics</h3>
           <p>Monitor platform activity.</p>
         </button>
+
+        {/* 5. NEW: FACILITY SETTINGS */}
+        <button
+          className="action-block"
+          onClick={() => navigate("/dashboard/admin/facility-settings")}
+          style={{ border: '1px solid #f0a500' }} // Subtle orange highlight
+        >
+          <span className="block-icon">🏢</span>
+          <h3>Facility Settings</h3>
+          <p>Configure hours and trade slot capacity.</p>
+        </button>
       </section>
     </main>
   );

@@ -5,9 +5,7 @@ export default function RoleApproval() {
   const [applications, setApplications] = useState([]);
   const [loadingId, setLoadingId] = useState(null);
 
-  useEffect(() => {
-    fetchApplications();
-  }, []);
+  useEffect(() => { fetchApplications(); }, []);
 
   const fetchApplications = async () => {
     const { data, error } = await supabase
@@ -16,48 +14,48 @@ export default function RoleApproval() {
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching applications:", error.message);
-    } else {
-      setApplications(data);
-    }
+    if (!error) setApplications(data);
   };
 
-  // ✅ Approve application (Now only sets status to approved)
   const approveApplication = async (app) => {
     setLoadingId(app.id);
     try {
-      // 1. Update ONLY the application status
-      const { error } = await supabase
-        .from("role_applications")
-        .update({ status: "approved" })
-        .eq("id", app.id);
+      // 1. Upgrade User Role
+      await supabase.from("profiles").update({ role: app.requested_role }).eq("id", app.user_id);
 
-      if (error) throw error;
+      // 2. If it's a Staff member, create their permanent roster rows
+      if (app.requested_role === 'staff' && app.availability) {
+        try {
+            const roster = JSON.parse(app.availability);
+            const rosterRows = Object.entries(roster)
+                .filter(([day, time]) => time !== "Not Available")
+                .map(([day, time]) => ({
+                    staff_id: app.user_id,
+                    day_of_week: day,
+                    time_slot: time
+                }));
+            
+            if (rosterRows.length > 0) {
+                await supabase.from('staff_availability').insert(rosterRows);
+            }
+        } catch (e) {
+            console.error("No JSON roster found, likely an old text application.");
+        }
+      }
 
-      alert("Application approved! The user will be prompted to accept on their dashboard.");
+      // 3. Mark application as approved
+      await supabase.from("role_applications").update({ status: "approved" }).eq("id", app.id);
+
+      alert("Role Approved. The user will be prompted to transition.");
       fetchApplications();
-    } catch (err) {
-      console.error("Approve error:", err.message);
-    } finally {
-      setLoadingId(null);
-    }
+    } catch (err) { console.error(err.message); } finally { setLoadingId(null); }
   };
 
   const rejectApplication = async (id) => {
     setLoadingId(id);
-    try {
-      await supabase
-        .from("role_applications")
-        .update({ status: "rejected" })
-        .eq("id", id);
-
-      fetchApplications();
-    } catch (err) {
-      console.error("Reject error:", err.message);
-    } finally {
-      setLoadingId(null);
-    }
+    await supabase.from("role_applications").update({ status: "rejected" }).eq("id", id);
+    fetchApplications();
+    setLoadingId(null);
   };
 
   return (
@@ -65,40 +63,19 @@ export default function RoleApproval() {
       <section className="hero-section">
         <span className="hero-kicker">ADMIN</span>
         <h1 className="hero-title">Role Applications</h1>
-        <p className="hero-description">
-          Review and approve role upgrade requests.
-        </p>
       </section>
 
       <section className="feed-outer-section" style={{padding: '0 40px'}}>
-        {applications.length === 0 && (
-          <p>No pending applications.</p>
-        )}
-
+        {applications.length === 0 && <p>No pending applications.</p>}
         {applications.map((app) => (
-          <article key={app.id} className="action-block" style={{marginBottom: '15px', width: '100%'}}>
+          <article key={app.id} className="action-block" style={{marginBottom: '15px', width: '100%', padding: '20px', background: 'white', borderRadius: '15px'}}>
             <h3>{app.full_name}</h3>
-            <p><strong>Requested Role:</strong> {app.requested_role.toUpperCase()}</p>
+            <p><strong>Target Role:</strong> {app.requested_role.toUpperCase()}</p>
             <p><strong>Campus:</strong> {app.campus_location}</p>
             <p><strong>Motivation:</strong> {app.motivation}</p>
-            <p><strong>Experience:</strong> {app.experience}</p>
-            <p><strong>Availability:</strong> {app.availability}</p>
-
-            <section style={{ marginTop: "10px" }}>
-              <button
-                onClick={() => approveApplication(app)}
-                disabled={loadingId === app.id}
-                style={{background: '#27ae60', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer'}}
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => rejectApplication(app.id)}
-                disabled={loadingId === app.id}
-                style={{ marginLeft: "10px", background: '#e74c3c', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer' }}
-              >
-                Reject
-              </button>
+            <section style={{ marginTop: "15px" }}>
+              <button onClick={() => approveApplication(app)} disabled={loadingId === app.id} style={{background: '#27ae60', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer'}}>Approve</button>
+              <button onClick={() => rejectApplication(app.id)} disabled={loadingId === app.id} style={{ marginLeft: "10px", background: '#e74c3c', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer' }}>Reject</button>
             </section>
           </article>
         ))}
