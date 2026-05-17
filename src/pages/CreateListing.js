@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Loader2, Lightbulb } from 'lucide-react';
 import { supabase } from '../supabase';
 import LoadingScreen from '../components/LoadingScreen';
 import './CreateListing.css';
@@ -24,6 +24,11 @@ const CreateListing = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
   const [loadError, setLoadError] = useState('');
+  
+  // States for Price Suggestion
+  const [suggestion, setSuggestion] = useState(null);
+  const [isFetchingSuggestion, setIsFetchingSuggestion] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     category_id: '',
@@ -45,6 +50,26 @@ const CreateListing = () => {
   const pageTitle = isEditMode ? 'Edit Listing' : 'Create Listing';
   const submitLabel = isEditMode ? 'Update Listing' : 'POST';
 
+   const fetchLiveSAInflation = async () => {
+  try {
+    // This hits the World Bank API for South Africa's most recent CPI inflation data
+    const response = await fetch(
+      "https://api.worldbank.org/v2/country/ZAF/indicator/FP.CPI.TOTL.ZG?format=json&per_page=1"
+    );
+    const data = await response.json();
+    
+    // Extract the most recent percentage (e.g., 5.9 for 5.9%)
+    const liveInflationRate = data[1][0].value; 
+    console.log("Live SA Inflation Rate from World Bank:", liveInflationRate + "%");
+    
+    // Return as a multiplier (e.g., 1.059)
+    return 1 + (liveInflationRate / 100);
+  } catch (error) {
+    console.error("Failed to fetch live economic data, using database defaults:", error);
+    return null; // Fallback
+  }
+};
+  // 1. Fetch Categories for the dropdown
   useEffect(() => {
     const loadForm = async () => {
       try {
@@ -87,6 +112,64 @@ const CreateListing = () => {
 
     loadForm();
   }, [isEditMode, listingId]);
+
+  // 2. LIVE SA DATA INTEGRATION LOGIC
+  useEffect(() => {
+  const getLiveSASuggestion = async () => {
+    if (!formData.category_id || !formData.condition) return;
+
+    setIsFetchingSuggestion(true);
+    
+    const selectedCat = categories.find(c => c.id === parseInt(formData.category_id));
+    if (!selectedCat) {
+      setIsFetchingSuggestion(false);
+      return;
+    }
+
+    // 1. Fetch live inflation from the World Bank API
+    const liveMultiplier = await fetchLiveSAInflation();
+
+    // 2. Fetch the category base data from Supabase
+    let { data: econ } = await supabase
+      .from('sa_economic_indicators')
+      .select('*')
+      .ilike('category_name', selectedCat.name) 
+      .maybeSingle();
+
+    // Fuzzy match logic for symbols (Art & Craft)
+    if (!econ) {
+      const firstWord = selectedCat.name.split(' ')[0];
+      const { data: fuzzyEcon } = await supabase
+        .from('sa_economic_indicators')
+        .select('*')
+        .ilike('category_name', `${firstWord}%`)
+        .maybeSingle();
+      econ = fuzzyEcon;
+    }
+
+    if (econ) {
+      // Use the Live World Bank multiplier if available, otherwise use the DB's static CPI
+      const currentInflation = liveMultiplier || econ.cpi_factor;
+      
+      const weights = { 'New': 0.9, 'Like New': 0.75, 'Good': 0.55, 'Fair': 0.35, 'Poor': 0.15 };
+      
+      // CALCULATION: (Research Price * Live World Bank Inflation) * Condition
+      const currentMarketNewPrice = econ.base_new_price * currentInflation;
+      const suggested = currentMarketNewPrice * (weights[formData.condition] || 0.5);
+
+      setSuggestion({
+        price: Math.round(suggested),
+        // Prove it's live in the UI
+        source: liveMultiplier ? "Live World Bank SA Data" : econ.source_info
+      });
+    } else {
+      setSuggestion(null);
+    }
+    setIsFetchingSuggestion(false);
+  };
+
+  getLiveSASuggestion();
+}, [formData.category_id, formData.condition, categories])
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
@@ -247,6 +330,13 @@ const CreateListing = () => {
             const msg = (updateError && updateError.message) || 'No rows were updated.';
             throw new Error(`Listing update failed: ${msg}`);
           }
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('listing-Images')
+        .upload(filePath, imageFile);
 
         if (imageFile) {
           await uploadImage(user.id, resolvedListingId);

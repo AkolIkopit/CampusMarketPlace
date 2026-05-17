@@ -1,8 +1,9 @@
+
+
+
 import { useEffect, useState } from "react";
-
 import { supabase } from "../../supabase";
-
-import "./AdminDashboard.css";
+import "./MarketTrades.css";
 
 export default function MarketTrades() {
 
@@ -13,12 +14,14 @@ export default function MarketTrades() {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
+
     getCurrentUser();
 
     fetchTrades();
+
   }, []);
 
-  // GET CURRENT STAFF USER
+  // CURRENT USER
   const getCurrentUser = async () => {
 
     const {
@@ -28,49 +31,63 @@ export default function MarketTrades() {
     setCurrentUser(user);
   };
 
-  // FETCH TRADES
+  // FETCH MARKET SALES & TRADES
   const fetchTrades = async () => {
 
-    // PENDING + ASSIGNED
-    const { data: pendingData, error: pendingError } =
-      await supabase
-        .from("bookings")
-        .select("*")
-        .neq("status", "completed")
-        .order("created_at", { ascending: false });
+    // PENDING
+    const {
+      data: pending,
+      error: pendingError
+    } = await supabase
+      .from("bookings")
+      .select(`
+        *,
+        listings(title, description),
+        buyer:buyer_id(full_name),
+        seller:seller_id(full_name)
+      `)
+      .neq("status", "completed")
+      .order("created_at", { ascending: false });
 
     // COMPLETED
-    const { data: completedData, error: completedError } =
-      await supabase
-        .from("bookings")
-        .select("*")
-        .eq("status", "completed")
-        .order("created_at", { ascending: false })
-        .limit(100);
+    const {
+      data: completed,
+      error: completedError
+    } = await supabase
+      .from("bookings")
+      .select(`
+        *,
+        listings(title, description),
+        buyer:buyer_id(full_name),
+        seller:seller_id(full_name)
+      `)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(100);
 
-    if (pendingError) {
-      console.error(pendingError.message);
+    if (pendingError || completedError) {
+
+      console.error(
+        pendingError?.message ||
+        completedError?.message
+      );
+
+    } else {
+
+      setPendingTrades(pending || []);
+
+      setCompletedTrades(completed || []);
     }
-
-    if (completedError) {
-      console.error(completedError.message);
-    }
-
-    setPendingTrades(pendingData || []);
-
-    setCompletedTrades(completedData || []);
   };
 
-  // CLAIM TRADE
+  // CLAIM SALE / TRADE
   const claimTrade = async (tradeId) => {
 
-    if (!currentUser) return;
-
-    const confirmed = window.confirm(
-      "Are you sure you want to claim this trade?"
+    const confirmClaim = window.confirm(
+      "Are you sure you want to handle this sale/trade?"
     );
 
-    if (!confirmed) return;
+    if (!confirmClaim) return;
 
     const { error } = await supabase
       .from("bookings")
@@ -91,84 +108,130 @@ export default function MarketTrades() {
   };
 
   return (
-    <main className="dashboard-container">
+
+    <main className="market-page">
 
       {/* HERO */}
-      <section className="hero-section">
+      <section className="market-hero">
 
-        <span className="hero-kicker">
-          MARKET
+        <span className="market-kicker">
+          MARKET MANAGEMENT
         </span>
 
-        <h1 className="hero-title">
-          Live marketplace trade queue
+        <h1 className="market-title">
+          Marketplace Sales & Trades
         </h1>
 
-        <p className="hero-description">
-          Claim and manage active marketplace exchanges.
+        <p className="market-description">
+          Manage marketplace transactions, assign responsibility,
+          and monitor completed exchanges.
         </p>
 
       </section>
 
-      {/* TWO COLUMNS */}
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "30px",
-          padding: "40px 10%"
-        }}
-      >
+      {/* GRID */}
+      <section className="market-grid">
 
-        {/* PENDING TRADES */}
-        <section>
+        {/* PENDING */}
+        <section className="market-column">
 
-          <h2
-            style={{
-              color: "#0a192f",
-              marginBottom: "20px"
-            }}
-          >
-            Pending Trades
-          </h2>
+          <div className="column-header pending-header">
+            Pending Sales & Trades
+          </div>
 
           {pendingTrades.length === 0 && (
-            <p>No active trades.</p>
+            <p className="empty-text">
+              No pending sales or trades.
+            </p>
           )}
 
           {pendingTrades.map((trade) => (
 
             <article
               key={trade.id}
-              className="action-block"
-              style={{
-                marginBottom: "20px"
-              }}
+              className="trade-card"
             >
 
-              <h3>
-                Trade #{trade.id.slice(0, 6)}
-              </h3>
+              <div className="trade-top">
 
-              <p>
-                Status: {trade.status}
+                <h3>
+                  #{trade.id.slice(0, 6)}
+                </h3>
+
+                <span
+                  className={
+                    trade.staff_id
+                      ? "status-tag taken"
+                      : "status-tag free"
+                  }
+                >
+                  {trade.staff_id
+                    ? "TAKEN"
+                    : "FREE"}
+                </span>
+
+              </div>
+
+              <h2 className="listing-title">
+                {trade.listings?.title || "Marketplace Item"}
+              </h2>
+
+              <p className="listing-description">
+                {trade.listings?.description ||
+                  "No description available."}
               </p>
 
-              <p>
-                Staff:
-                {" "}
-                {trade.staff_id
-                  ? "TAKEN"
-                  : "FREE"}
-              </p>
+              <div className="trade-details">
+
+                <p>
+                  <strong>Seller:</strong>
+                  {" "}
+                  {trade.seller?.full_name || "Unknown"}
+                </p>
+
+                <p>
+                  <strong>Buyer:</strong>
+                  {" "}
+                  {trade.buyer?.full_name || "Unknown"}
+                </p>
+
+                <p>
+                  <strong>Status:</strong>
+                  {" "}
+                  {trade.status}
+                </p>
+
+                <p>
+                  <strong>Drop-Off:</strong>
+                  {" "}
+                  {trade.dropoff_time
+                    ? new Date(
+                        trade.dropoff_time
+                      ).toLocaleString()
+                    : "Not Scheduled"}
+                </p>
+
+                <p>
+                  <strong>Collection:</strong>
+                  {" "}
+                  {trade.collection_time
+                    ? new Date(
+                        trade.collection_time
+                      ).toLocaleString()
+                    : "Not Scheduled"}
+                </p>
+
+              </div>
 
               {!trade.staff_id && (
 
                 <button
-                  className="suspend-btn"
-                  onClick={() => claimTrade(trade.id)}
+                  className="claim-btn"
+                  onClick={() =>
+                    claimTrade(trade.id)
+                  }
                 >
-                  Claim Trade
+                  Claim Sale / Trade
                 </button>
 
               )}
@@ -179,38 +242,58 @@ export default function MarketTrades() {
 
         </section>
 
-        {/* COMPLETED TRADES */}
-        <section>
+        {/* COMPLETED */}
+        <section className="market-column">
 
-          <h2
-            style={{
-              color: "#0a192f",
-              marginBottom: "20px"
-            }}
-          >
-            Completed Trades
-          </h2>
+          <div className="column-header completed-header">
+            Completed Sales & Trades
+          </div>
 
           {completedTrades.length === 0 && (
-            <p>No completed trades yet.</p>
+            <p className="empty-text">
+              No completed sales or trades.
+            </p>
           )}
 
           {completedTrades.map((trade) => (
 
             <article
               key={trade.id}
-              className="action-block"
-              style={{
-                marginBottom: "20px"
-              }}
+              className="trade-card completed-card"
             >
 
-              <h3>
-                Trade #{trade.id.slice(0, 6)}
-              </h3>
+              <div className="trade-top">
+
+                <h3>
+                  #{trade.id.slice(0, 6)}
+                </h3>
+
+                <span className="status-tag done">
+                  COMPLETED
+                </span>
+
+              </div>
+
+              <h2 className="listing-title">
+                {trade.listings?.title || "Marketplace Item"}
+              </h2>
 
               <p>
-                COMPLETED
+                <strong>Seller:</strong>
+                {" "}
+                {trade.seller?.full_name || "Unknown"}
+              </p>
+
+              <p>
+                <strong>Buyer:</strong>
+                {" "}
+                {trade.buyer?.full_name || "Unknown"}
+              </p>
+
+              <p>
+                <strong>Final Status:</strong>
+                {" "}
+                {trade.status}
               </p>
 
             </article>
@@ -224,3 +307,5 @@ export default function MarketTrades() {
     </main>
   );
 }
+
+
