@@ -90,16 +90,25 @@ function createStudentDashboardMocks({
     if (table === 'listings') {
       return {
         select: jest.fn((fields) => {
-          // market query (no limit) vs recent query (has limit)
-          return {
+          // Create a base chain object that supports all methods AND resolves as a Promise
+          const chain = {
             eq: jest.fn().mockReturnThis(),
             gte: jest.fn().mockReturnThis(),
             lte: jest.fn().mockReturnThis(),
             order: jest.fn(() => ({
               limit: jest.fn().mockResolvedValue({ data: listings }),
               then: (resolve) => Promise.resolve({ data: listings }).then(resolve)
-            }))
+            })),
+            // This allows the evaluated chain itself to be 'awaited' or '.then()'ed directly
+            then: (resolve) => Promise.resolve({ data: listings }).then(resolve)
           };
+          
+          // Make sure eq, gte, lte return this exact augmented object
+          chain.eq.mockReturnValue(chain);
+          chain.gte.mockReturnValue(chain);
+          chain.lte.mockReturnValue(chain);
+          
+          return chain;
         }),
         update: profilesUpdate
       };
@@ -109,7 +118,6 @@ function createStudentDashboardMocks({
     if (table === 'profiles') return { update: profilesUpdate };
     return { select: jest.fn().mockResolvedValue({ data: [] }) };
   });
-
   return { profilesUpdateEq, roleAppUpdateEq };
 }
 
