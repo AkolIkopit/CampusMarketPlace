@@ -21,7 +21,7 @@ const CartPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('cart_items')
-        .select(`id, listings(id, title, price, categories(name), listing_images(image_url), seller_id)`)
+        .select(`id, listings(id, title, price, categories(name), listing_images(image_url, is_primary), seller_id)`)
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -107,7 +107,16 @@ const CartPage = () => {
             {cartItems.map(item => (
               <article key={item.id} className="cart-item-card">
                 <figure className="cart-item-image">
-                  <img src={item.listings?.listing_images[0]?.image_url || '/placeholder.jpg'} alt="" />
+                  {(() => {
+                    const primaryImage = item.listings?.listing_images?.find((img) => img.is_primary) || item.listings?.listing_images?.[0];
+                    return (
+                      <img
+                        src={primaryImage?.image_url || '/placeholder.jpg'}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
+                      />
+                    );
+                  })()}
                 </figure>
                 <section className="cart-item-details">
                   <mark className="item-category-tag">{item.listings?.categories.name}</mark>
