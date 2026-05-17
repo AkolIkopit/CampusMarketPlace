@@ -139,3 +139,78 @@
   .form-fields-grid { grid-template-columns: 1fr; }
   .input-field.full-width { grid-column: span 1; }
 }
+
+/* --- Price Suggestion Box --- */
+.price-suggestion-tip {
+  margin-top: 15px;
+  background: #fdfaf5; /* Clean paper color */
+  border-left: 4px solid #f3a91e; /* Gold border */
+  padding: 15px;
+  border-radius: 12px;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.tip-header span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #0a192f;
+  letter-spacing: 0.5px;
+}
+
+.price-suggestion-tip p {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #0a192f;
+  font-weight: 500;
+}
+
+.price-suggestion-tip strong {
+  color: #0a192f;
+  font-weight: 800;
+}
+
+.price-suggestion-tip small {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.65rem;
+  color: #777;
+  font-style: italic;
+}
+
+.use-price-btn {
+  margin-top: 10px;
+  background: #0a192f;
+  color: #f3a91e;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.use-price-btn:hover {
+  background: #f3a91e;
+  color: #0a192f;
+}
+
+.fetching-text {
+  font-size: 0.7rem;
+  color: #f3a91e;
+  margin-top: 5px;
+  font-style: italic;
+}
