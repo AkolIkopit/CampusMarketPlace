@@ -200,6 +200,12 @@
   border: 1px solid #d1fae5;
 }
 
+.booking-info {
+  background: #e6fffa;
+  color: #0d5c63;
+  border: 1px solid rgba(13, 92, 99, 0.18);
+}
+
 .booking-error {
   background: #fef2f2;
   color: #b91c1c;
