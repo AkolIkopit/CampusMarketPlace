@@ -4,7 +4,9 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-d
 import { supabase } from "./supabase";
 import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
 import Analytics from "./pages/dashboards/Analytics";
-
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
+import TransactionPayment from "./pages/TransactionPayment";
 // Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
@@ -13,7 +15,6 @@ import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
 import BookingRequest from "./pages/BookingRequest";
 import MessagesPage from "./pages/Messages/MessagesPage";
-import TransactionPayment from "./pages/TransactionPayment";
 import LoadingScreen from "./components/LoadingScreen";
 import RoleApproval from "./pages/dashboards/RoleApproval";
 
@@ -247,6 +248,8 @@ export default function App() {
     />
   }
 />
+<Route path="/payment/success" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<PaymentSuccess />} />} />
+<Route path="/payment/cancel" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<PaymentCancel />} />} />
         <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
         <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
         <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
