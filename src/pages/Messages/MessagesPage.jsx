@@ -251,6 +251,7 @@ function MessagesPage({ profile }) {
         { data: profileRows, error: profileError },
         { data: listingRows, error: listingError },
         { data: transactionRows, error: transactionError },
+        { data: bookingRows, error: bookingError },
       ] =
         await Promise.all([
           otherUserIds.length
@@ -268,15 +269,23 @@ function MessagesPage({ profile }) {
                 .select("id, status, booking_status, payment_status, agreed_amount, cash_shortfall_due")
                 .in("id", transactionIds)
             : Promise.resolve({ data: [], error: null }),
+          transactionIds.length
+            ? supabase
+                .from("bookings")
+                .select("id, transaction_id, status, item_received, item_released, collection_time")
+                .in("transaction_id", transactionIds)
+            : Promise.resolve({ data: [], error: null }),
         ]);
 
       if (profileError) throw profileError;
       if (listingError) throw listingError;
       if (transactionError) throw transactionError;
+      if (bookingError) throw bookingError;
 
       const profileMap = Object.fromEntries((profileRows || []).map((row) => [row.id, row]));
       const listingMap = Object.fromEntries((listingRows || []).map((row) => [row.id, row]));
       const transactionMap = Object.fromEntries((transactionRows || []).map((row) => [row.id, row]));
+      const bookingMap = Object.fromEntries((bookingRows || []).map((row) => [row.transaction_id, row]));
       const conversationMap = new Map();
 
       // Group individual message rows into UI conversations.
@@ -313,7 +322,12 @@ function MessagesPage({ profile }) {
         if (message.transaction_id) {
           conversation.transactionId = message.transaction_id;
           conversation.transactionStatus = transactionMap[message.transaction_id]?.status || "";
-          conversation.bookingStatus = transactionMap[message.transaction_id]?.booking_status || "";
+          conversation.bookingStatus =
+            bookingMap[message.transaction_id]?.status ||
+            transactionMap[message.transaction_id]?.booking_status ||
+            "";
+          conversation.itemReceived = Boolean(bookingMap[message.transaction_id]?.item_received);
+          conversation.itemReleased = Boolean(bookingMap[message.transaction_id]?.item_released);
           conversation.paymentStatus = transactionMap[message.transaction_id]?.payment_status || "";
           conversation.agreedAmount = transactionMap[message.transaction_id]?.agreed_amount;
           conversation.cashShortfallDue = transactionMap[message.transaction_id]?.cash_shortfall_due;

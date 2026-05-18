@@ -132,4 +132,30 @@ describe('ChatWindow', () => {
 
     expect(screen.queryByRole('button', { name: 'Request a new booking' })).not.toBeInTheDocument();
   });
+
+  it('hides seller booking prompt once staff marks the item ready for collection', () => {
+    render(
+      <ChatWindow
+        conversation={{
+          ...conversation,
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          transactionId: 'transaction-1',
+          transactionStatus: 'accepted_pending_booking',
+          bookingStatus: 'ready_for_collection',
+          paymentStatus: 'pending_payment',
+          agreedAmount: 100,
+          cashShortfallDue: 100
+        }}
+        currentUserId="seller-1"
+        onSendMessage={jest.fn()}
+        isSending={false}
+        onBackToList={jest.fn()}
+        onRequestBooking={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Request a new booking' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Request facility booking' })).not.toBeInTheDocument();
+  });
 });

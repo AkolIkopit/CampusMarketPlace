@@ -20,9 +20,15 @@ function ChatWindow({
   const isSeller = !isSelfConversation && currentUserId === conversation.sellerId;
   const isBuyer = !isSelfConversation && currentUserId && currentUserId !== conversation.sellerId;
   const transactionStatus = conversation.transactionStatus || "";
+  const bookingStatus = (conversation.bookingStatus || "").toLowerCase();
   const paymentStatus = (conversation.paymentStatus || "unpaid").toLowerCase();
   const outstandingBalance = Number(conversation.cashShortfallDue ?? conversation.agreedAmount ?? 0);
   const paymentComplete = paymentStatus === "fully_paid";
+  const facilityHandoverStarted = Boolean(
+    conversation.itemReceived ||
+    conversation.itemReleased ||
+    ["item_received", "ready_for_collection", "completed"].includes(bookingStatus)
+  );
   const hasPendingTransaction = Boolean(
     conversation.transactionId &&
     isSeller &&
@@ -32,13 +38,14 @@ function ChatWindow({
     conversation.transactionId &&
     isSeller &&
     (transactionStatus === "accepted_pending_booking" || transactionStatus === "pending_booking") &&
+    !facilityHandoverStarted &&
     !paymentComplete
   );
   const hasExistingBooking = Boolean(
-    conversation.bookingStatus &&
-    conversation.bookingStatus !== "not_booked" &&
-    conversation.bookingStatus !== "cancelled" &&
-    conversation.bookingStatus !== "expired"
+    bookingStatus &&
+    bookingStatus !== "not_booked" &&
+    bookingStatus !== "cancelled" &&
+    bookingStatus !== "expired"
   );
   const buyerCanPay = Boolean(
     conversation.transactionId &&
