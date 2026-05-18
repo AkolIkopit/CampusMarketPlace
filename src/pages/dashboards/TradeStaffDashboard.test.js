@@ -105,4 +105,13 @@ describe('TradeStaffDashboard', () => {
       expect(navigateMock).toHaveBeenCalledWith('/');
     });
   });
+
+  it('opens the edit profile view when Edit Profile is clicked', async () => {
+    render(<TradeStaffDashboard profile={{ id: 'staff-1', full_name: 'Staff User', phone_number: '0123456789', student_number: '12345', campus: 'Main Campus', bio: 'Staff bio', avatar_url: '/avatar.png' }} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '☰' }));
+    await userEvent.click(screen.getByText('Edit Profile'));
+
+    expect(await screen.findByText('Save Changes')).toBeInTheDocument();
+  });
 });
