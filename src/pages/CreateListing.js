@@ -127,43 +127,47 @@ const CreateListing = () => {
         return;
       }
 
-      // 1. Fetch live inflation from the World Bank API
-      const liveMultiplier = await fetchLiveSAInflation();
+      try {
+        // 1. Fetch live inflation from the World Bank API
+        const liveMultiplier = await fetchLiveSAInflation();
 
-      // 2. Fetch the category base data from Supabase
-      let { data: econ } = await supabase
-        .from('sa_economic_indicators')
-        .select('*')
-        .ilike('category_name', selectedCat.name) 
-        .maybeSingle();
-
-      // Fuzzy match logic for symbols (Art & Craft)
-      if (!econ) {
-        const firstWord = selectedCat.name.split(' ')[0];
-        const { data: fuzzyEcon } = await supabase
+        // 2. Fetch the category base data from Supabase
+        let { data: econ } = await supabase
           .from('sa_economic_indicators')
           .select('*')
-          .ilike('category_name', `${firstWord}%`)
+          .ilike('category_name', selectedCat.name) 
           .maybeSingle();
-        econ = fuzzyEcon;
-      }
 
-      if (econ) {
-        // Use the Live World Bank multiplier if available, otherwise use the DB's static CPI
-        const currentInflation = liveMultiplier || econ.cpi_factor;
-        
-        const weights = { 'New': 0.9, 'Like New': 0.75, 'Good': 0.55, 'Fair': 0.35, 'Poor': 0.15 };
-        
-        // CALCULATION: (Research Price * Live World Bank Inflation) * Condition
-        const currentMarketNewPrice = econ.base_new_price * currentInflation;
-        const suggested = currentMarketNewPrice * (weights[formData.condition] || 0.5);
+        // Fuzzy match logic for symbols (Art & Craft)
+        if (!econ) {
+          const firstWord = selectedCat.name.split(' ')[0];
+          const { data: fuzzyEcon } = await supabase
+            .from('sa_economic_indicators')
+            .select('*')
+            .ilike('category_name', `${firstWord}%`)
+            .maybeSingle();
+          econ = fuzzyEcon;
+        }
 
-        setSuggestion({
-          price: Math.round(suggested),
-          // Prove it's live in the UI
-          source: liveMultiplier ? "Live World Bank SA Data" : econ.source_info
-        });
-      } else {
+        if (econ) {
+          // Use the Live World Bank multiplier if available, otherwise use the DB's static CPI
+          const currentInflation = liveMultiplier || econ.cpi_factor;
+          
+          const weights = { 'New': 0.9, 'Like New': 0.75, 'Good': 0.55, 'Fair': 0.35, 'Poor': 0.15 };
+          
+          // CALCULATION: (Research Price * Live World Bank Inflation) * Condition
+          const currentMarketNewPrice = econ.base_new_price * currentInflation;
+          const suggested = currentMarketNewPrice * (weights[formData.condition] || 0.5);
+
+          setSuggestion({
+            price: Math.round(suggested),
+            // Prove it's live in the UI
+            source: liveMultiplier ? "Live World Bank SA Data" : econ.source_info
+          });
+        } else {
+          setSuggestion(null);
+        }
+      } catch (err) {
         setSuggestion(null);
       }
       setIsFetchingSuggestion(false);

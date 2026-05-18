@@ -206,14 +206,18 @@ describe('AuthPage', () => {
   });
 
   it('uses backward navigation when history has more than one entry', async () => {
-    window.history.pushState({}, '', '/first');
-    window.history.pushState({}, '', '/second');
+    const originalLength = window.history.length;
+    Object.defineProperty(window.history, 'length', { value: 2, configurable: true });
 
-    render(<AuthPage />);
+    try {
+      render(<AuthPage />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Back' }));
 
-    expect(navigateMock).toHaveBeenCalledWith(-1);
+      expect(navigateMock).toHaveBeenCalledWith(-1);
+    } finally {
+      Object.defineProperty(window.history, 'length', { value: originalLength, configurable: true });
+    }
   });
 
   it('starts Google auth successfully when no OAuth error is returned', async () => {

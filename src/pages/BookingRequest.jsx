@@ -306,7 +306,7 @@ function BookingRequest() {
     const bookingBuyerId = buyerParam || currentUserId;
 
     if (!bookingBuyerId || bookingBuyerId === seller.id) {
-      setError("Invalid booking: buyer must be specified and different from seller.");
+      setError("You cannot request a booking for your own listing.");
       return;
     }
 

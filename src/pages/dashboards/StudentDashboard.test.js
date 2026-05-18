@@ -82,6 +82,20 @@ function createStudentDashboardMocks({
   const unreadEq1 = jest.fn(() => ({ eq: unreadEq2 }));
   const unreadSelect = jest.fn(() => ({ eq: unreadEq1 }));
 
+  // popup booking checks
+  const bookingsOrder = jest.fn().mockResolvedValue({ data: [], error: null });
+  const bookingsChain = {
+    eq: jest.fn().mockReturnThis(),
+    or: jest.fn().mockReturnThis(),
+    order: bookingsOrder,
+    then: (resolve) => Promise.resolve({ data: [], error: null }).then(resolve),
+  };
+  bookingsChain.eq.mockReturnValue(bookingsChain);
+  bookingsChain.or.mockReturnValue(bookingsChain);
+  const bookingsSelect = jest.fn(() => bookingsChain);
+  const bookingsUpdateIn = jest.fn().mockResolvedValue({ error: null });
+  const bookingsUpdate = jest.fn(() => ({ in: bookingsUpdateIn }));
+
   supabase.from.mockImplementation((table) => {
     if (table === 'categories') return { select: categorySelect };
     if (table === 'listings') {
@@ -116,6 +130,7 @@ function createStudentDashboardMocks({
     }
     if (table === 'messages') return { select: unreadSelect };
     if (table === 'profiles') return { update: profilesUpdate };
+    if (table === 'bookings') return { select: bookingsSelect, update: bookingsUpdate };
     return { select: jest.fn().mockResolvedValue({ data: [] }) };
   });
   return { profilesUpdateEq, roleAppUpdateEq };

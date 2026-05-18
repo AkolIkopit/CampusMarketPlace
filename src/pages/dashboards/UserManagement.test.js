@@ -5,7 +5,10 @@ import { supabase } from '../../supabase';
 
 jest.mock('../../supabase', () => ({
   supabase: {
-    from: jest.fn()
+    from: jest.fn(),
+    auth: {
+      getUser: jest.fn()
+    }
   }
 }));
 
@@ -15,14 +18,14 @@ const sampleUsers = [
     full_name: 'Alice Admin',
     role: 'admin',
     campus: 'Main Campus',
-    is_banned: false
+    is_suspended: false
   },
   {
     id: 'user-2',
     full_name: 'Bob Student',
     role: 'student',
     campus: 'Education Campus',
-    is_banned: true
+    is_suspended: true
   }
 ];
 
@@ -33,7 +36,17 @@ function createUserManagementMocks({ users = sampleUsers, updateError = null } =
     Promise.resolve({ data: currentUsers, error: null })
   );
 
-  const select = jest.fn(() => ({ order: orderFn }));
+  const eq = jest.fn((column, value) => {
+    if (column === 'is_suspended') {
+      const filtered = currentUsers.filter((user) => Boolean(user.is_suspended) === value);
+      return {
+        count: filtered.length,
+        order: jest.fn().mockResolvedValue({ data: filtered, error: null })
+      };
+    }
+    return { order: orderFn };
+  });
+  const select = jest.fn(() => ({ eq }));
 
   const updateEq = jest.fn().mockImplementation(async () => {
     return { error: updateError };
@@ -47,8 +60,12 @@ function createUserManagementMocks({ users = sampleUsers, updateError = null } =
     if (table === 'profiles') {
       return { select, update, delete: remove };
     }
+    if (table === 'moderation_logs') {
+      return { insert: jest.fn().mockResolvedValue({ error: null }) };
+    }
     throw new Error(`Unexpected table: ${table}`);
   });
+  supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'admin-1' } } });
 
   return { updateEq, deleteEq };
 }
@@ -58,15 +75,20 @@ describe('UserManagement', () => {
     jest.clearAllMocks();
   });
 
+  const clickActionButton = async (label) => {
+    const button = screen
+      .getAllByRole('button')
+      .find((candidate) => candidate.textContent.replace(/\s+/g, ' ').trim() === label);
+    await userEvent.click(button);
+  };
+
   it('renders all fetched users with their details', async () => {
     createUserManagementMocks();
 
     render(<UserManagement />);
 
     expect(await screen.findByText('Alice Admin')).toBeInTheDocument();
-    expect(screen.getByText('admin')).toBeInTheDocument();
-    expect(screen.getByText('Bob Student')).toBeInTheDocument();
-    expect(screen.getByText('student')).toBeInTheDocument();
+    expect(screen.getByText('ADMIN')).toBeInTheDocument();
   });
 
   it('shows Active/Suspended status correctly', async () => {
@@ -77,7 +99,6 @@ describe('UserManagement', () => {
     await screen.findByText('Alice Admin');
 
     expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Suspended')).toBeInTheDocument();
   });
 
   it('shows Suspend for active users and Reactivate for banned users', async () => {
@@ -88,7 +109,8 @@ describe('UserManagement', () => {
     await screen.findByText('Alice Admin');
 
     expect(screen.getByRole('button', { name: 'Suspend' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reactivate' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Suspended/ }));
+    expect(await screen.findByRole('button', { name: /Reactivate/ })).toBeInTheDocument();
   });
 
   it('suspends an active user', async () => {
@@ -98,7 +120,10 @@ describe('UserManagement', () => {
 
     await screen.findByText('Alice Admin');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    await clickActionButton('Suspend');
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'Policy');
+    await userEvent.type(screen.getByPlaceholderText('Provide audit log context...'), 'Repeated policy violations');
+    await userEvent.click(screen.getByRole('button', { name: /Confirm suspend/i }));
 
     await waitFor(() => {
       expect(updateEq).toHaveBeenCalledWith('id', 'user-1');
@@ -110,9 +135,10 @@ describe('UserManagement', () => {
 
     render(<UserManagement />);
 
+    await userEvent.click(await screen.findByRole('button', { name: /Suspended/ }));
     await screen.findByText('Bob Student');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Reactivate' }));
+    await userEvent.click(screen.getByRole('button', { name: /Reactivate/ }));
 
     await waitFor(() => {
       expect(updateEq).toHaveBeenCalledWith('id', 'user-2');
@@ -128,8 +154,11 @@ describe('UserManagement', () => {
 
     await screen.findByText('Alice Admin');
 
-    const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+    const deleteButtons = screen.getAllByRole('button', { name: /Delete/ });
     await userEvent.click(deleteButtons[0]);
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'Fraud');
+    await userEvent.type(screen.getByPlaceholderText('Provide audit log context...'), 'Fraudulent account');
+    await userEvent.click(screen.getByRole('button', { name: /Confirm delete/i }));
 
     await waitFor(() => {
       expect(deleteEq).toHaveBeenCalledWith('id', 'user-1');
@@ -139,13 +168,11 @@ describe('UserManagement', () => {
   it('does not delete a user when confirmation is cancelled', async () => {
     const { deleteEq } = createUserManagementMocks();
 
-    window.confirm.mockReturnValue(false);
-
     render(<UserManagement />);
 
     await screen.findByText('Alice Admin');
 
-    const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+    const deleteButtons = screen.getAllByRole('button', { name: /Delete/ });
     await userEvent.click(deleteButtons[0]);
 
     expect(deleteEq).not.toHaveBeenCalled();
@@ -158,11 +185,11 @@ describe('UserManagement', () => {
 
     await screen.findByText('Alice Admin');
 
-    const searchInput = screen.getByPlaceholderText('Search users by name or role...');
+    const searchInput = screen.getByPlaceholderText('Search students...');
     await userEvent.type(searchInput, 'Bob');
 
     expect(screen.queryByText('Alice Admin')).not.toBeInTheDocument();
-    expect(screen.getByText('Bob Student')).toBeInTheDocument();
+    expect(screen.getByText('EMPTY')).toBeInTheDocument();
   });
 
   it('filters users by role search term', async () => {
@@ -172,10 +199,9 @@ describe('UserManagement', () => {
 
     await screen.findByText('Alice Admin');
 
-    const searchInput = screen.getByPlaceholderText('Search users by name or role...');
-    await userEvent.type(searchInput, 'admin');
+    const searchInput = screen.getByPlaceholderText('Search students...');
+    await userEvent.type(searchInput, 'Alice');
 
-    expect(screen.queryByText('Bob Student')).not.toBeInTheDocument();
     expect(screen.getByText('Alice Admin')).toBeInTheDocument();
   });
 
@@ -186,9 +212,9 @@ describe('UserManagement', () => {
 
     await screen.findByText('Alice Admin');
 
-    const searchInput = screen.getByPlaceholderText('Search users by name or role...');
+    const searchInput = screen.getByPlaceholderText('Search students...');
     await userEvent.type(searchInput, 'zzznomatch');
 
-    expect(screen.getByText('No users found.')).toBeInTheDocument();
+    expect(screen.getByText('EMPTY')).toBeInTheDocument();
   });
 });

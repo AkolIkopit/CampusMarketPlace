@@ -16,21 +16,30 @@ const pendingTrade = {
   id: 'trade-abc123',
   status: 'requested',
   staff_id: null,
-  created_at: '2026-05-01T10:00:00.000Z'
+  created_at: '2026-05-01T10:00:00.000Z',
+  listings: { title: 'Desk Lamp', description: 'Small lamp' },
+  seller: { full_name: 'Sarah Seller' },
+  buyer: { full_name: 'Ben Buyer' }
 };
 
 const assignedTrade = {
   id: 'trade-def456',
   status: 'assigned',
   staff_id: 'staff-1',
-  created_at: '2026-05-02T10:00:00.000Z'
+  created_at: '2026-05-02T10:00:00.000Z',
+  listings: { title: 'Assigned Item', description: 'Already claimed' },
+  seller: { full_name: 'Sarah Seller' },
+  buyer: { full_name: 'Ben Buyer' }
 };
 
 const completedTrade = {
   id: 'trade-ghi789',
   status: 'completed',
   staff_id: 'staff-1',
-  created_at: '2026-05-03T10:00:00.000Z'
+  created_at: '2026-05-03T10:00:00.000Z',
+  listings: { title: 'Completed Item', description: 'Done' },
+  seller: { full_name: 'Sarah Seller' },
+  buyer: { full_name: 'Ben Buyer' }
 };
 
 function createMarketTradesMocks({
@@ -88,7 +97,7 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    expect(await screen.findByText('Live marketplace trade queue')).toBeInTheDocument();
+    expect(await screen.findByText('Marketplace Sales & Trades')).toBeInTheDocument();
   });
 
   it('renders pending and completed section headings', async () => {
@@ -96,8 +105,8 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    expect(await screen.findByText('Pending Trades')).toBeInTheDocument();
-    expect(screen.getByText('Completed Trades')).toBeInTheDocument();
+    expect(await screen.findByText('Pending Sales & Trades')).toBeInTheDocument();
+    expect(screen.getByText('Completed Sales & Trades')).toBeInTheDocument();
   });
 
   it('shows a pending trade with FREE staff status and Claim button', async () => {
@@ -105,10 +114,9 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    const tradeTitles = await screen.findAllByText((_, el) => el?.textContent?.replace(/\s+/g,' ').trim() === 'Trade #trade-');
-    expect(tradeTitles.length).toBeGreaterThan(0);
+    expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
     expect(screen.getByText(/FREE/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Claim Trade' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Claim Sale / Trade' })).toBeInTheDocument();
   });
 
   it('shows TAKEN label for an already-assigned trade without Claim button', async () => {
@@ -117,7 +125,7 @@ describe('MarketTrades', () => {
     render(<MarketTrades />);
 
     expect(await screen.findByText(/TAKEN/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Claim Trade' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Sale / Trade' })).not.toBeInTheDocument();
   });
 
   it('shows empty state when there are no pending trades', async () => {
@@ -125,7 +133,7 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    expect(await screen.findByText('No active trades.')).toBeInTheDocument();
+    expect(await screen.findByText('No pending sales or trades.')).toBeInTheDocument();
   });
 
   it('shows empty state when there are no completed trades', async () => {
@@ -133,7 +141,7 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    expect(await screen.findByText('No completed trades yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No completed sales or trades.')).toBeInTheDocument();
   });
 
   it('claims a trade after user confirms the dialog', async () => {
@@ -142,9 +150,9 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    await screen.findByRole('button', { name: 'Claim Trade' });
+    await screen.findByRole('button', { name: 'Claim Sale / Trade' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Claim Trade' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Claim Sale / Trade' }));
 
     await waitFor(() => {
       expect(updateEq).toHaveBeenCalledWith('id', 'trade-abc123');
@@ -157,9 +165,9 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    await screen.findByRole('button', { name: 'Claim Trade' });
+    await screen.findByRole('button', { name: 'Claim Sale / Trade' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Claim Trade' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Claim Sale / Trade' }));
 
     expect(updateEq).not.toHaveBeenCalled();
   });
@@ -169,8 +177,7 @@ describe('MarketTrades', () => {
 
     render(<MarketTrades />);
 
-    const tradeTitles = await screen.findAllByText((_, el) => el?.textContent?.replace(/\s+/g,' ').trim() === 'Trade #trade-');
-    expect(tradeTitles.length).toBeGreaterThan(0);
+    expect(await screen.findByText('Completed Item')).toBeInTheDocument();
     expect(screen.getByText('COMPLETED')).toBeInTheDocument();
   });
 

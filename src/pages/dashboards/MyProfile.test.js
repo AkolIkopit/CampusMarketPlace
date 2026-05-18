@@ -35,6 +35,15 @@ function createMyProfileMocks({
     if (table === 'transactions') {
       return { select: jest.fn(() => ({ order: jest.fn().mockResolvedValue({ data: [] }) })) };
     }
+    if (table === 'bookings') {
+      return {
+        select: jest.fn(() => ({
+          or: jest.fn(() => ({
+            order: jest.fn().mockResolvedValue({ data: [], error: null })
+          }))
+        }))
+      };
+    }
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -116,9 +125,10 @@ describe('MyProfile', () => {
     const applyStaffButton = await screen.findByRole('button', { name: /Apply Staff/i });
     await userEvent.click(applyStaffButton);
 
-    await userEvent.type(screen.getAllByRole('textbox')[0], 'Education Campus');
-    await userEvent.type(screen.getByPlaceholderText('e.g. Mon-Fri'), 'Weekdays');
-    await userEvent.click(screen.getByRole('button', { name: 'Submit Application' }));
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'Education Campus');
+    await userEvent.type(screen.getByRole('textbox'), 'Worked at the library desk');
+    await userEvent.click(screen.getByLabelText('Monday'));
+    await userEvent.click(screen.getByRole('button', { name: 'SUBMIT APPLICATION' }));
 
     await waitFor(() => {
       expect(insert).toHaveBeenCalledWith([
@@ -127,14 +137,16 @@ describe('MyProfile', () => {
           full_name: 'Jane Student',
           requested_role: 'staff',
           motivation: '',
-          experience: '',
+          experience: 'Worked at the library desk',
           campus_location: 'Education Campus',
-          availability: 'Weekdays',
+          availability: expect.objectContaining({
+            Monday: expect.objectContaining({ available: true })
+          }),
           scenario_response: '',
           status: 'pending'
         }
       ]);
-      expect(window.alert).toHaveBeenCalledWith('Application submitted!');
+      expect(window.alert).toHaveBeenCalledWith('Application submitted successfully!');
       expect(screen.getByText('Apply Staff')).toBeInTheDocument();
     });
   });

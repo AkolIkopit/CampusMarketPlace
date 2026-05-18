@@ -49,18 +49,20 @@ function createAnalyticsMocks() {
     { id: '3', category_id: 2, categories: { name: 'Electronics' } }
   ];
   const flags = [
-    { status: 'approved' },
-    { status: 'pending' },
-    { status: 'pending' },
-    { status: 'rejected' }
+    { reason_category: 'Scam' },
+    { reason_category: 'Fraud' }
   ];
 
   supabase.from.mockImplementation((table) => {
     if (table === 'listings') {
       return { select: jest.fn().mockResolvedValue({ data: listings }) };
     }
-    if (table === 'role_applications') {
-      return { select: jest.fn().mockResolvedValue({ data: flags }) };
+    if (table === 'moderation_logs') {
+      return {
+        select: jest.fn(() => ({
+          eq: jest.fn().mockResolvedValue({ data: flags })
+        }))
+      };
     }
     throw new Error(`Unexpected table: ${table}`);
   });
@@ -81,20 +83,21 @@ describe('Analytics', () => {
 
     render(<Analytics />);
 
-    expect(await screen.findByText('Report Hub')).toBeInTheDocument();
+    expect(await screen.findByText('Administrative Insights')).toBeInTheDocument();
+    expect(screen.getByText('Marketplace Health')).toBeInTheDocument();
     expect(screen.getByText('Popular Categories')).toBeInTheDocument();
-    expect(screen.getByText('Facility Usage')).toBeInTheDocument();
-    expect(screen.getByText('Moderation Activity')).toBeInTheDocument();
+    expect(screen.getByText('Trade Facility Utilization (Slot Summary)')).toBeInTheDocument();
+    expect(screen.getByText('Flagging Reasons')).toBeInTheDocument();
   });
 
-  it('fetches data from listings and role_applications on mount', async () => {
+  it('fetches data from listings and moderation logs on mount', async () => {
     createAnalyticsMocks();
 
     render(<Analytics />);
 
     await waitFor(() => {
       expect(supabase.from).toHaveBeenCalledWith('listings');
-      expect(supabase.from).toHaveBeenCalledWith('role_applications');
+      expect(supabase.from).toHaveBeenCalledWith('moderation_logs');
     });
   });
 
@@ -103,7 +106,7 @@ describe('Analytics', () => {
 
     render(<Analytics />);
 
-    await screen.findByText('Report Hub');
+    await screen.findByText('Administrative Insights');
 
     await userEvent.click(screen.getByText('Back to Panel'));
     expect(navigateMock).toHaveBeenCalledWith(-1);
@@ -114,14 +117,11 @@ describe('Analytics', () => {
 
     render(<Analytics />);
 
-    await screen.findByText('Report Hub');
+    await screen.findByText('Administrative Insights');
 
-    // Each section has CSV and PDF export buttons (3 sections = 6 export buttons)
-    const csvButtons = screen.getAllByTitle('CSV');
-    const pdfButtons = screen.getAllByTitle('PDF');
+    const exportButtons = document.querySelectorAll('.export-btn');
 
-    expect(csvButtons.length).toBeGreaterThanOrEqual(1);
-    expect(pdfButtons.length).toBeGreaterThanOrEqual(1);
+    expect(exportButtons.length).toBeGreaterThanOrEqual(1);
   });
 
   it('triggers CSV export when the CSV button is clicked', async () => {
@@ -132,10 +132,10 @@ describe('Analytics', () => {
 
     render(<Analytics />);
 
-    await screen.findByText('Report Hub');
+    await screen.findByText('Administrative Insights');
     await waitFor(() => expect(supabase.from).toHaveBeenCalledWith('listings'));
 
-    const csvButtons = screen.getAllByTitle('CSV');
+    const csvButtons = Array.from(document.querySelectorAll('.export-btn'));
     await userEvent.click(csvButtons[0]);
 
     expect(createObjectURLSpy).toHaveBeenCalled();
