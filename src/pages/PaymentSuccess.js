@@ -4,16 +4,6 @@ import { supabase } from "../supabase";
 
 const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
-async function getProfileName(userId, fallback = "A student") {
-  if (!userId) return fallback;
-  const { data } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.full_name || fallback;
-}
-
 export default function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -26,7 +16,7 @@ export default function PaymentSuccess() {
   const handlePaymentSuccess = async () => {
     const transactionId = searchParams.get("transaction");
     const paymentId = searchParams.get("pf_payment_id");
-    const paidAmountFromReturn = parseFloat(searchParams.get("amount") || "0");
+    const paidAmountParam = searchParams.get("amount");
 
     if (!transactionId) {
       setUpdated(true);
@@ -52,20 +42,21 @@ export default function PaymentSuccess() {
       return;
     }
 
-    const currentShortfall = Math.max(
-      Number(transaction.cash_shortfall_due ?? transaction.agreed_amount ?? 0),
-      0
+    const agreedAmount = Number(transaction.agreed_amount || 0);
+    const currentOutstanding = Number(transaction.cash_shortfall_due ?? agreedAmount);
+    const paidAmount = Math.min(
+      Math.max(Number(paidAmountParam || currentOutstanding), 0),
+      currentOutstanding
     );
-    const paidAmount = paidAmountFromReturn > 0 ? paidAmountFromReturn : currentShortfall;
-    const newShortfall = Math.max(currentShortfall - paidAmount, 0);
-    const newPaymentStatus = newShortfall > 0 ? "pending_payment" : "FULLY_PAID";
-    const totalPaid = Math.max(Number(transaction.agreed_amount || 0) - newShortfall, 0);
+    const remainingBalance = Math.max(currentOutstanding - paidAmount, 0);
+    const newPaymentStatus = remainingBalance > 0 ? "pending_payment" : "FULLY_PAID";
+    const totalPaid = Math.max(agreedAmount - remainingBalance, 0);
 
     await supabase
       .from("transactions")
       .update({
         payment_status: newPaymentStatus,
-        cash_shortfall_due: newShortfall,
+        cash_shortfall_due: remainingBalance,
         payment_reference: paymentId || "sandbox",
       })
       .eq("id", transaction.id);
@@ -74,22 +65,21 @@ export default function PaymentSuccess() {
       .from("bookings")
       .update({
         amount_paid: totalPaid,
-        cash_shortfall: newShortfall,
+        cash_shortfall: remainingBalance,
       })
       .eq("transaction_id", transaction.id);
 
     const itemTitle = transaction.listings?.title || "the item";
-    const buyerName = await getProfileName(transaction.buyer_id, "The buyer");
-    const messageText = newShortfall > 0
-      ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} paid R${paidAmount.toFixed(2)} for ${itemTitle}. Outstanding balance: R${newShortfall.toFixed(2)}.`
-      : `${SYSTEM_MESSAGE_PREFIX}${buyerName} paid R${paidAmount.toFixed(2)} for ${itemTitle}. The item is fully paid.`;
+    const paymentMessage = remainingBalance > 0
+      ? `Payment of R${paidAmount.toFixed(2)} has been made for ${itemTitle}. Outstanding balance: R${remainingBalance.toFixed(2)}.`
+      : `Payment of R${paidAmount.toFixed(2)} has been made for ${itemTitle}. The transaction is fully paid.`;
 
     await supabase.from("messages").insert([
       {
         listing_id: transaction.listing_id,
         sender_id: transaction.buyer_id,
         receiver_id: transaction.seller_id,
-        message_text: messageText,
+        message_text: `${SYSTEM_MESSAGE_PREFIX}${paymentMessage}`,
         transaction_id: transaction.id,
         is_read: false,
       },

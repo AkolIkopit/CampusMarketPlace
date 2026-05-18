@@ -20,9 +20,14 @@ function ChatWindow({
   const isSeller = !isSelfConversation && currentUserId === conversation.sellerId;
   const isBuyer = !isSelfConversation && currentUserId && currentUserId !== conversation.sellerId;
   const transactionStatus = conversation.transactionStatus || "";
-  const paymentStatus = (conversation.paymentStatus || "").toLowerCase();
+  const paymentStatus = (conversation.paymentStatus || "unpaid").toLowerCase();
+  const hasPaymentAmount =
+    conversation.cashShortfallDue !== null &&
+    conversation.cashShortfallDue !== undefined &&
+    conversation.agreedAmount !== null &&
+    conversation.agreedAmount !== undefined;
   const outstandingBalance = Number(conversation.cashShortfallDue ?? conversation.agreedAmount ?? 0);
-  const paymentComplete = paymentStatus === "fully_paid" || outstandingBalance <= 0;
+  const paymentComplete = paymentStatus === "fully_paid" || (hasPaymentAmount && outstandingBalance <= 0);
   const hasPendingTransaction = Boolean(
     conversation.transactionId &&
     isSeller &&
@@ -45,7 +50,7 @@ function ChatWindow({
     isBuyer &&
     hasExistingBooking &&
     outstandingBalance > 0 &&
-    (paymentStatus === "pending" || paymentStatus === "pending_payment" || paymentStatus !== "fully_paid")
+    paymentStatus !== "fully_paid"
   );
   const requestText =
     conversation.transactionRequestText ||
@@ -108,7 +113,7 @@ function ChatWindow({
           <p>
             {paymentStatus === "pending_payment"
               ? "There is still an outstanding balance. Please pay the remaining amount before collection."
-              : `${conversation.name} has requested a trade facility booking. Please make payment before the deadline to keep this slot reserved.`}
+              : "The seller has requested a trade facility booking. Please make payment before the deadline to keep this slot reserved."}
           </p>
           {outstandingBalance > 0 ? (
             <strong>Amount due: R{outstandingBalance.toFixed(2)}</strong>

@@ -101,32 +101,12 @@ const ListingDetail = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user?.id) throw new Error('Unable to determine buyer account.');
 
-      let buyerProfile = null;
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .maybeSingle();
-        buyerProfile = data;
-      } catch {
-        buyerProfile = null;
-      }
-
-      const buyerName = buyerProfile?.full_name || 'A student';
-      const sellerName = listing.profiles?.full_name || 'the seller';
-      const cleanedTradeItem = tradeItem.trim();
-
-      if (type === 'trade' && !cleanedTradeItem) {
-        throw new Error('Describe the item you want to trade.');
-      }
-
       const payload = {
         buyer_id: user.id,
         seller_id: listing.seller_id,
         listing_id: id,
         amount: amount ?? 0,
-        agreed_amount: type === 'trade' ? cashAmount : amount ?? 0,
+        agreed_amount: amount ?? 0,
         cash_shortfall_due: type === 'trade' ? cashAmount : 0,
         status: 'pending_seller_acceptance',
         transaction_type: type === 'offer' ? 'sale' : type,
@@ -145,10 +125,10 @@ const ListingDetail = () => {
       try {
         const messageText =
           type === 'sale'
-            ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to buy ${listing.title} from ${sellerName} for R${Number(listing.price || 0).toFixed(2)}. Transaction ID: ${transaction.id}`
+            ? `${SYSTEM_MESSAGE_PREFIX}Buyer has requested to buy ${listing.title} for R${listing.price}. Transaction ID: ${transaction.id}`
             : type === 'offer'
-            ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} offered R${Number(amount || 0).toFixed(2)} to ${sellerName} for ${listing.title}. Transaction ID: ${transaction.id}`
-            : `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to trade "${cleanedTradeItem}" for ${sellerName}'s ${listing.title}${cashAmount > 0 ? ` with a rand top-up of R${Number(cashAmount).toFixed(2)}` : ' with no rand top-up'}. Transaction ID: ${transaction.id}`;
+            ? `${SYSTEM_MESSAGE_PREFIX}Buyer has made an offer of R${amount} for ${listing.title}. Transaction ID: ${transaction.id}`
+            : `${SYSTEM_MESSAGE_PREFIX}Buyer has requested a trade for ${listing.title} with cash supplement R${cashAmount}. Transaction ID: ${transaction.id}`;
 
         await supabase.from('messages').insert([{
           listing_id: id,
@@ -212,9 +192,6 @@ const ListingDetail = () => {
   if (!listing) return <main className="detail-loading-screen"><h2>Listing not found.</h2></main>;
 
   const primaryImage = listing.listing_images?.find((img) => img.is_primary) || listing.listing_images?.[0];
-  const listingType = listing.listing_type || 'either';
-  const allowsSale = listingType === 'sale' || listingType === 'either';
-  const allowsTrade = listingType === 'trade' || listingType === 'either';
 
   return (
     <main className="listing-detail-page">
@@ -267,22 +244,21 @@ const ListingDetail = () => {
                 <button
                   className="buy-now-btn"
                   onClick={() => handleTransactionIntent('buy')}
-                  disabled={isOwnListing || !allowsSale}
+                  disabled={isOwnListing}
                 >
                   Buy Now
                 </button>
                 <button
                   className="make-offer-btn"
                   onClick={() => handleTransactionIntent('offer')}
-                  disabled={isOwnListing || !allowsSale}
+                  disabled={isOwnListing}
                 >
                   Make Offer
                 </button>
                 <button
                   className="request-trade-btn"
                   onClick={() => handleTransactionIntent('trade')}
-                  disabled={isOwnListing || !allowsTrade}
-                  title={!allowsTrade ? 'This listing is not open to trades.' : undefined}
+                  disabled={isOwnListing}
                 >
                   Request Trade
                 </button>

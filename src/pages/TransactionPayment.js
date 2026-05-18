@@ -68,14 +68,14 @@ const fetchTransaction = async () => {
 
 const handlePayment = async () => {
   const amount = parseFloat(payAmount);
-  const outstanding = Number(outstandingAmount || 0);
+  const outstandingAmount = Number(transaction.cash_shortfall_due ?? transaction.agreed_amount ?? 0);
 
   if (!amount || amount <= 0) {
     setError("Please enter a valid amount.");
     return;
   }
 
-  if (amount > outstanding) {
+  if (amount > outstandingAmount) {
     setError("Payment amount cannot be more than the outstanding balance.");
     return;
   }
@@ -84,7 +84,7 @@ const handlePayment = async () => {
     merchant_id: MERCHANT_ID,
     merchant_key: MERCHANT_KEY,
     return_url: `${RETURN_URL}?transaction=${transactionId}&amount=${amount.toFixed(2)}`,
-    cancel_url: `${CANCEL_URL}?transaction=${transactionId}`,
+    cancel_url: CANCEL_URL,
     notify_url: NOTIFY_URL,
     amount: amount.toFixed(2),
     item_name: "UniMart Purchase",
@@ -124,10 +124,13 @@ const handlePayment = async () => {
   if (loading) return <main className="payment-container"><p>Loading...</p></main>;
   if (error) return <main className="payment-container"><p className="payment-error">{error}</p></main>;
 
-  const isPartial = transaction.cash_shortfall_due > 0;
-  const outstandingAmount = isPartial
-    ? transaction.cash_shortfall_due
-    : transaction.agreed_amount;
+  const agreedAmount = Number(transaction.agreed_amount || 0);
+  const outstandingAmount = Number(transaction.cash_shortfall_due ?? agreedAmount);
+  const isPartial = outstandingAmount > 0 && outstandingAmount < agreedAmount;
+  const amountPaid = Math.max(agreedAmount - outstandingAmount, 0);
+  const paymentComplete =
+    String(transaction.payment_status || "").toLowerCase() === "fully_paid" ||
+    outstandingAmount <= 0;
 console.log("Rendering — payment_status:", transaction?.payment_status);
 console.log("Rendering — isPartial:", isPartial);
 console.log("Rendering — payAmount:", payAmount);
@@ -153,13 +156,13 @@ console.log("Rendering — payAmount:", payAmount);
           <li className="payment-info-item">
             <span className="payment-info-label">Agreed Price</span>
             <span className="payment-info-value">
-              R {parseFloat(transaction.agreed_amount).toFixed(2)}
+              R {agreedAmount.toFixed(2)}
             </span>
           </li>
           <li className="payment-info-item">
             <span className="payment-info-label">Amount Paid</span>
             <span className="payment-info-value">
-              R {(parseFloat(transaction.agreed_amount) - parseFloat(transaction.cash_shortfall_due)).toFixed(2)}
+              R {amountPaid.toFixed(2)}
             </span>
           </li>
           <li className="payment-info-item">
@@ -175,7 +178,7 @@ console.log("Rendering — payAmount:", payAmount);
         </ul>
        
 
-        {String(transaction.payment_status || "").toLowerCase() === "fully_paid" ? (
+        {paymentComplete ? (
 
           <section className="payment-complete">
             <p>✅ Payment complete. No outstanding balance.</p>

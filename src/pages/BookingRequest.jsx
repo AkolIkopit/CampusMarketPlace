@@ -41,16 +41,6 @@ function parseSlotTime(slot) {
   return date;
 }
 
-async function getProfileName(userId, fallback = "A student") {
-  if (!userId) return fallback;
-  const { data } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.full_name || fallback;
-}
-
 function BookingRequest() {
   const [searchParams] = useSearchParams();
   const listingId = searchParams.get("listing");
@@ -128,12 +118,6 @@ function BookingRequest() {
           return;
         }
 
-        if (Number(bookingData.cash_shortfall || 0) > 0) {
-          setError("Payment must be completed before booking a collection slot.");
-          setLoading(false);
-          return;
-        }
-
         if (bookingData.transaction_id) {
           const { data: transactionData, error: transactionError } = await supabase
             .from("transactions")
@@ -148,9 +132,10 @@ function BookingRequest() {
           }
 
           const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+          const bookingShortfall = Number(bookingData.cash_shortfall || 0);
           const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
 
-          if (transactionShortfall > 0 || !paymentComplete) {
+          if (!paymentComplete || transactionShortfall > 0 || bookingShortfall > 0) {
             setError("Payment must be completed before booking a collection slot.");
             setLoading(false);
             return;
@@ -233,6 +218,28 @@ function BookingRequest() {
         return;
       }
 
+      if (existingBooking.transaction_id) {
+        const { data: transactionData, error: transactionError } = await supabase
+          .from("transactions")
+          .select("cash_shortfall_due, payment_status")
+          .eq("id", existingBooking.transaction_id)
+          .maybeSingle();
+
+        if (transactionError) {
+          setError("Unable to verify payment status before collection.");
+          return;
+        }
+
+        const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+        const bookingShortfall = Number(existingBooking.cash_shortfall || 0);
+        const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
+
+        if (!paymentComplete || transactionShortfall > 0 || bookingShortfall > 0) {
+          setError("Payment must be completed before booking a collection slot.");
+          return;
+        }
+      }
+
       const collectionTime = parseSlotTime(selectedSlot);
       if (!collectionTime) {
         setError("Unable to resolve the selected collection slot time.");
@@ -252,8 +259,7 @@ function BookingRequest() {
 
         if (updateError) throw updateError;
 
-        const buyerName = await getProfileName(currentUserId, "The buyer");
-        const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot}.`;
+        const notificationText = `${SYSTEM_MESSAGE_PREFIX}Buyer booked a collection slot for ${listing.title} at ${selectedSlot}.`;
         const { error: notificationError } = await supabase.from("messages").insert([
           {
             listing_id: listing.id,
@@ -332,9 +338,7 @@ function BookingRequest() {
           .eq("id", transactionId);
       }
 
-      const requesterName = await getProfileName(currentUserId, currentUserId === seller.id ? seller.full_name : "A student");
-      const buyerName = await getProfileName(bookingBuyerId, "the buyer");
-      const notificationText = `${SYSTEM_MESSAGE_PREFIX}${requesterName} requested a trade facility booking for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}${currentUserId === seller.id ? ` for ${buyerName}` : ""}.`;
+      const notificationText = `${SYSTEM_MESSAGE_PREFIX}Seller requested a trade facility booking for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
       // Notify the counterparty: seller if buyer initiated, buyer if seller initiated.
       const notificationReceiver = currentUserId === seller.id ? bookingBuyerId : seller.id;
       const { error: notificationError } = await supabase.from("messages").insert([
