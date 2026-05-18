@@ -85,3 +85,16 @@
   background: #0d1b2a;
   color: #f0a500;
 }
+
+
+.popup-shortfall {
+  color: #A32D2D;
+  font-weight: 700;
+}
+
+.popup-sub.warning {
+  color: #A32D2D;
+  background: #FCEBEB;
+  padding: 8px 12px;
+  border-radius: 8px;
+}

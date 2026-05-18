@@ -7,25 +7,16 @@ export default function BuyerPopup({ userId }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (userId) checkForDropoffs(userId);
+    if (userId) checkForNotifications(userId);
   }, [userId]);
 
-  const checkForDropoffs = async (id) => {
-    console.log("Checking dropoffs for buyer:", id);
-
+  const checkForNotifications = async (id) => {
     const { data, error } = await supabase
       .from("bookings")
-      .select(`
-        id,
-        listing_id,
-        listings ( title ),
-        seller:profiles!bookings_seller_id_fkey ( full_name )
-      `)
+      .select("id, listing_id, payment_status, cash_shortfall")
       .eq("buyer_id", id)
-      .eq("item_received", true)
-      .eq("buyer_notified", false);
-
-    console.log("Result:", data, "Error:", error);
+      .eq("buyer_notified", false)
+      .eq("status", "ready_for_collection");
 
     if (!error && data.length > 0) {
       setPendingBookings(data);
@@ -46,32 +37,55 @@ export default function BuyerPopup({ userId }) {
 
   if (!visible) return null;
 
+  const fullyPaid = pendingBookings.every(
+    (b) => b.payment_status === "FULLY_PAID"
+  );
+
   return (
     <aside className="popup-overlay">
       <article className="popup-card">
 
         <header className="popup-header">
-          <span className="popup-icon">📦</span>
-          <h2 className="popup-title">Item Dropped Off</h2>
+          <span className="popup-icon">
+            {fullyPaid ? "📦" : "⚠️"}
+          </span>
+          <h2 className="popup-title">
+            {fullyPaid
+              ? "Item Ready for Collection"
+              : "Outstanding Payment Required"}
+          </h2>
         </header>
 
         <p className="popup-body">
-          The following{" "}
-          {pendingBookings.length === 1 ? "item" : "items"}{" "}
-          {pendingBookings.length === 1 ? "has" : "have"} been dropped off at the trade facility:
+          {fullyPaid
+            ? "Your item is ready for collection at the trade facility. Please visit during operating hours to collect it."
+            : "Your item has been received at the trade facility, but you have an outstanding balance. Please settle your payment before collection."}
         </p>
 
         <ul className="popup-list">
           {pendingBookings.map((booking) => (
             <li key={booking.id} className="popup-list-item">
-              {booking.seller?.full_name || "The seller"} dropped off {booking.listings?.title || `booking #${booking.id.slice(0, 6)}`}.
+              Booking #{booking.id.slice(0, 6)}
+              {!fullyPaid && booking.cash_shortfall > 0 && (
+                <span className="popup-shortfall">
+                  {" "}— R{parseFloat(booking.cash_shortfall).toFixed(2)} outstanding
+                </span>
+              )}
             </li>
           ))}
         </ul>
 
-        <p className="popup-sub">
-           Your item is ready for collection.
-        </p>
+        {!fullyPaid && (
+          <p className="popup-sub warning">
+            ⚠️ You will not be able to collect your item until full payment is received.
+          </p>
+        )}
+
+        {fullyPaid && (
+          <p className="popup-sub">
+            Please bring your student card when collecting.
+          </p>
+        )}
 
         <footer className="popup-footer">
           <button className="btn btn-primary" onClick={handleDismiss}>
