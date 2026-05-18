@@ -37,7 +37,15 @@ function createCreateListingMocks({
   const updateEq = jest.fn(() => ({ select: updateSelect }));
   const listingUpdate = jest.fn(() => ({ eq: updateEq }));
   const listingInsert = jest.fn(() => ({ select: listingSelect }));
+
+  const listingImagesUpdateEq = jest.fn().mockResolvedValue({ data: [], error: null });
+  const listingImagesUpdate = jest.fn(() => ({ eq: listingImagesUpdateEq }));
   const listingImagesInsert = jest.fn().mockResolvedValue({ error: null });
+
+  const saEconomicMaybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
+  const saEconomicIlike = jest.fn(() => ({ maybeSingle: saEconomicMaybeSingle }));
+  const saEconomicSelect = jest.fn(() => ({ ilike: saEconomicIlike }));
+
   const upload = jest.fn().mockResolvedValue({ error: uploadError });
   const getPublicUrl = jest.fn(() => ({
     data: { publicUrl: 'https://cdn.example.com/listing.png' }
@@ -53,7 +61,11 @@ function createCreateListingMocks({
     }
 
     if (table === 'listing_images') {
-      return { insert: listingImagesInsert };
+      return { update: listingImagesUpdate, insert: listingImagesInsert };
+    }
+
+    if (table === 'sa_economic_indicators') {
+      return { select: saEconomicSelect };
     }
 
     throw new Error(`Unexpected table: ${table}`);
@@ -287,7 +299,7 @@ describe('CreateListing', () => {
 
   it('shows an error when the user session cannot be retrieved', async () => {
     createCreateListingMocks();
-    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: { message: 'User missing' } });
+    supabase.auth.getUser.mockResolvedValue({ data: { user: null }, error: { message: 'User missing' } });
 
     const { container } = render(<CreateListing />);
     const fileInput = container.querySelector('#pic-upload');
@@ -302,7 +314,7 @@ describe('CreateListing', () => {
     await userEvent.click(screen.getByRole('button', { name: 'POST' }));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Error: User missing');
+      expect(window.alert).toHaveBeenCalledWith('Error: You must be signed in to post a listing.');
       expect(navigateMock).not.toHaveBeenCalled();
     });
   });
