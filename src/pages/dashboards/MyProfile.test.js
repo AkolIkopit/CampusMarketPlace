@@ -12,10 +12,11 @@ jest.mock('../../supabase', () => ({
 function createMyProfileMocks({
   existingApplication = null
 } = {}) {
+  const application = existingApplication ? { status: 'pending', ...existingApplication } : null;
   const maybeSingle = jest
     .fn()
-    .mockResolvedValueOnce({ data: existingApplication })
-    .mockResolvedValue({ data: existingApplication });
+    .mockResolvedValueOnce({ data: application })
+    .mockResolvedValue({ data: application });
   const selectEq = jest.fn(() => ({ maybeSingle }));
   const select = jest.fn(() => ({ eq: selectEq }));
   const insert = jest.fn().mockResolvedValue({ error: null });
@@ -31,6 +32,9 @@ function createMyProfileMocks({
       };
     }
 
+    if (table === 'transactions') {
+      return { select: jest.fn(() => ({ order: jest.fn().mockResolvedValue({ data: [] }) })) };
+    }
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -82,7 +86,8 @@ describe('MyProfile', () => {
       />
     );
 
-    expect(await screen.findByText('Pending staff')).toBeInTheDocument();
+    const pendingAppElements = await screen.findAllByText((_, el) => el?.textContent?.replace(/\s+/g, ' ').trim() === 'Pending staff Application');
+    expect(pendingAppElements.length).toBeGreaterThan(0);
 
     await userEvent.click(screen.getByRole('button', { name: /Withdraw/i }));
 
@@ -108,7 +113,8 @@ describe('MyProfile', () => {
       expect(supabase.from).toHaveBeenCalledWith('role_applications');
     });
 
-    fireEvent.click(screen.getByText('Apply Staff').closest('article'));
+    const applyStaffButton = await screen.findByRole('button', { name: /Apply Staff/i });
+    await userEvent.click(applyStaffButton);
 
     await userEvent.type(screen.getAllByRole('textbox')[0], 'Education Campus');
     await userEvent.type(screen.getByPlaceholderText('e.g. Mon-Fri'), 'Weekdays');
@@ -124,7 +130,8 @@ describe('MyProfile', () => {
           experience: '',
           campus_location: 'Education Campus',
           availability: 'Weekdays',
-          scenario_response: ''
+          scenario_response: '',
+          status: 'pending'
         }
       ]);
       expect(window.alert).toHaveBeenCalledWith('Application submitted!');
@@ -154,8 +161,7 @@ describe('MyProfile', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Back to Dashboard/i }));
     await userEvent.click(screen.getByRole('button', { name: /Edit Profile/i }));
-    fireEvent.click(screen.getByText('My Listings').closest('article'));
-
+    await userEvent.click(screen.getByRole('button', { name: /My Listings/i }));
     expect(onBack).toHaveBeenCalled();
     expect(onEditClick).toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith('/my-listings');

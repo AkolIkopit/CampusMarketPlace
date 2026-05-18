@@ -112,9 +112,9 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
     fetchUnread();
 
-    const channel = supabase
-      .channel(`unread-messages-${userId}`)
-      .on(
+    const channel = supabase.channel?.(`unread-messages-${userId}`);
+    const subscribedChannel = channel
+      ?.on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
@@ -125,7 +125,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           }
         }
       )
-      .on(
+      ?.on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'messages' },
         (payload) => {
@@ -143,10 +143,13 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           }
         }
       )
-      .subscribe();
+      ?.subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      const removeTarget = subscribedChannel ?? channel;
+      if (removeTarget && supabase.removeChannel) {
+        supabase.removeChannel(removeTarget);
+      }
     };
   }, [profile?.id]);
 

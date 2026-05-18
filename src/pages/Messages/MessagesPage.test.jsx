@@ -68,6 +68,23 @@ describe('MessagesPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Restore matchMedia mock after clearAllMocks wipes it
+    window.matchMedia = jest.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn()
+    }));
+    // Restore supabase.channel mock after clearAllMocks wipes it
+    supabase.channel = jest.fn(() => ({
+      on: jest.fn().mockReturnThis(),
+      subscribe: jest.fn()
+    }));
+    supabase.removeChannel = jest.fn();
     navigateMock = jest.fn();
     __resetRouterMocks();
     __setNavigateMock(navigateMock);

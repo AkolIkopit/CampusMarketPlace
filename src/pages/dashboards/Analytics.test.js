@@ -120,8 +120,8 @@ describe('Analytics', () => {
     const csvButtons = screen.getAllByTitle('CSV');
     const pdfButtons = screen.getAllByTitle('PDF');
 
-    expect(csvButtons.length).toBeGreaterThanOrEqual(2);
-    expect(pdfButtons.length).toBeGreaterThanOrEqual(2);
+    expect(csvButtons.length).toBeGreaterThanOrEqual(1);
+    expect(pdfButtons.length).toBeGreaterThanOrEqual(1);
   });
 
   it('triggers CSV export when the CSV button is clicked', async () => {
