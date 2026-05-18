@@ -21,13 +21,8 @@ function ChatWindow({
   const isBuyer = !isSelfConversation && currentUserId && currentUserId !== conversation.sellerId;
   const transactionStatus = conversation.transactionStatus || "";
   const paymentStatus = (conversation.paymentStatus || "unpaid").toLowerCase();
-  const hasPaymentAmount =
-    conversation.cashShortfallDue !== null &&
-    conversation.cashShortfallDue !== undefined &&
-    conversation.agreedAmount !== null &&
-    conversation.agreedAmount !== undefined;
   const outstandingBalance = Number(conversation.cashShortfallDue ?? conversation.agreedAmount ?? 0);
-  const paymentComplete = paymentStatus === "fully_paid" || (hasPaymentAmount && outstandingBalance <= 0);
+  const paymentComplete = paymentStatus === "fully_paid";
   const hasPendingTransaction = Boolean(
     conversation.transactionId &&
     isSeller &&

@@ -108,6 +108,7 @@ function MessagesPage({ profile }) {
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserName, setCurrentUserName] = useState("");
   const [currentUserAvatar, setCurrentUserAvatar] = useState("");
   const [contextUserProfile, setContextUserProfile] = useState(null);
   const [isMobile, setIsMobile] = useState(getIsMobileViewport);
@@ -411,9 +412,13 @@ function MessagesPage({ profile }) {
           setCurrentUserId(user.id);
           const { data: ownProfile } = await supabase
             .from("profiles")
-            .select("avatar_url")
+            .select("full_name, avatar_url")
             .eq("id", user.id)
             .maybeSingle();
+
+          if (ownProfile?.full_name) {
+            setCurrentUserName(ownProfile.full_name);
+          }
 
           if (ownProfile?.avatar_url) {
             setCurrentUserAvatar(ownProfile.avatar_url);
@@ -748,20 +753,19 @@ function MessagesPage({ profile }) {
   };
 
   const handleAcceptTransaction = async () => {
-    const sellerName = profile?.full_name || "The seller";
-    const buyerName = activeConversation?.name || "the buyer";
+    const sellerName = profile?.full_name || currentUserName || "seller";
     await handleTransactionStatusChange(
       "accepted_pending_booking",
-      `${sellerName} accepted ${buyerName}'s transaction request. ${sellerName} should now request a trade facility booking.`
+      `${sellerName} has accepted your transaction request. ${sellerName} should now request a trade facility booking.`
     );
   };
 
   const handleDeclineTransaction = async () => {
-    const sellerName = profile?.full_name || "The seller";
+    const sellerName = profile?.full_name || currentUserName || "seller";
     const buyerName = activeConversation?.name || "the buyer";
     await handleTransactionStatusChange(
       "declined_by_seller",
-      `${sellerName} declined ${buyerName}'s transaction request. Continue chatting and ${buyerName} can submit a new offer if you agree on a different price.`
+      `${sellerName} has declined ${buyerName}'s transaction request. Continue chatting and ${buyerName} can submit a new offer if you agree on a different price.`
     );
   };
 

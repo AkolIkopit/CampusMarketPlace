@@ -107,6 +107,11 @@ export default function MarketTrades() {
     }
   };
 
+  const formatSlotTime = (slotTime) => {
+    if (!slotTime) return "Not Scheduled";
+    return new Date(slotTime).toLocaleString();
+  };
+
   return (
 
     <main className="market-page">
@@ -204,21 +209,13 @@ export default function MarketTrades() {
                 <p>
                   <strong>Drop-Off:</strong>
                   {" "}
-                  {trade.dropoff_time
-                    ? new Date(
-                        trade.dropoff_time
-                      ).toLocaleString()
-                    : "Not Scheduled"}
+                  {formatSlotTime(trade.dropoff_time || trade.slot_time)}
                 </p>
 
                 <p>
                   <strong>Collection:</strong>
                   {" "}
-                  {trade.collection_time
-                    ? new Date(
-                        trade.collection_time
-                      ).toLocaleString()
-                    : "Not Scheduled"}
+                  {formatSlotTime(trade.collection_time)}
                 </p>
 
               </div>

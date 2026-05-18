@@ -119,7 +119,6 @@ const ListingDetail = () => {
       }
 
       const buyerName = buyerProfile?.full_name || 'A student';
-      const sellerName = listing.profiles?.full_name || 'the seller';
       const listingPrice = Number(listing.price || 0);
       const requestedAmount = Number(amount ?? 0);
       const topUpAmount = Number(cashAmount || 0);
@@ -148,10 +147,10 @@ const ListingDetail = () => {
       try {
         const messageText =
           type === 'sale'
-            ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to buy ${listing.title} from ${sellerName} for R${listingPrice.toFixed(2)}. Transaction ID: ${transaction.id}`
+            ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to buy ${listing.title} for R${listingPrice.toFixed(2)}. Transaction ID: ${transaction.id}`
             : type === 'offer'
             ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} offered R${requestedAmount.toFixed(2)} for ${listing.title}. Transaction ID: ${transaction.id}`
-            : `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to trade "${trimmedTradeItem}" for ${sellerName}'s ${listing.title}${topUpAmount > 0 ? ` with a R${topUpAmount.toFixed(2)} top-up` : ''}. Transaction ID: ${transaction.id}`;
+            : `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to trade "${trimmedTradeItem}" for ${listing.title}${topUpAmount > 0 ? ` with a R${topUpAmount.toFixed(2)} top-up` : ''}. Transaction ID: ${transaction.id}`;
 
         await supabase.from('messages').insert([{
           listing_id: id,

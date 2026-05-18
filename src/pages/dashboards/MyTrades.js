@@ -57,6 +57,11 @@ export default function MyTrades() {
     else fetchTrades(currentUser.id);
   };
 
+  const formatSlotTime = (slotTime) => {
+    if (!slotTime) return "Not scheduled";
+    return new Date(slotTime).toLocaleString();
+  };
+
   return (
     <main className="dashboard-container">
 
@@ -143,15 +148,11 @@ export default function MyTrades() {
             <ul className="schedule-row">
               <li className="sched-item">
                 🕐 Drop-off:{" "}
-                {trade.dropoff_time
-                  ? new Date(trade.dropoff_time).toLocaleString()
-                  : "Not scheduled"}
+                {formatSlotTime(trade.dropoff_time || trade.slot_time)}
               </li>
               <li className="sched-item">
                 📅 Collection:{" "}
-                {trade.collection_time
-                  ? new Date(trade.collection_time).toLocaleString()
-                  : "Not scheduled"}
+                {formatSlotTime(trade.collection_time)}
               </li>
             </ul>
 
