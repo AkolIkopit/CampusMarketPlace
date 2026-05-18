@@ -315,7 +315,6 @@ function MessagesPage({ profile }) {
           conversation.bookingStatus = transactionMap[message.transaction_id]?.booking_status || "";
           conversation.paymentStatus = transactionMap[message.transaction_id]?.payment_status || "";
           conversation.agreedAmount = transactionMap[message.transaction_id]?.agreed_amount;
-          conversation.cashShortfallDue = transactionMap[message.transaction_id]?.cash_shortfall_due;
         }
 
         const parsedMessage = parseMessageText(message.message_text || "");
@@ -748,20 +747,16 @@ function MessagesPage({ profile }) {
   };
 
   const handleAcceptTransaction = async () => {
-    const sellerName = profile?.full_name || "The seller";
-    const buyerName = activeConversation?.name || "the buyer";
     await handleTransactionStatusChange(
       "accepted_pending_booking",
-      `${sellerName} accepted ${buyerName}'s transaction request. ${sellerName} should now request a trade facility booking.`
+      "Seller accepted the transaction. The seller should now request a trade facility booking."
     );
   };
 
   const handleDeclineTransaction = async () => {
-    const sellerName = profile?.full_name || "The seller";
-    const buyerName = activeConversation?.name || "the buyer";
     await handleTransactionStatusChange(
       "declined_by_seller",
-      `${sellerName} declined ${buyerName}'s transaction request. Continue chatting and ${buyerName} can submit a new offer if you agree on a different price.`
+      "Seller declined this transaction request. Continue chatting and ask the buyer to submit a new offer if you agree on a different price."
     );
   };
 

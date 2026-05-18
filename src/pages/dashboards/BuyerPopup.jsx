@@ -15,12 +15,7 @@ export default function BuyerPopup({ userId }) {
 
     const { data, error } = await supabase
       .from("bookings")
-      .select(`
-        id,
-        listing_id,
-        listings ( title ),
-        seller:profiles!bookings_seller_id_fkey ( full_name )
-      `)
+      .select("id, listing_id")
       .eq("buyer_id", id)
       .eq("item_received", true)
       .eq("buyer_notified", false);
@@ -56,15 +51,15 @@ export default function BuyerPopup({ userId }) {
         </header>
 
         <p className="popup-body">
-          The following{" "}
+          The seller has dropped off the following{" "}
           {pendingBookings.length === 1 ? "item" : "items"}{" "}
-          have been dropped off at the trade facility:
+          at the trade facility:
         </p>
 
         <ul className="popup-list">
           {pendingBookings.map((booking) => (
             <li key={booking.id} className="popup-list-item">
-              {booking.seller?.full_name || "The seller"} dropped off {booking.listings?.title || `booking #${booking.id.slice(0, 6)}`}
+              Booking #{booking.id.slice(0, 6)}
             </li>
           ))}
         </ul>
