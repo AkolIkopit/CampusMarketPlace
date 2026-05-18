@@ -1,0 +1,220 @@
+.trades-list {
+  padding: 32px 10%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.empty-msg {
+  color: #666;
+  font-size: 15px;
+}
+
+/* CARD */
+.trade-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+/* CARD HEADER */
+.trade-card-header {
+  background: #0d1b2a;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trade-id {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f0a500;
+}
+
+.trade-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trade-type-pill {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0d1b2a;
+  background: #f0a500;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.trade-listing-preview {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px 0;
+}
+
+.trade-listing-img {
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #f6f8fb;
+  border: 1px solid #e8edf3;
+  display: block;
+}
+
+.trade-listing-info {
+  min-width: 0;
+}
+
+.trade-listing-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: #0d1b2a;
+  overflow-wrap: anywhere;
+}
+
+.trade-item-label,
+.trade-parties {
+  margin: 0;
+  color: #53606d;
+  font-size: 0.9rem;
+}
+
+.trade-parties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+/* STATUS PILL */
+.status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: capitalize;
+  letter-spacing: 0.3px;
+}
+
+.status-assigned             { background: #E6F1FB; color: #0C447C; }
+.status-item_received        { background: #FAEEDA; color: #633806; }
+.status-ready_for_collection { background: #EAF3DE; color: #27500A; }
+
+/* INFO GRID */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 20px 20px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.info-item {
+  background: #f6f8fb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.info-value.outstanding { color: #c0392b; }
+.info-value.small { font-size: 13px; font-weight: 400; }
+
+/* SCHEDULE */
+.schedule-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 20px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.sched-item {
+  font-size: 13px;
+  color: #555;
+}
+
+/* CHECK BADGES */
+.checks-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 14px 20px 0;
+  list-style: none;
+  margin: 0;
+}
+
+.check-badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.check-badge.yes { background: #EAF3DE; color: #27500A; }
+.check-badge.no  { background: #FCEBEB; color: #791F1F; }
+
+/* ACTIONS */
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 16px 20px 20px;
+  border-top: 1px solid #eee;
+  margin-top: 16px;
+}
+
+/* BUTTONS */
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-primary { background: #0d1b2a; color: #f0a500; }
+.btn-success { background: #EAF3DE; color: #27500A; border: 1px solid #639922; }
+.btn-danger  { background: #f0a500; color: #0d1b2a; }
+
+@media (max-width: 640px) {
+  .trades-list { padding: 24px 5%; }
+  .trade-listing-preview {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .trade-listing-img {
+    width: 72px;
+    height: 72px;
+    min-width: 72px;
+    max-width: 72px;
+  }
+  .info-grid { grid-template-columns: 1fr; }
+}

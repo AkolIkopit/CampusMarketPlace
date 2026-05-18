@@ -11,6 +11,7 @@ const AVAILABLE_SLOTS = [
   "Tomorrow 14:00",
   "Next Monday 10:00",
 ];
+const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
 function parseSlotTime(slot) {
   const now = new Date();
@@ -40,14 +41,29 @@ function parseSlotTime(slot) {
   return date;
 }
 
+async function getProfileName(userId, fallback = "A student") {
+  if (!userId) return fallback;
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.full_name || fallback;
+}
+
 function BookingRequest() {
   const [searchParams] = useSearchParams();
   const listingId = searchParams.get("listing");
   const sellerId = searchParams.get("seller");
+  const buyerParam = searchParams.get("buyer");
+  const transactionId = searchParams.get("transaction");
+  const bookingId = searchParams.get("booking");
+  const bookingMode = searchParams.get("mode") === "collection" ? "collection" : "dropoff";
   const contextItem = searchParams.get("item") || "Listing";
   const contextName = searchParams.get("name") || "Seller";
   const [listing, setListing] = useState(null);
   const [seller, setSeller] = useState(null);
+  const [existingBooking, setExistingBooking] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [agreedPrice, setAgreedPrice] = useState(listing?.price || 0);
   const [selectedSlot, setSelectedSlot] = useState(AVAILABLE_SLOTS[0]);
@@ -76,7 +92,73 @@ function BookingRequest() {
 
       setCurrentUserId(user?.id || null);
 
-      if (!listingId) {
+      if (bookingMode === "collection" && !bookingId) {
+        setError("No booking selected for collection.");
+        setLoading(false);
+        return;
+      }
+
+      let activeListingId = listingId;
+      let activeSellerId = sellerId;
+
+      if (bookingMode === "collection") {
+        const { data: bookingData, error: bookingError } = await supabase
+          .from("bookings")
+          .select("id, transaction_id, listing_id, buyer_id, seller_id, status, agreed_price, collection_time, item_received, item_released, cash_shortfall")
+          .eq("id", bookingId)
+          .maybeSingle();
+
+        if (bookingError || !bookingData) {
+          setError("Unable to load the selected collection booking.");
+          setLoading(false);
+          return;
+        }
+
+        if (bookingData.buyer_id !== user?.id) {
+          setError("Only the buyer can book a collection slot.");
+          setLoading(false);
+          return;
+        }
+
+        const collectionReady = bookingData.status === "ready_for_collection" || bookingData.status === "item_received" || bookingData.item_received;
+
+        if (!collectionReady || bookingData.item_released) {
+          setError("This order is not ready for collection.");
+          setLoading(false);
+          return;
+        }
+
+        if (bookingData.transaction_id) {
+          const { data: transactionData, error: transactionError } = await supabase
+            .from("transactions")
+            .select("cash_shortfall_due, payment_status")
+            .eq("id", bookingData.transaction_id)
+            .maybeSingle();
+
+          if (transactionError) {
+            setError("Unable to verify payment status before collection.");
+            setLoading(false);
+            return;
+          }
+
+          const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+          const bookingShortfall = Number(bookingData.cash_shortfall || 0);
+          const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
+
+          if (!paymentComplete || transactionShortfall > 0 || bookingShortfall > 0) {
+            setError("Payment must be completed before booking a collection slot.");
+            setLoading(false);
+            return;
+          }
+        }
+
+        setExistingBooking(bookingData);
+        activeListingId = bookingData.listing_id;
+        activeSellerId = bookingData.seller_id;
+        setAgreedPrice(bookingData.agreed_price || 0);
+      }
+
+      if (!activeListingId) {
         setError("No listing selected for booking.");
         setLoading(false);
         return;
@@ -85,7 +167,7 @@ function BookingRequest() {
       const { data: listingData, error: listingError } = await supabase
         .from("listings")
         .select("id, title, price, listing_type, location, seller_id")
-        .eq("id", listingId)
+        .eq("id", activeListingId)
         .maybeSingle();
 
       if (listingError || !listingData) {
@@ -95,8 +177,10 @@ function BookingRequest() {
       }
 
       setListing(listingData);
-      setAgreedPrice(listingData.price || 0);
-      const activeSellerId = sellerId || listingData.seller_id;
+      if (bookingMode !== "collection") {
+        setAgreedPrice(listingData.price || 0);
+      }
+      activeSellerId = activeSellerId || listingData.seller_id;
 
       const { data: sellerData, error: sellerError } = await supabase
         .from("profiles")
@@ -110,12 +194,13 @@ function BookingRequest() {
         return;
       }
 
+          // Removed unused activeBuyerId variable
       setSeller(sellerData);
       setLoading(false);
     };
 
     fetchData();
-  }, [listingId, sellerId]);
+  }, [listingId, sellerId, buyerParam, bookingId, bookingMode]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -123,7 +208,7 @@ function BookingRequest() {
     setSuccess("");
 
     if (!selectedSlot) {
-      setError("Please select a drop-off slot.");
+      setError(`Please select a ${bookingMode === "collection" ? "collection" : "drop-off"} slot.`);
       return;
     }
 
@@ -132,8 +217,96 @@ function BookingRequest() {
       return;
     }
 
-    if (currentUserId === seller.id) {
-      setError("You cannot request a booking for your own listing.");
+    if (bookingMode === "collection") {
+      if (!existingBooking) {
+        setError("Unable to submit collection slot. Missing booking details.");
+        return;
+      }
+
+      if (existingBooking.buyer_id !== currentUserId) {
+        setError("Only the buyer can book a collection slot.");
+        return;
+      }
+
+      if (existingBooking.transaction_id) {
+        const { data: transactionData, error: transactionError } = await supabase
+          .from("transactions")
+          .select("cash_shortfall_due, payment_status")
+          .eq("id", existingBooking.transaction_id)
+          .maybeSingle();
+
+        if (transactionError) {
+          setError("Unable to verify payment status before collection.");
+          return;
+        }
+
+        const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+        const bookingShortfall = Number(existingBooking.cash_shortfall || 0);
+        const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
+
+        if (!paymentComplete || transactionShortfall > 0 || bookingShortfall > 0) {
+          setError("Payment must be completed before booking a collection slot.");
+          return;
+        }
+      }
+
+      const collectionTime = parseSlotTime(selectedSlot);
+      if (!collectionTime) {
+        setError("Unable to resolve the selected collection slot time.");
+        return;
+      }
+
+      setSubmitting(true);
+
+      try {
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({
+            collection_time: collectionTime.toISOString(),
+            buyer_notified: true,
+          })
+          .eq("id", existingBooking.id);
+
+        if (updateError) throw updateError;
+
+        const buyerName = await getProfileName(currentUserId, "The buyer");
+        const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot}.`;
+        const { error: notificationError } = await supabase.from("messages").insert([
+          {
+            listing_id: listing.id,
+            sender_id: currentUserId,
+            receiver_id: seller.id,
+            message_text: notificationText,
+            transaction_id: transactionId || existingBooking.transaction_id || null,
+            is_read: false,
+          },
+        ]);
+
+        if (notificationError) {
+          console.error("Collection notification error:", notificationError);
+        }
+
+        setExistingBooking({ ...existingBooking, collection_time: collectionTime.toISOString() });
+        setSuccess("Collection slot booked. The seller and facility staff can now see the selected collection time.");
+      } catch (err) {
+        console.error("Collection booking update error:", err);
+        if (err && typeof err === "object" && "message" in err) {
+          setError(err.message);
+        } else {
+          setError("Failed to book collection slot. Check the browser console for details.");
+        }
+      } finally {
+        setSubmitting(false);
+      }
+
+      return;
+    }
+
+    // Determine booking buyer (either param or current viewer).
+    const bookingBuyerId = buyerParam || currentUserId;
+
+    if (!bookingBuyerId || bookingBuyerId === seller.id) {
+      setError("Invalid booking: buyer must be specified and different from seller.");
       return;
     }
 
@@ -148,8 +321,9 @@ function BookingRequest() {
     try {
       const { error: insertError } = await supabase.from("bookings").insert([
         {
+          transaction_id: transactionId || null,
           listing_id: listing.id,
-          buyer_id: currentUserId,
+          buyer_id: bookingBuyerId,
           seller_id: seller.id,
           requested_slot: selectedSlot,
           slot_time: slotTime.toISOString(),
@@ -163,13 +337,30 @@ function BookingRequest() {
 
       if (insertError) throw insertError;
 
-      const notificationText = `Booking request created for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
+      if (transactionId) {
+        await supabase
+          .from("transactions")
+          .update({
+            booking_status: "requested",
+            payment_status: "pending",
+            agreed_amount: agreedPrice,
+            cash_shortfall_due: Math.max(agreedPrice, 0),
+          })
+          .eq("id", transactionId);
+      }
+
+      // Notify the counterparty: seller if buyer initiated, buyer if seller initiated.
+      const notificationReceiver = currentUserId === seller.id ? bookingBuyerId : seller.id;
+      const requesterName = await getProfileName(currentUserId, "A student");
+      const counterpartyName = await getProfileName(notificationReceiver, "the other student");
+      const notificationText = `${SYSTEM_MESSAGE_PREFIX}${requesterName} requested a trade facility booking with ${counterpartyName} for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
       const { error: notificationError } = await supabase.from("messages").insert([
         {
           listing_id: listing.id,
           sender_id: currentUserId,
-          receiver_id: seller.id,
+          receiver_id: notificationReceiver,
           message_text: notificationText,
+          transaction_id: transactionId || null,
           is_read: false,
         },
       ]);
@@ -178,7 +369,7 @@ function BookingRequest() {
         console.error("Booking notification error:", notificationError);
       }
 
-      setSuccess("Booking request submitted. The seller has been notified and facility staff can now confirm the slot.");
+      setSuccess("Booking request submitted. The other party has been notified and facility staff can now confirm the slot.");
     } catch (err) {
       console.error("Booking insert error:", err);
       if (err && typeof err === "object" && "message" in err) {
@@ -215,9 +406,13 @@ function BookingRequest() {
         <header className="booking-header">
           <div>
             <p className="booking-label">Trade facility booking</p>
-            <h1>Book a drop-off slot for {contextItem || listing?.title}</h1>
+            <h1>
+              {bookingMode === "collection" ? "Book a collection slot" : "Book a drop-off slot"} for {contextItem || listing?.title}
+            </h1>
             <p className="booking-description">
-              Use the chat to agree the deal, then request a safe campus facility slot to complete the transaction.
+              {bookingMode === "collection"
+                ? "Choose when you will collect the item from the campus trade facility."
+                : "Use the chat to agree the deal, then request a safe campus facility slot to complete the transaction."}
             </p>
           </div>
         </header>
@@ -270,21 +465,31 @@ function BookingRequest() {
 
             <article className="booking-card booking-action-card">
               <header>
-                <h2>Request a slot</h2>
+                <h2>{bookingMode === "collection" ? "Collection slot" : "Request a slot"}</h2>
               </header>
               <form onSubmit={handleSubmit} className="booking-form">
-                <label className="field-label" htmlFor="agreed-price">Agreed price (R)</label>
-                <input
-                  id="agreed-price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={agreedPrice}
-                  onChange={(e) => setAgreedPrice(parseFloat(e.target.value) || 0)}
-                  placeholder="Enter the negotiated price"
-                />
+                {bookingMode === "dropoff" ? (
+                  <>
+                    <label className="field-label" htmlFor="agreed-price">Agreed price (R)</label>
+                    <input
+                      id="agreed-price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={agreedPrice}
+                      onChange={(e) => setAgreedPrice(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter the negotiated price"
+                    />
+                  </>
+                ) : (
+                  <div className="booking-status booking-info">
+                    This item has been dropped off and is ready for buyer collection.
+                  </div>
+                )}
 
-                <label className="field-label" htmlFor="slot-select">Choose a drop-off slot</label>
+                <label className="field-label" htmlFor="slot-select">
+                  Choose a {bookingMode === "collection" ? "collection" : "drop-off"} slot
+                </label>
                 <select
                   id="slot-select"
                   value={selectedSlot}
@@ -297,16 +502,24 @@ function BookingRequest() {
                   ))}
                 </select>
 
-                <label className="field-label" htmlFor="booking-note">Notes for seller / staff</label>
-                <textarea
-                  id="booking-note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add any details you want the seller or facility staff to see..."
-                />
+                {bookingMode === "dropoff" ? (
+                  <>
+                    <label className="field-label" htmlFor="booking-note">Notes for seller / staff</label>
+                    <textarea
+                      id="booking-note"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="Add any details you want the seller or facility staff to see..."
+                    />
+                  </>
+                ) : null}
 
                 <button type="submit" className="booking-submit" disabled={submitting}>
-                  {submitting ? "Submitting..." : "Request booking"}
+                  {submitting
+                    ? "Submitting..."
+                    : bookingMode === "collection"
+                      ? "Book collection slot"
+                      : "Request booking"}
                 </button>
 
                 {success ? (

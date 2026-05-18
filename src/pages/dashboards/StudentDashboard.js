@@ -10,6 +10,8 @@ import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
 import LoadingScreen from '../../components/LoadingScreen';
 import './StudentDashboard.css';
+import BuyerPopup from "./BuyerPopup";
+import Seller_Popup from "./Seller_Popup";
 
 const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
@@ -42,6 +44,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
 
   useEffect(() => {
+    if (!profile?.id) return;
+
     const fetchData = async () => {
       try {
         const { data: catData } = await supabase.from('categories').select('*');
@@ -49,7 +53,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 
         const { data: recent } = await supabase
           .from('listings')
-          .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
+          .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
           .limit(10);
@@ -61,7 +65,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       }
     };
     fetchData();
-  }, []);
+  }, [profile?.id]);
 
   const checkApprovalStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -82,8 +86,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   };
 
   useEffect(() => {
+    if (!profile?.id) return;
+
     const fetchMarket = async () => {
-      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url)`).eq('status', 'active');
+      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).eq('status', 'active');
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
       if (selectedCondition !== 'all') query = query.eq('condition', selectedCondition);
       if (minPrice) query = query.gte('price', Number(minPrice));
@@ -95,7 +101,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       setMarketListings(filtered);
     };
     fetchMarket();
-  }, [selectedCat, selectedCampus, selectedCondition, minPrice, maxPrice]);
+  }, [profile?.id, selectedCat, selectedCampus, selectedCondition, minPrice, maxPrice]);
 
   useEffect(() => {
     const userId = profile?.id;
@@ -158,7 +164,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   if (loading && !profile) return <LoadingScreen />;
 
   return (
+   
+
     <main className="dashboard-container">
+
       <section className="aurora-bg" aria-hidden="true"><hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" /></section>
       
       <header className="main-header">
@@ -167,7 +176,6 @@ const StudentDashboard = ({ profile: initialProfile }) => {
             <img src="/UniMartlogo.png" alt="Logo" className="header-logo" /><h1 className="logo-text">UniMart</h1>
           </section>
           <nav className="header-actions">
-            <button className="icon-btn" onClick={() => navigate('/cart')}><ShoppingBag size={20} /></button>
             <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
           </nav>
         </nav>
@@ -248,16 +256,25 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           </article>
         </aside>
       )}
+      <BuyerPopup userId={profile?.id} />
+      <Seller_Popup userId={profile?.id} />
     </main>
   );
 };
 
 const ListingCard = ({ item }) => {
   const navigate = useNavigate();
+  const primaryImage = item.listing_images?.find((img) => img.is_primary) || item.listing_images?.[0];
   return (
     <article className="listing-card-item" onClick={() => navigate(`/listing/${item.id}`)}>
       <header className="listing-card-top">
-        <figure className="listing-img-container"><img src={item.listing_images?.[0]?.image_url || '/placeholder.jpg'} alt="" /></figure>
+        <figure className="listing-img-container">
+          <img
+            src={primaryImage?.image_url || '/placeholder.jpg'}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
+          />
+        </figure>
         <section className="seller-mini-info">
           {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
           <p>{item.profiles?.full_name || 'Student'}</p>

@@ -470,6 +470,41 @@
     opacity: 0.95;
 }
 
+.payment-banner {
+    display: grid;
+    gap: 0.65rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(240, 247, 255, 0.95);
+}
+
+.payment-banner p {
+    margin: 0;
+    color: var(--text);
+    font-weight: 700;
+}
+
+.payment-banner strong {
+    color: var(--navy);
+    font-weight: 900;
+}
+
+.payment-button {
+    width: fit-content;
+    border: none;
+    border-radius: 1rem;
+    padding: 0.85rem 1.2rem;
+    font-weight: 900;
+    color: white;
+    background: #0077b6;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.payment-button:hover {
+    opacity: 0.95;
+}
+
 .messages-stream {
     overflow-y: auto;
     overflow-x: hidden;
@@ -520,6 +555,39 @@
 .message-row.outgoing {
     margin-left: auto;
     justify-content: flex-end;
+}
+
+.message-row.system {
+    max-width: 100%;
+    width: 100%;
+    justify-content: center;
+}
+
+.system-message {
+    display: grid;
+    justify-items: center;
+    gap: 0.25rem;
+    max-width: min(42rem, 100%);
+    padding: 0.75rem 1rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(13, 27, 42, 0.1);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.system-message p {
+    margin: 0;
+    color: var(--text);
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
+.system-message time {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 700;
 }
 
 .message-bubble {
@@ -795,6 +863,80 @@
     background: rgba(240, 165, 0, 0.08);
 }
 
+.thread-intro {
+    display: grid;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border);
+}
+
+.transaction-hint {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.transaction-actions {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.9rem 1rem;
+    border-radius: 0.8rem;
+    background: #f9fbff;
+    border: 1px solid #d9e4f0;
+    box-sizing: border-box;
+    align-self: start;
+}
+
+.transaction-actions p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.transaction-request-text {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border-left: 4px solid var(--amber);
+    border-radius: 0.7rem;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    max-height: 4.75rem;
+    overflow-y: auto;
+}
+
+.transaction-button-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.accept-button,
+.decline-button {
+    border: none;
+    border-radius: 0.8rem;
+    min-height: 3.2rem;
+    padding: 0.7rem 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    line-height: 1.2;
+}
+
+.accept-button {
+    background: #0077b6;
+    color: white;
+}
+
+.decline-button {
+    background: #f3a91e;
+    color: #0a192f;
+}
+
 @media (max-width: 900px) {
     .messages-layout {
         grid-template-columns: 1fr;
@@ -808,6 +950,10 @@
     .messages-list-panel,
     .messages-thread-panel {
         min-height: 0;
+    }
+
+    .transaction-button-row {
+        grid-template-columns: 1fr;
     }
 
     .messages-thread-panel {

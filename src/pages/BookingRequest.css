@@ -20,7 +20,7 @@
   padding: 0.85rem 1rem;
   border: 1px solid rgba(16, 42, 67, 0.12);
   border-radius: 999px;
-  background: white;
+  background: rgba(255, 255, 255, 0.986);
   color: #102a43;
   font-weight: 700;
   cursor: pointer;
@@ -198,6 +198,12 @@
   background: #ecfdf5;
   color: #166534;
   border: 1px solid #d1fae5;
+}
+
+.booking-info {
+  background: #e6fffa;
+  color: #0d5c63;
+  border: 1px solid rgba(13, 92, 99, 0.18);
 }
 
 .booking-error {

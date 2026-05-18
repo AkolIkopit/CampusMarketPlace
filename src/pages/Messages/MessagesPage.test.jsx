@@ -32,10 +32,19 @@ function createMessagesPageMocks({ messages = [], profileRows = [] } = {}) {
     data: { user: { id: 'user-1' } }
   });
 
+  supabase.channel.mockReturnValue({
+    on: jest.fn().mockReturnThis(),
+    subscribe: jest.fn(),
+  });
+
+  const profileRowsIn = jest.fn().mockResolvedValue({ data: profileRows });
   const userProfileEq = jest.fn().mockResolvedValue({
     data: { id: 'user-1', full_name: 'Jane Student', avatar_url: '' }
   });
-  const userProfileSelect = jest.fn(() => ({ eq: userProfileEq }));
+  const userProfileSelect = () => ({
+    eq: jest.fn(() => ({ maybeSingle: userProfileEq })),
+    in: profileRowsIn,
+  });
 
   // messages query chain
   const messagesOrder = jest.fn().mockResolvedValue({ data: messages });
@@ -56,7 +65,23 @@ function createMessagesPageMocks({ messages = [], profileRows = [] } = {}) {
   const update = jest.fn(() => ({ eq: updateEq, filter: updateFilter }));
 
   supabase.from.mockImplementation((table) => {
-    if (table === 'profiles') return { select: jest.fn(() => ({ eq: userProfileEq, in: profilesIn })) };
+    console.log('mock supabase.from table', table);
+    if (table === 'profiles') {
+      return {
+        select: (query) => {
+          console.log('profile select query', query);
+          const result = {
+            eq: (...args) => {
+              console.log('profile eq call', args);
+              return { maybeSingle: userProfileEq };
+            },
+            in: profileRowsIn,
+          };
+          console.log('profile select result', result);
+          return result;
+        },
+      };
+    }
     if (table === 'messages') return { select: messagesSelect, update };
     if (table === 'listings') return { select: listingsSelect };
     return { select: jest.fn().mockResolvedValue({ data: [] }) };
@@ -142,6 +167,18 @@ describe('MessagesPage', () => {
   });
 
   it('renders the conversation list panel', async () => {
+    createMessagesPageMocks();
+
+    render(<MessagesPage profile={profile} />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('complementary', { name: 'Conversation list' })
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('shows the conversation list panel', async () => {
     createMessagesPageMocks();
 
     render(<MessagesPage profile={profile} />);

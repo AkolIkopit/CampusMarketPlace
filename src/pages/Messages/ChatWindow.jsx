@@ -9,9 +9,57 @@ function ChatWindow({
   onSendMessage,
   isSending,
   isSelfConversation = false,
+  currentUserId,
   onRequestBooking,
   onBackToList,
+  onAcceptTransaction,
+  onDeclineTransaction,
+  onMakePayment,
+  transactionActionLoading,
 }) {
+  const isSeller = !isSelfConversation && currentUserId === conversation.sellerId;
+  const isBuyer = !isSelfConversation && currentUserId && currentUserId !== conversation.sellerId;
+  const transactionStatus = conversation.transactionStatus || "";
+  const bookingStatus = (conversation.bookingStatus || "").toLowerCase();
+  const paymentStatus = (conversation.paymentStatus || "unpaid").toLowerCase();
+  const outstandingBalance = Number(conversation.cashShortfallDue ?? conversation.agreedAmount ?? 0);
+  const paymentComplete = paymentStatus === "fully_paid";
+  const facilityHandoverStarted = Boolean(
+    conversation.itemReceived ||
+    conversation.itemReleased ||
+    ["item_received", "ready_for_collection", "completed"].includes(bookingStatus)
+  );
+  const hasPendingTransaction = Boolean(
+    conversation.transactionId &&
+    isSeller &&
+    (!transactionStatus || transactionStatus === "pending_seller_acceptance" || transactionStatus === "pending")
+  );
+  const hasAcceptedTransaction = Boolean(
+    conversation.transactionId &&
+    isSeller &&
+    (transactionStatus === "accepted_pending_booking" || transactionStatus === "pending_booking") &&
+    !facilityHandoverStarted &&
+    !paymentComplete
+  );
+  const hasExistingBooking = Boolean(
+    bookingStatus &&
+    bookingStatus !== "not_booked" &&
+    bookingStatus !== "cancelled" &&
+    bookingStatus !== "expired"
+  );
+  const buyerCanPay = Boolean(
+    conversation.transactionId &&
+    isBuyer &&
+    hasExistingBooking &&
+    outstandingBalance > 0 &&
+    paymentStatus !== "fully_paid"
+  );
+  const requestText =
+    conversation.transactionRequestText ||
+    conversation.messages.find((message) => message.incoming && message.text?.includes("Transaction ID:"))?.text ||
+    conversation.message ||
+    "This conversation is attached to a transaction request.";
+
   return (
     <section className={styles["chat-window"]} aria-label="Conversation view">
       <header className={styles["chat-header"]}>
@@ -49,17 +97,76 @@ function ChatWindow({
         </nav>
       </header>
 
-      {conversation.listingId && !isSelfConversation ? (
+      {conversation.listingId && hasAcceptedTransaction ? (
         <section className={styles["booking-banner"]}>
-          <p>Agree on a price, then lock in a safe trade facility slot for the listing below.</p>
+          <p>
+            {hasExistingBooking
+              ? "A trade facility booking has been requested. Request a new booking if the slot or agreed price needs to change."
+              : "Offer accepted. Request a safe trade facility booking to lock in the handover."}
+          </p>
           <button type="button" className={styles["booking-button"]} onClick={onRequestBooking}>
-            Request facility booking
+            {hasExistingBooking ? "Request a new booking" : "Request facility booking"}
           </button>
+        </section>
+      ) : null}
+
+      {buyerCanPay ? (
+        <section className={styles["payment-banner"]}>
+          <p>
+            {paymentStatus === "pending_payment"
+              ? "There is still an outstanding balance. Please pay the remaining amount before collection."
+              : `${conversation.name} has requested a trade facility booking. Please make payment before the deadline to keep this slot reserved.`}
+          </p>
+          {outstandingBalance > 0 ? (
+            <strong>Amount due: R{outstandingBalance.toFixed(2)}</strong>
+          ) : null}
+          <button type="button" className={styles["payment-button"]} onClick={onMakePayment}>
+            Make payment
+          </button>
+        </section>
+      ) : null}
+
+      {hasPendingTransaction ? (
+        <section className={styles["transaction-actions"]}>
+          <p>This conversation is attached to a pending transaction request. Accept it to continue to facility booking, or decline it and keep negotiating in chat.</p>
+          <blockquote className={styles["transaction-request-text"]}>{requestText}</blockquote>
+          <div className={styles["transaction-button-row"]}>
+            <button
+              type="button"
+              className={styles["decline-button"]}
+              onClick={onDeclineTransaction}
+              disabled={transactionActionLoading}
+            >
+              Decline Request
+            </button>
+            <button
+              type="button"
+              className={styles["accept-button"]}
+              onClick={onAcceptTransaction}
+              disabled={transactionActionLoading}
+            >
+              Accept Request
+            </button>
+          </div>
         </section>
       ) : null}
 
       <section className={styles["messages-stream"]} aria-label="Messages">
         <p className={styles.timestamp}>{conversation.dateLabel}</p>
+
+        {conversation.action && conversation.messages.length === 0 ? (
+          <section className={styles["thread-intro"]}>
+            <h2>Transaction started</h2>
+            <p>
+              {conversation.action === 'buy' && 'You created a purchase request for this listing.'}
+              {conversation.action === 'offer' && 'You opened the offer thread. Send a message to negotiate the price.'}
+              {conversation.action === 'trade' && 'You opened a trade request. Tell the seller what you want to trade and any cash supplement.'}
+            </p>
+            {conversation.transactionId ? (
+              <p className={styles["transaction-hint"]}>Transaction ID: {conversation.transactionId}</p>
+            ) : null}
+          </section>
+        ) : null}
 
         {isSelfConversation ? (
           <section className={styles["empty-state"]}>
@@ -74,38 +181,47 @@ function ChatWindow({
             <li
               key={message.id || `${message.time}-${message.incoming}`}
               className={
-                message.incoming
+                message.isSystem
+                  ? `${styles["message-row"]} ${styles.system}`
+                  : message.incoming
                   ? `${styles["message-row"]} ${styles.incoming}`
                   : `${styles["message-row"]} ${styles.outgoing}`
               }
             >
-              <article className={styles["message-bubble"]}>
-                <figure className={styles["message-avatar"]}>
-                  <img alt={message.incoming ? conversation.name : "You"} src={message.avatar || DEFAULT_AVATAR} />
-                </figure>
-                <section className={styles["bubble-stack"]}>
-                  <p
-                    className={
-                      message.incoming
-                        ? `${styles.bubble} ${styles["incoming-bubble"]}`
-                        : `${styles.bubble} ${styles["outgoing-bubble"]}`
-                    }
-                  >
-                    {message.text}
-                  </p>
-                  {message.attachmentUrl ? (
-                    <a
-                      className={styles["message-attachment"]}
-                      href={message.attachmentUrl}
-                      target="_blank"
-                      rel="noreferrer"
+              {message.isSystem ? (
+                <article className={styles["system-message"]}>
+                  <p>{message.text}</p>
+                  <time>{message.time}</time>
+                </article>
+              ) : (
+                <article className={styles["message-bubble"]}>
+                  <figure className={styles["message-avatar"]}>
+                    <img alt={message.incoming ? conversation.name : "You"} src={message.avatar || DEFAULT_AVATAR} />
+                  </figure>
+                  <section className={styles["bubble-stack"]}>
+                    <p
+                      className={
+                        message.incoming
+                          ? `${styles.bubble} ${styles["incoming-bubble"]}`
+                          : `${styles.bubble} ${styles["outgoing-bubble"]}`
+                      }
                     >
-                      {message.attachmentLabel || "Open attachment"}
-                    </a>
-                  ) : null}
-                  <time className={styles["message-time"]}>{message.time}</time>
-                </section>
-              </article>
+                      {message.text}
+                    </p>
+                    {message.attachmentUrl ? (
+                      <a
+                        className={styles["message-attachment"]}
+                        href={message.attachmentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {message.attachmentLabel || "Open attachment"}
+                      </a>
+                    ) : null}
+                    <time className={styles["message-time"]}>{message.time}</time>
+                  </section>
+                </article>
+              )}
             </li>
           ))}
 

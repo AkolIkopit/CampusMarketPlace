@@ -1,20 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "./AdminDashboard.css";
+import EditProfile from "./EditProfile";
 import { supabase } from "../../supabase";
-export default function TradeStaffDashboard() {
-
+export default function TradeStaffDashboard({ profile }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [view, setView] = useState("dashboard");
+  const [currentProfile, setCurrentProfile] = useState(profile);
+
+  useEffect(() => {
+    setCurrentProfile(profile);
+  }, [profile]);
 
   const navigate = useNavigate();
-const handleLogout = async () => {
+  const handleLogout = async () => {
 
   await supabase.auth.signOut();
 
   navigate("/");
 
 };
+  if (view === "edit") {
+    return (
+      <EditProfile
+        profile={currentProfile}
+        onCancel={() => setView("dashboard")}
+        onSaveSuccess={(updatedData) => {
+          setCurrentProfile((prev) => ({ ...prev, ...updatedData }));
+          setView("dashboard");
+        }}
+      />
+    );
+  }
+
   return (
     <main className="dashboard-container">
 
@@ -51,16 +70,13 @@ const handleLogout = async () => {
         {menuOpen && (
           <section className="dropdown-menu">
 
-            <button className="dropdown-item">
-              Edit Profile
-            </button>
-
+           
             <button
-  className="dropdown-item logout"
-  onClick={handleLogout}
->
-  Logout
-</button>
+              className="dropdown-item logout"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
 
           </section>
         )}
@@ -79,11 +95,11 @@ const handleLogout = async () => {
     </span>
 
     <h1 className="hero-title">
-      Manage marketplace trades and exchanges.
+      Manage marketplace sales or trades and exchanges.
     </h1>
 
     <p className="hero-description">
-      Claim trades, manage collections, and oversee secure marketplace transactions.
+      Claim trades,sales, manage collections, and oversee secure marketplace transactions.
     </p>
 
   </section>
@@ -106,7 +122,7 @@ const handleLogout = async () => {
       </h3>
 
       <p>
-        View all active marketplace trades and claim responsibility.
+        View all active marketplace trades or sales and claim responsibility.
       </p>
 
     </button>
@@ -122,11 +138,11 @@ const handleLogout = async () => {
       </span>
 
       <h3>
-        My Trades
+        My Assigned Trades & Sales
       </h3>
 
       <p>
-        Manage the trades currently assigned to you.
+        Manage the trades and sales currently assigned to you.
       </p>
 
     </button>
@@ -142,7 +158,7 @@ const handleLogout = async () => {
       </span>
 
       <h3>
-        Completed Trades
+        Completed Trades & Sales
       </h3>
 
       <p>
@@ -152,7 +168,7 @@ const handleLogout = async () => {
     </button>
 
     {/* PROFILE */}
-    <button className="action-block">
+    <button className="action-block" onClick={() => setView("edit")}>
 
       <span className="block-icon">
         👤

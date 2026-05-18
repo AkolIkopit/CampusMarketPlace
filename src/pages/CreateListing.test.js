@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateListing from './CreateListing';
 import { supabase } from '../supabase';
-import { __resetRouterMocks, __setNavigateMock } from 'react-router-dom';
+import { __resetRouterMocks, __setNavigateMock, __setSearchParams } from 'react-router-dom';
 
 jest.mock('../supabase', () => ({
   supabase: {
@@ -19,14 +19,23 @@ jest.mock('../supabase', () => ({
 function createCreateListingMocks({
   categories = [{ id: 1, name: 'Books' }],
   uploadError = null,
-  listingError = null
+  listingError = null,
+  listingData = null,
+  updateError = null
 } = {}) {
   const categorySelect = jest.fn().mockResolvedValue({ data: categories });
   const listingSingle = jest.fn().mockResolvedValue({
-    data: listingError ? null : { id: 'listing-1' },
+    data: listingData || (listingError ? null : { id: 'listing-1' }),
     error: listingError
   });
-  const listingSelect = jest.fn(() => ({ single: listingSingle }));
+  const listingSelect = jest.fn(() => ({
+    single: listingSingle,
+    maybeSingle: listingSingle,
+    eq: jest.fn(() => ({ maybeSingle: listingSingle }))
+  }));
+  const updateSelect = jest.fn().mockResolvedValue({ data: [{ id: 'listing-1' }], error: updateError });
+  const updateEq = jest.fn(() => ({ select: updateSelect }));
+  const listingUpdate = jest.fn(() => ({ eq: updateEq }));
   const listingInsert = jest.fn(() => ({ select: listingSelect }));
   const listingImagesInsert = jest.fn().mockResolvedValue({ error: null });
   const upload = jest.fn().mockResolvedValue({ error: uploadError });
@@ -40,7 +49,7 @@ function createCreateListingMocks({
     }
 
     if (table === 'listings') {
-      return { insert: listingInsert };
+      return { insert: listingInsert, select: listingSelect, update: listingUpdate };
     }
 
     if (table === 'listing_images') {
@@ -65,6 +74,7 @@ function createCreateListingMocks({
     listingImagesInsert,
     listingInsert,
     listingSingle,
+    listingUpdate,
     upload
   };
 }
@@ -157,6 +167,68 @@ describe('CreateListing', () => {
     });
 
     randomSpy.mockRestore();
+  });
+
+  it('loads an existing listing in edit mode and updates it successfully', async () => {
+    const filledListing = {
+      id: 'listing-1',
+      title: 'Old Lamp',
+      category_id: 1,
+      description: 'Old description',
+      price: 120.5,
+      listing_type: 'sale',
+      condition: 'Good',
+      location: 'Main Campus',
+      listing_images: [{ image_url: 'https://cdn.example.com/old.png', is_primary: true }]
+    };
+
+    const { listingUpdate } = createCreateListingMocks({
+      listingData: filledListing
+    });
+
+    __setSearchParams('listing=listing-1');
+
+    const { container } = render(<CreateListing />);
+    const fileInput = container.querySelector('#pic-upload');
+    await screen.findByText('Edit Listing');
+    await screen.findByRole('option', { name: 'Books' });
+    const [categorySelect, conditionSelect, campusSelect] = screen.getAllByRole('combobox');
+
+    expect(screen.getByDisplayValue('Old Lamp')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Old description')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('120.5')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Sale' })).toBeChecked();
+
+    await userEvent.upload(fileInput, new File(['data'], 'camera.png', { type: 'image/png' }));
+    const titleInput = screen.getByPlaceholderText('e.g. Calculus Textbook');
+    const descriptionInput = screen.getByPlaceholderText('Details about your item...');
+    const priceInput = screen.getByPlaceholderText('0.00');
+
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Desk Lamp');
+    await userEvent.selectOptions(categorySelect, '1');
+    await userEvent.selectOptions(conditionSelect, 'Like New');
+    await userEvent.selectOptions(campusSelect, 'Med Campus');
+    await userEvent.clear(priceInput);
+    await userEvent.type(priceInput, '149.99');
+    await userEvent.clear(descriptionInput);
+    await userEvent.type(descriptionInput, 'Bright desk lamp');
+    await userEvent.click(screen.getByRole('radio', { name: 'Trade' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Update Listing' }));
+
+    await waitFor(() => {
+      expect(listingUpdate).toHaveBeenCalledWith({
+        title: 'Desk Lamp',
+        category_id: 1,
+        description: 'Bright desk lamp',
+        price: 149.99,
+        listing_type: 'trade',
+        condition: 'Like New',
+        location: 'Med Campus',
+        status: 'active'
+      });
+      expect(navigateMock).toHaveBeenCalledWith('/my-listings');
+    });
   });
 
   it('shows the Supabase upload error to the user', async () => {
