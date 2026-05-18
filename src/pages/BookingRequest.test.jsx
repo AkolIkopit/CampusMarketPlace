@@ -29,6 +29,25 @@ const baseSeller = {
   campus: 'Main Campus'
 };
 
+const futureSlotStart = new Date();
+futureSlotStart.setDate(futureSlotStart.getDate() + 1);
+futureSlotStart.setHours(10, 0, 0, 0);
+
+const futureSlotEnd = new Date(futureSlotStart);
+futureSlotEnd.setHours(12, 0, 0, 0);
+
+const baseTradeSlots = [
+  {
+    id: 'slot-1',
+    campus_name: 'Main Campus',
+    start_time: futureSlotStart.toISOString(),
+    end_time: futureSlotEnd.toISOString(),
+    max_capacity: 5,
+    current_bookings: 0,
+    is_active: true
+  }
+];
+
 function createBookingMocks({
   listing = baseListing,
   seller = baseSeller,
@@ -37,7 +56,8 @@ function createBookingMocks({
   sellerError = null,
   authError = null,
   insertError = null,
-  messageInsertError = null
+  messageInsertError = null,
+  tradeSlots = baseTradeSlots
 } = {}) {
   supabase.auth.getUser.mockResolvedValue({
     data: { user: currentUserId ? { id: currentUserId } : null },
@@ -60,16 +80,24 @@ function createBookingMocks({
 
   const bookingsInsert = jest.fn().mockResolvedValue({ error: insertError });
   const messagesInsert = jest.fn().mockResolvedValue({ error: messageInsertError });
+  const tradeSlotsOrder = jest.fn().mockResolvedValue({ data: tradeSlots, error: null });
+  const tradeSlotsGte = jest.fn(() => ({ order: tradeSlotsOrder }));
+  const tradeSlotsEqActive = jest.fn(() => ({ gte: tradeSlotsGte }));
+  const tradeSlotsEqCampus = jest.fn(() => ({ eq: tradeSlotsEqActive }));
+  const tradeSlotsSelect = jest.fn(() => ({ eq: tradeSlotsEqCampus }));
+  const tradeSlotsUpdateEq = jest.fn().mockResolvedValue({ error: null });
+  const tradeSlotsUpdate = jest.fn(() => ({ eq: tradeSlotsUpdateEq }));
 
   supabase.from.mockImplementation((table) => {
     if (table === 'listings') return { select: listingSelect };
     if (table === 'profiles') return { select: sellerSelect };
     if (table === 'bookings') return { insert: bookingsInsert };
     if (table === 'messages') return { insert: messagesInsert };
+    if (table === 'trade_slots') return { select: tradeSlotsSelect, update: tradeSlotsUpdate };
     throw new Error(`Unexpected table: ${table}`);
   });
 
-  return { bookingsInsert, messagesInsert };
+  return { bookingsInsert, messagesInsert, tradeSlotsUpdate };
 }
 
 describe('BookingRequest', () => {

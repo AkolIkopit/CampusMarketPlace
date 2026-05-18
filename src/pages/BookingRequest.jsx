@@ -1,44 +1,66 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
-import { ArrowLeft, CalendarDays, MapPin, User, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, MapPin, User, Loader2, CheckCircle } from "lucide-react";
 import "./BookingRequest.css";
 
-const AVAILABLE_SLOTS = [
-  "Today 10:00",
-  "Today 14:00",
-  "Tomorrow 10:00",
-  "Tomorrow 14:00",
-  "Next Monday 10:00",
-];
+const SLOT_INTERVAL_MINUTES = 30;
+const EARLIEST_BOOKING_HOUR = 8;
+const LATEST_BOOKING_HOUR = 17;
 const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
-function parseSlotTime(slot) {
+function formatSlotLabel(date) {
+  return date.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function isRealisticBookingTime(date) {
+  const hour = date.getHours();
+  return hour >= EARLIEST_BOOKING_HOUR && hour < LATEST_BOOKING_HOUR;
+}
+
+function buildBookableSlots(tradeSlots = []) {
   const now = new Date();
-  const date = new Date(now);
-  const [, timePart] = slot.split(" ");
-  const [hours, minutes] = timePart.split(":").map(Number);
 
-  if (slot.startsWith("Today")) {
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  }
+  return tradeSlots.flatMap((slot) => {
+    const start = new Date(slot.start_time);
+    const end = new Date(slot.end_time);
+    const hasCapacity = Number(slot.max_capacity || 0) > Number(slot.current_bookings || 0);
 
-  if (slot.startsWith("Tomorrow")) {
-    date.setDate(date.getDate() + 1);
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  }
+    if (!hasCapacity || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= now) {
+      return [];
+    }
 
-  if (slot.startsWith("Next Monday")) {
-    const currentDay = date.getDay();
-    const daysUntilNextMonday = ((1 + 7 - currentDay) % 7) || 7;
-    date.setDate(date.getDate() + daysUntilNextMonday);
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  }
+    const options = [];
+    const cursor = new Date(Math.max(start.getTime(), now.getTime()));
+    cursor.setSeconds(0, 0);
 
-  return date;
+    const remainder = cursor.getMinutes() % SLOT_INTERVAL_MINUTES;
+    if (remainder !== 0) {
+      cursor.setMinutes(cursor.getMinutes() + (SLOT_INTERVAL_MINUTES - remainder));
+    }
+
+    while (cursor < end) {
+      if (isRealisticBookingTime(cursor)) {
+        options.push({
+          id: `${slot.id}__${cursor.toISOString()}`,
+          tradeSlotId: slot.id,
+          date: new Date(cursor),
+          label: formatSlotLabel(cursor),
+          capacity: Number(slot.max_capacity || 0),
+          booked: Number(slot.current_bookings || 0),
+        });
+      }
+      cursor.setMinutes(cursor.getMinutes() + SLOT_INTERVAL_MINUTES);
+    }
+
+    return options;
+  });
 }
 
 async function getProfileName(userId, fallback = "A student") {
@@ -66,7 +88,8 @@ function BookingRequest() {
   const [existingBooking, setExistingBooking] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [agreedPrice, setAgreedPrice] = useState(listing?.price || 0);
-  const [selectedSlot, setSelectedSlot] = useState(AVAILABLE_SLOTS[0]);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [selectedSlotId, setSelectedSlotId] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -196,6 +219,24 @@ function BookingRequest() {
 
           // Removed unused activeBuyerId variable
       setSeller(sellerData);
+
+      const { data: slotRows, error: slotError } = await supabase
+        .from("trade_slots")
+        .select("id, campus_name, start_time, end_time, max_capacity, current_bookings, is_active")
+        .eq("campus_name", listingData.location || sellerData.campus || "Main Campus")
+        .eq("is_active", true)
+        .gte("end_time", new Date().toISOString())
+        .order("start_time", { ascending: true });
+
+      if (slotError) {
+        setError("Unable to load available staff-backed facility slots.");
+        setLoading(false);
+        return;
+      }
+
+      const bookableSlots = buildBookableSlots(slotRows || []);
+      setAvailableSlots(bookableSlots);
+      setSelectedSlotId(bookableSlots[0]?.id || "");
       setLoading(false);
     };
 
@@ -206,6 +247,8 @@ function BookingRequest() {
     event.preventDefault();
     setError("");
     setSuccess("");
+
+    const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId);
 
     if (!selectedSlot) {
       setError(`Please select a ${bookingMode === "collection" ? "collection" : "drop-off"} slot.`);
@@ -250,7 +293,7 @@ function BookingRequest() {
         }
       }
 
-      const collectionTime = parseSlotTime(selectedSlot);
+      const collectionTime = selectedSlot.date;
       if (!collectionTime) {
         setError("Unable to resolve the selected collection slot time.");
         return;
@@ -269,8 +312,13 @@ function BookingRequest() {
 
         if (updateError) throw updateError;
 
+        await supabase
+          .from("trade_slots")
+          .update({ current_bookings: selectedSlot.booked + 1 })
+          .eq("id", selectedSlot.tradeSlotId);
+
         const buyerName = await getProfileName(currentUserId, "The buyer");
-        const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot}.`;
+        const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot.label}.`;
         const { error: notificationError } = await supabase.from("messages").insert([
           {
             listing_id: listing.id,
@@ -306,11 +354,11 @@ function BookingRequest() {
     const bookingBuyerId = buyerParam || currentUserId;
 
     if (!bookingBuyerId || bookingBuyerId === seller.id) {
-      setError("Invalid booking: buyer must be specified and different from seller.");
+      setError("You cannot request a booking for your own listing.");
       return;
     }
 
-    const slotTime = parseSlotTime(selectedSlot);
+    const slotTime = selectedSlot.date;
     if (!slotTime) {
       setError("Unable to resolve the selected slot time.");
       return;
@@ -325,7 +373,7 @@ function BookingRequest() {
           listing_id: listing.id,
           buyer_id: bookingBuyerId,
           seller_id: seller.id,
-          requested_slot: selectedSlot,
+          requested_slot: selectedSlot.label,
           slot_time: slotTime.toISOString(),
           status: "requested",
           agreed_price: agreedPrice,
@@ -336,6 +384,11 @@ function BookingRequest() {
       ]);
 
       if (insertError) throw insertError;
+
+      await supabase
+        .from("trade_slots")
+        .update({ current_bookings: selectedSlot.booked + 1 })
+        .eq("id", selectedSlot.tradeSlotId);
 
       if (transactionId) {
         await supabase
@@ -353,7 +406,7 @@ function BookingRequest() {
       const notificationReceiver = currentUserId === seller.id ? bookingBuyerId : seller.id;
       const requesterName = await getProfileName(currentUserId, "A student");
       const counterpartyName = await getProfileName(notificationReceiver, "the other student");
-      const notificationText = `${SYSTEM_MESSAGE_PREFIX}${requesterName} requested a trade facility booking with ${counterpartyName} for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
+      const notificationText = `${SYSTEM_MESSAGE_PREFIX}${requesterName} requested a trade facility booking with ${counterpartyName} for ${listing.title} at ${selectedSlot.label} with agreed price R${agreedPrice.toFixed(2)}.`;
       const { error: notificationError } = await supabase.from("messages").insert([
         {
           listing_id: listing.id,
@@ -492,15 +545,27 @@ function BookingRequest() {
                 </label>
                 <select
                   id="slot-select"
-                  value={selectedSlot}
-                  onChange={(e) => setSelectedSlot(e.target.value)}
+                  value={selectedSlotId}
+                  onChange={(e) => setSelectedSlotId(e.target.value)}
+                  disabled={availableSlots.length === 0}
                 >
-                  {AVAILABLE_SLOTS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                  {availableSlots.length === 0 ? (
+                    <option value="">
+                      No staff-backed slots available
+                    </option>
+                  ) : availableSlots.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label} ({option.capacity - option.booked} spaces left)
                     </option>
                   ))}
                 </select>
+
+                {availableSlots.length === 0 ? (
+                  <div className="booking-status booking-info">
+                    No facility staff are currently scheduled for realistic booking hours at this campus.
+                    Please ask an admin to add staff-backed facility slots.
+                  </div>
+                ) : null}
 
                 {bookingMode === "dropoff" ? (
                   <>
