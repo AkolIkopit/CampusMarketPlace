@@ -748,16 +748,20 @@ function MessagesPage({ profile }) {
   };
 
   const handleAcceptTransaction = async () => {
+    const sellerName = profile?.full_name || "The seller";
+    const buyerName = activeConversation?.name || "the buyer";
     await handleTransactionStatusChange(
       "accepted_pending_booking",
-      "Seller accepted the transaction. The seller should now request a trade facility booking."
+      `${sellerName} accepted ${buyerName}'s transaction request. ${sellerName} should now request a trade facility booking.`
     );
   };
 
   const handleDeclineTransaction = async () => {
+    const sellerName = profile?.full_name || "The seller";
+    const buyerName = activeConversation?.name || "the buyer";
     await handleTransactionStatusChange(
       "declined_by_seller",
-      "Seller declined this transaction request. Continue chatting and ask the buyer to submit a new offer if you agree on a different price."
+      `${sellerName} declined ${buyerName}'s transaction request. Continue chatting and ${buyerName} can submit a new offer if you agree on a different price.`
     );
   };
 

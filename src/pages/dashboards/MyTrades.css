@@ -33,6 +33,65 @@
   color: #f0a500;
 }
 
+.trade-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trade-type-pill {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0d1b2a;
+  background: #f0a500;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.trade-listing-preview {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px 0;
+}
+
+.trade-listing-img {
+  width: 96px;
+  height: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #f6f8fb;
+  border: 1px solid #e8edf3;
+  display: block;
+}
+
+.trade-listing-info {
+  min-width: 0;
+}
+
+.trade-listing-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: #0d1b2a;
+  overflow-wrap: anywhere;
+}
+
+.trade-item-label,
+.trade-parties {
+  margin: 0;
+  color: #53606d;
+  font-size: 0.9rem;
+}
+
+.trade-parties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
 /* STATUS PILL */
 .status-pill {
   font-size: 11px;
@@ -144,3 +203,18 @@
 .btn-primary { background: #0d1b2a; color: #f0a500; }
 .btn-success { background: #EAF3DE; color: #27500A; border: 1px solid #639922; }
 .btn-danger  { background: #f0a500; color: #0d1b2a; }
+
+@media (max-width: 640px) {
+  .trades-list { padding: 24px 5%; }
+  .trade-listing-preview {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .trade-listing-img {
+    width: 72px;
+    height: 72px;
+    min-width: 72px;
+    max-width: 72px;
+  }
+  .info-grid { grid-template-columns: 1fr; }
+}

@@ -113,7 +113,7 @@ function ChatWindow({
           <p>
             {paymentStatus === "pending_payment"
               ? "There is still an outstanding balance. Please pay the remaining amount before collection."
-              : "The seller has requested a trade facility booking. Please make payment before the deadline to keep this slot reserved."}
+              : `${conversation.name} has requested a trade facility booking. Please make payment before the deadline to keep this slot reserved.`}
           </p>
           {outstandingBalance > 0 ? (
             <strong>Amount due: R{outstandingBalance.toFixed(2)}</strong>
@@ -126,7 +126,7 @@ function ChatWindow({
 
       {hasPendingTransaction ? (
         <section className={styles["transaction-actions"]}>
-          <p>This conversation is attached to a pending transaction. Accept or decline the request.</p>
+          <p>This conversation is attached to a pending transaction request. Accept it to continue to facility booking, or decline it and keep negotiating in chat.</p>
           <blockquote className={styles["transaction-request-text"]}>{requestText}</blockquote>
           <div className={styles["transaction-button-row"]}>
             <button
@@ -135,7 +135,7 @@ function ChatWindow({
               onClick={onDeclineTransaction}
               disabled={transactionActionLoading}
             >
-              Decline Offer
+              Decline Request
             </button>
             <button
               type="button"
@@ -143,7 +143,7 @@ function ChatWindow({
               onClick={onAcceptTransaction}
               disabled={transactionActionLoading}
             >
-              Accept Offer
+              Accept Request
             </button>
           </div>
         </section>
