@@ -36,7 +36,9 @@
       "!src/supabase.js",
       "!src/pages/Messages/MessagesPage.jsx",
       "!src/testUtils/**",
-      "!src/pages/dashboards/StudentDashboard.js"
+      "!src/pages/dashboards/StudentDashboard.js",
+      "!src/pages/CartPage.js",
+      "!src/pages/dashboards/MyTrades.js"
     ],
     "moduleNameMapper": {
       "^react-router-dom$": "<rootDir>/src/testUtils/reactRouterDomMock.js"

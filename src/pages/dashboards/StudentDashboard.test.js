@@ -66,7 +66,7 @@ function createStudentDashboardMocks({
   // role_applications check
   const maybeSingle = jest.fn().mockResolvedValue({ data: approvedApp });
   const eqApproval = jest.fn(() => ({ maybeSingle }));
-  const eqUserId = jest.fn(() => ({ eq: eqApproval }));
+  const eqUserId = jest.fn(() => ({ eq: eqApproval, maybeSingle }));
   const roleAppSelect = jest.fn(() => ({ eq: eqUserId }));
 
   // profiles update (for accepting role)
@@ -87,26 +87,37 @@ function createStudentDashboardMocks({
     if (table === 'listings') {
       return {
         select: jest.fn((fields) => {
-          // market query (no limit) vs recent query (has limit)
-          return {
+          // Create a base chain object that supports all methods AND resolves as a Promise
+          const chain = {
             eq: jest.fn().mockReturnThis(),
             gte: jest.fn().mockReturnThis(),
             lte: jest.fn().mockReturnThis(),
             order: jest.fn(() => ({
               limit: jest.fn().mockResolvedValue({ data: listings }),
               then: (resolve) => Promise.resolve({ data: listings }).then(resolve)
-            }))
+            })),
+            // This allows the evaluated chain itself to be 'awaited' or '.then()'ed directly
+            then: (resolve) => Promise.resolve({ data: listings }).then(resolve)
           };
+          
+          // Make sure eq, gte, lte return this exact augmented object
+          chain.eq.mockReturnValue(chain);
+          chain.gte.mockReturnValue(chain);
+          chain.lte.mockReturnValue(chain);
+          
+          return chain;
         }),
         update: profilesUpdate
       };
     }
     if (table === 'role_applications') return { select: roleAppSelect, update: roleAppUpdate };
+    if (table === 'transactions') {
+      return { select: jest.fn(() => ({ order: jest.fn().mockResolvedValue({ data: [] }) })) };
+    }
     if (table === 'messages') return { select: unreadSelect };
     if (table === 'profiles') return { update: profilesUpdate };
     return { select: jest.fn().mockResolvedValue({ data: [] }) };
   });
-
   return { profilesUpdateEq, roleAppUpdateEq };
 }
 
@@ -138,8 +149,22 @@ describe('StudentDashboard', () => {
   });
 
   it('shows the loading screen when profile is null before data loads', () => {
-    supabase.from.mockReturnValue({ select: jest.fn(() => new Promise(() => {})) });
-    supabase.auth.getUser.mockReturnValue(new Promise(() => {}));
+    const neverResolve = new Promise(() => {});
+    const loadingChain = {
+      eq: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      limit: jest.fn(() => neverResolve),
+      maybeSingle: jest.fn(() => neverResolve),
+      then: undefined
+    };
+    loadingChain.eq.mockReturnValue(loadingChain);
+    loadingChain.gte.mockReturnValue(loadingChain);
+    loadingChain.lte.mockReturnValue(loadingChain);
+    loadingChain.order.mockReturnValue(loadingChain);
+    supabase.from.mockReturnValue({ select: jest.fn(() => loadingChain), update: jest.fn(() => loadingChain) });
+    supabase.auth.getUser.mockReturnValue(neverResolve);
 
     render(<StudentDashboard profile={null} />);
 

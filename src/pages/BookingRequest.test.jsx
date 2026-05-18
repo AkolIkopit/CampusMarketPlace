@@ -115,7 +115,8 @@ describe('BookingRequest', () => {
       expect(screen.getByText('Alice Seller')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Main Campus/i)).toBeInTheDocument();
+    const campusEls = screen.getAllByText(/Main Campus/i);
+    expect(campusEls.length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows a loading spinner while fetching data', () => {

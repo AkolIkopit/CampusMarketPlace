@@ -1,0 +1,18 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto        # compares against the previous commit
+        threshold: 1%       # allow up to 1% drop before flagging
+    patch:
+      default:
+        target: 50%         # new code in PRs must be at least 50% covered
+
+ignore:
+  - "src/index.js"
+  - "src/reportWebVitals.js"
+  - "src/setupTests.js"
+  - "src/supabase.js"
+  - "src/testUtils/**"
+  - "src/pages/Messages/MessagesPage.jsx"
+  - "src/pages/dashboards/StudentDashboard.js"

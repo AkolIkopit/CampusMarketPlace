@@ -99,6 +99,10 @@ describe('ListingDetail', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Message Seller' }));
 
     expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining('/messages?'));
+    // Component passes extra query params — just check seller id is present
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.stringContaining('user=seller-9')
+    );
   });
 
   it('starts a transaction and navigates when Buy Now is clicked', async () => {
@@ -130,6 +134,10 @@ describe('ListingDetail', () => {
     expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Make Offer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
+    await userEvent.type(screen.getByPlaceholderText('Experience with seller...'), 'Smooth handoff');
+    // Button text is "Post Review" not "Post"
+    await userEvent.click(screen.getByRole('button', { name: 'Post Review' }));
 
     expect(await screen.findByText('Make an Offer')).toBeInTheDocument();
   });
@@ -277,15 +285,13 @@ describe('ListingDetail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
 
-    // Star buttons are rendered as buttons 1–5
     const starButtons = screen.getAllByRole('button').filter(
       (btn) => btn.className.includes('star-btn')
     );
 
     if (starButtons.length > 0) {
-      await userEvent.click(starButtons[2]); // click star 3
+      await userEvent.click(starButtons[2]);
     }
-    // Just verifying no crash; rating state is internal
     expect(screen.getByPlaceholderText('Experience with seller...')).toBeInTheDocument();
   });
 });
