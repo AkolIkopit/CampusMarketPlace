@@ -315,6 +315,7 @@ function MessagesPage({ profile }) {
           conversation.bookingStatus = transactionMap[message.transaction_id]?.booking_status || "";
           conversation.paymentStatus = transactionMap[message.transaction_id]?.payment_status || "";
           conversation.agreedAmount = transactionMap[message.transaction_id]?.agreed_amount;
+          conversation.cashShortfallDue = transactionMap[message.transaction_id]?.cash_shortfall_due;
         }
 
         const parsedMessage = parseMessageText(message.message_text || "");

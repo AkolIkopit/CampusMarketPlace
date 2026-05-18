@@ -81,4 +81,55 @@ describe('ChatWindow', () => {
 
     expect(onBackToList).toHaveBeenCalled();
   });
+
+  it('keeps the buyer payment prompt visible while a balance remains', () => {
+    render(
+      <ChatWindow
+        conversation={{
+          ...conversation,
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          transactionId: 'transaction-1',
+          transactionStatus: 'accepted_pending_booking',
+          bookingStatus: 'requested',
+          paymentStatus: 'pending_payment',
+          agreedAmount: 100,
+          cashShortfallDue: 40
+        }}
+        currentUserId="buyer-1"
+        onSendMessage={jest.fn()}
+        isSending={false}
+        onBackToList={jest.fn()}
+        onMakePayment={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('Amount due: R40.00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Make payment' })).toBeInTheDocument();
+  });
+
+  it('hides seller booking prompt after full payment', () => {
+    render(
+      <ChatWindow
+        conversation={{
+          ...conversation,
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          transactionId: 'transaction-1',
+          transactionStatus: 'accepted_pending_booking',
+          bookingStatus: 'requested',
+          paymentStatus: 'FULLY_PAID',
+          agreedAmount: 100,
+          cashShortfallDue: 0
+        }}
+        currentUserId="seller-1"
+        onSendMessage={jest.fn()}
+        isSending={false}
+        onBackToList={jest.fn()}
+        onRequestBooking={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Request a new booking' })).not.toBeInTheDocument();
+  });
 });

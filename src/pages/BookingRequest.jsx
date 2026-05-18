@@ -94,7 +94,7 @@ function BookingRequest() {
       if (bookingMode === "collection") {
         const { data: bookingData, error: bookingError } = await supabase
           .from("bookings")
-          .select("id, transaction_id, listing_id, buyer_id, seller_id, status, agreed_price, collection_time, item_received, item_released")
+          .select("id, transaction_id, listing_id, buyer_id, seller_id, status, agreed_price, collection_time, item_received, item_released, cash_shortfall")
           .eq("id", bookingId)
           .maybeSingle();
 
@@ -116,6 +116,30 @@ function BookingRequest() {
           setError("This order is not ready for collection.");
           setLoading(false);
           return;
+        }
+
+        if (bookingData.transaction_id) {
+          const { data: transactionData, error: transactionError } = await supabase
+            .from("transactions")
+            .select("cash_shortfall_due, payment_status")
+            .eq("id", bookingData.transaction_id)
+            .maybeSingle();
+
+          if (transactionError) {
+            setError("Unable to verify payment status before collection.");
+            setLoading(false);
+            return;
+          }
+
+          const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+          const bookingShortfall = Number(bookingData.cash_shortfall || 0);
+          const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
+
+          if (!paymentComplete || transactionShortfall > 0 || bookingShortfall > 0) {
+            setError("Payment must be completed before booking a collection slot.");
+            setLoading(false);
+            return;
+          }
         }
 
         setExistingBooking(bookingData);
@@ -192,6 +216,28 @@ function BookingRequest() {
       if (existingBooking.buyer_id !== currentUserId) {
         setError("Only the buyer can book a collection slot.");
         return;
+      }
+
+      if (existingBooking.transaction_id) {
+        const { data: transactionData, error: transactionError } = await supabase
+          .from("transactions")
+          .select("cash_shortfall_due, payment_status")
+          .eq("id", existingBooking.transaction_id)
+          .maybeSingle();
+
+        if (transactionError) {
+          setError("Unable to verify payment status before collection.");
+          return;
+        }
+
+        const transactionShortfall = Number(transactionData?.cash_shortfall_due || 0);
+        const bookingShortfall = Number(existingBooking.cash_shortfall || 0);
+        const paymentComplete = String(transactionData?.payment_status || "").toLowerCase() === "fully_paid";
+
+        if (!paymentComplete || transactionShortfall > 0 || bookingShortfall > 0) {
+          setError("Payment must be completed before booking a collection slot.");
+          return;
+        }
       }
 
       const collectionTime = parseSlotTime(selectedSlot);

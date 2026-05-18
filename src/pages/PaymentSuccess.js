@@ -16,6 +16,7 @@ export default function PaymentSuccess() {
   const handlePaymentSuccess = async () => {
     const transactionId = searchParams.get("transaction");
     const paymentId = searchParams.get("pf_payment_id");
+    const paidAmountParam = searchParams.get("amount");
 
     if (!transactionId) {
       setUpdated(true);
@@ -30,6 +31,7 @@ export default function PaymentSuccess() {
         seller_id,
         listing_id,
         agreed_amount,
+        cash_shortfall_due,
         listings ( title )
       `)
       .eq("id", transactionId)
@@ -40,11 +42,21 @@ export default function PaymentSuccess() {
       return;
     }
 
+    const agreedAmount = Number(transaction.agreed_amount || 0);
+    const currentOutstanding = Number(transaction.cash_shortfall_due ?? agreedAmount);
+    const paidAmount = Math.min(
+      Math.max(Number(paidAmountParam || currentOutstanding), 0),
+      currentOutstanding
+    );
+    const remainingBalance = Math.max(currentOutstanding - paidAmount, 0);
+    const newPaymentStatus = remainingBalance > 0 ? "pending_payment" : "FULLY_PAID";
+    const totalPaid = Math.max(agreedAmount - remainingBalance, 0);
+
     await supabase
       .from("transactions")
       .update({
-        payment_status: "FULLY_PAID",
-        cash_shortfall_due: 0,
+        payment_status: newPaymentStatus,
+        cash_shortfall_due: remainingBalance,
         payment_reference: paymentId || "sandbox",
       })
       .eq("id", transaction.id);
@@ -52,20 +64,22 @@ export default function PaymentSuccess() {
     await supabase
       .from("bookings")
       .update({
-        amount_paid: parseFloat(transaction.agreed_amount || 0),
-        cash_shortfall: 0,
+        amount_paid: totalPaid,
+        cash_shortfall: remainingBalance,
       })
       .eq("transaction_id", transaction.id);
 
     const itemTitle = transaction.listings?.title || "the item";
-    const paidAmount = parseFloat(transaction.agreed_amount || 0).toFixed(2);
+    const paymentMessage = remainingBalance > 0
+      ? `Payment of R${paidAmount.toFixed(2)} has been made for ${itemTitle}. Outstanding balance: R${remainingBalance.toFixed(2)}.`
+      : `Payment of R${paidAmount.toFixed(2)} has been made for ${itemTitle}. The transaction is fully paid.`;
 
     await supabase.from("messages").insert([
       {
         listing_id: transaction.listing_id,
         sender_id: transaction.buyer_id,
         receiver_id: transaction.seller_id,
-        message_text: `${SYSTEM_MESSAGE_PREFIX}Payment of R${paidAmount} has been made for ${itemTitle}.`,
+        message_text: `${SYSTEM_MESSAGE_PREFIX}${paymentMessage}`,
         transaction_id: transaction.id,
         is_read: false,
       },
