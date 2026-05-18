@@ -4,6 +4,16 @@ import { supabase } from "../supabase";
 
 const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
+async function getProfileName(userId, fallback = "A student") {
+  if (!userId) return fallback;
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.full_name || fallback;
+}
+
 export default function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -70,9 +80,11 @@ export default function PaymentSuccess() {
       .eq("transaction_id", transaction.id);
 
     const itemTitle = transaction.listings?.title || "the item";
+    const buyerName = await getProfileName(transaction.buyer_id, "The buyer");
+    const sellerName = await getProfileName(transaction.seller_id, "the seller");
     const paymentMessage = remainingBalance > 0
-      ? `Payment of R${paidAmount.toFixed(2)} has been made for ${itemTitle}. Outstanding balance: R${remainingBalance.toFixed(2)}.`
-      : `Payment of R${paidAmount.toFixed(2)} has been made for ${itemTitle}. The transaction is fully paid.`;
+      ? `${buyerName} paid R${paidAmount.toFixed(2)} to ${sellerName} for ${itemTitle}. Outstanding balance: R${remainingBalance.toFixed(2)}.`
+      : `${buyerName} paid R${paidAmount.toFixed(2)} to ${sellerName} for ${itemTitle}. The transaction is fully paid.`;
 
     await supabase.from("messages").insert([
       {

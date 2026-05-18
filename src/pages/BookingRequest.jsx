@@ -41,6 +41,16 @@ function parseSlotTime(slot) {
   return date;
 }
 
+async function getProfileName(userId, fallback = "A student") {
+  if (!userId) return fallback;
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.full_name || fallback;
+}
+
 function BookingRequest() {
   const [searchParams] = useSearchParams();
   const listingId = searchParams.get("listing");
@@ -259,7 +269,8 @@ function BookingRequest() {
 
         if (updateError) throw updateError;
 
-        const notificationText = `${SYSTEM_MESSAGE_PREFIX}Buyer booked a collection slot for ${listing.title} at ${selectedSlot}.`;
+        const buyerName = await getProfileName(currentUserId, "The buyer");
+        const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot}.`;
         const { error: notificationError } = await supabase.from("messages").insert([
           {
             listing_id: listing.id,
@@ -338,9 +349,11 @@ function BookingRequest() {
           .eq("id", transactionId);
       }
 
-      const notificationText = `${SYSTEM_MESSAGE_PREFIX}Seller requested a trade facility booking for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
       // Notify the counterparty: seller if buyer initiated, buyer if seller initiated.
       const notificationReceiver = currentUserId === seller.id ? bookingBuyerId : seller.id;
+      const requesterName = await getProfileName(currentUserId, "A student");
+      const counterpartyName = await getProfileName(notificationReceiver, "the other student");
+      const notificationText = `${SYSTEM_MESSAGE_PREFIX}${requesterName} requested a trade facility booking with ${counterpartyName} for ${listing.title} at ${selectedSlot} with agreed price R${agreedPrice.toFixed(2)}.`;
       const { error: notificationError } = await supabase.from("messages").insert([
         {
           listing_id: listing.id,

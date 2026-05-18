@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Phone, Star, ShieldCheck, Briefcase, Edit3, 
   MapPin, Send, ArrowLeft, Trash2, Clock, 
-  User, IdCard, Loader2, Box, ShoppingCart, DollarSign, Package, Calendar, Plus
+  User, IdCard, Loader2, Box, ShoppingCart, Package, Calendar, Plus
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import LoadingScreen from '../../components/LoadingScreen';
@@ -144,6 +144,8 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
   const getDisplayAmount = (transaction) => (
     transaction.agreed_amount ?? transaction.amount ?? 0
   );
+
+  const formatMoney = (amount) => Number(amount || 0).toFixed(2);
 
   const getItemStatus = (transaction, booking) => {
     const transactionStatus = transaction.status || '';
@@ -420,7 +422,9 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
                   ) : null}
                 </nav>
                 <aside className="history-item-side">
-                  <p>R {getDisplayAmount(t)}</p>
+                  <p>
+                    R {showPaymentButton ? formatMoney(getOutstandingBalance(t)) : formatMoney(getDisplayAmount(t))}
+                  </p>
                   <mark>{itemStatus}</mark>
                   {showPaymentButton ? (
                     <button

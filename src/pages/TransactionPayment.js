@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
-console.log("md5 loaded:", typeof md5);
+
 const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
 const MERCHANT_ID = "10048982";
 const MERCHANT_KEY = "8fr5hx4alngq6";
@@ -16,7 +16,6 @@ export default function TransactionPayment() {
   const { transactionId } = useParams();
   const navigate = useNavigate();
   const [transaction, setTransaction] = useState(null);
-  const [buyerProfile, setBuyerProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [payAmount, setPayAmount] = useState("");
   const [error, setError] = useState("");
@@ -47,21 +46,6 @@ const fetchTransaction = async () => {
       ? data.cash_shortfall_due.toFixed(2)
       : data.agreed_amount.toFixed(2)
   );
-
-  // get profile without email
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", data.buyer_id)
-    .maybeSingle();
-
-  // get email from auth user
-  const { data: { user } } = await supabase.auth.getUser();
-
-  setBuyerProfile({
-    full_name: profile?.full_name || "",
-    email: user?.email || "",
-  });
 
   setLoading(false);
 };
@@ -131,9 +115,6 @@ const handlePayment = async () => {
   const paymentComplete =
     String(transaction.payment_status || "").toLowerCase() === "fully_paid" ||
     outstandingAmount <= 0;
-console.log("Rendering — payment_status:", transaction?.payment_status);
-console.log("Rendering — isPartial:", isPartial);
-console.log("Rendering — payAmount:", payAmount);
   return (
     <main className="payment-container">
 
@@ -193,7 +174,7 @@ console.log("Rendering — payAmount:", payAmount);
 
             {isPartial && (
               <p className="partial-warning">
-                ⚠️ You have an outstanding balance of R{parseFloat(transaction.cash_shortfall_due).toFixed(2)}.
+                You have an outstanding balance of R{outstandingAmount.toFixed(2)}.
                 You can pay the full balance or a partial amount.
               </p>
             )}
@@ -221,12 +202,9 @@ console.log("Rendering — payAmount:", payAmount);
   <button className="btn btn-secondary" onClick={() => navigate("/messages")}>
     Cancel
   </button>
-  <button 
-    className="btn btn-primary" 
-    onClick={() => {
-      console.log("Button clicked");
-      handlePayment();
-    }}
+  <button
+    className="btn btn-primary"
+    onClick={handlePayment}
     style={{ zIndex: 9999, position: "relative", pointerEvents: "all" }}
   >
     Pay R{parseFloat(payAmount || 0).toFixed(2)} via PayFast
