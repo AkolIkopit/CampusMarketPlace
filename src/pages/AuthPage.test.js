@@ -153,4 +153,84 @@ describe('AuthPage', () => {
 
     expect(setSearchParams).toHaveBeenCalledWith({ mode: 'signup' });
   });
+
+  it('displays OAuth redirect error from search params', async () => {
+    __setSearchParams('mode=login&error_description=Access+Denied');
+
+    render(<AuthPage />);
+
+    expect(await screen.findByText('Access Denied')).toBeInTheDocument();
+  });
+
+  it('shows a sign in error from Supabase when login fails', async () => {
+    supabase.auth.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid credentials' } });
+
+    render(<AuthPage />);
+
+    const loginButton = screen
+      .getAllByRole('button', { name: 'Log in' })
+      .find((button) => button.getAttribute('type') === 'submit');
+
+    await userEvent.type(screen.getByPlaceholderText('student@wits.ac.za'), 'student@wits.ac.za');
+    await userEvent.type(document.querySelector('input[type="password"]'), 'password123');
+    await userEvent.click(loginButton);
+
+    expect(await screen.findByText('Invalid credentials')).toBeInTheDocument();
+  });
+
+  it('navigates to the site root when history is too short', async () => {
+    __setSearchParams('mode=login');
+    const originalLength = window.history.length;
+    Object.defineProperty(window.history, 'length', { value: 1, configurable: true });
+
+    try {
+      render(<AuthPage />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+      expect(navigateMock).toHaveBeenCalledWith('/');
+    } finally {
+      Object.defineProperty(window.history, 'length', { value: originalLength, configurable: true });
+    }
+  });
+
+  it('toggles password visibility in the form', async () => {
+    const { container } = render(<AuthPage />);
+    const toggleButton = container.querySelector('.input-toggle');
+    const passwordInput = document.querySelector('input[type="password"]');
+
+    await userEvent.type(passwordInput, 'password123');
+    await userEvent.click(toggleButton);
+
+    expect(container.querySelector('input[type="text"]')).toBeInTheDocument();
+  });
+
+  it('uses backward navigation when history has more than one entry', async () => {
+    window.history.pushState({}, '', '/first');
+    window.history.pushState({}, '', '/second');
+
+    render(<AuthPage />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(navigateMock).toHaveBeenCalledWith(-1);
+  });
+
+  it('starts Google auth successfully when no OAuth error is returned', async () => {
+    supabase.auth.signInWithOAuth.mockResolvedValue({ error: null });
+    __setSearchParams('mode=signup');
+
+    render(<AuthPage />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+
+    await waitFor(() => {
+      expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: 'http://localhost/auth?mode=signup' }
+      });
+    });
+
+    expect(screen.queryByText('Google login is unavailable.')).not.toBeInTheDocument();
+  });
 });

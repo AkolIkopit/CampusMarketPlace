@@ -112,4 +112,36 @@ describe('PaymentStatus', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
     expect(navigateMock).toHaveBeenCalledWith('/dashboard/student', { replace: true });
   });
+
+  it('shows success when there is no authenticated user and avoids further API calls', async () => {
+    __setSearchParams('type=success');
+
+    supabase.auth.getUser.mockResolvedValue({ data: { user: null } });
+    supabase.from.mockClear();
+
+    render(<PaymentStatus />);
+
+    expect(await screen.findByText('Success!')).toBeInTheDocument();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it('logs an order error when the cart lookup fails', async () => {
+    __setSearchParams('type=success');
+
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+    const cartEq = jest.fn().mockResolvedValue({ data: null, error: { message: 'cart lookup failed' } });
+    const cartSelect = jest.fn(() => ({ eq: cartEq }));
+    supabase.from.mockImplementation((table) => {
+      if (table === 'cart_items') return { select: cartSelect };
+      return { insert: jest.fn().mockResolvedValue({ error: null }), update: jest.fn().mockResolvedValue({ in: jest.fn().mockResolvedValue({ error: null }) }) };
+    });
+
+    render(<PaymentStatus />);
+
+    expect(await screen.findByText('Success!')).toBeInTheDocument();
+    expect(consoleError).toHaveBeenCalledWith('Order error:', 'cart lookup failed');
+
+    consoleError.mockRestore();
+  });
 });

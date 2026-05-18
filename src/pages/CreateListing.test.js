@@ -180,4 +180,58 @@ describe('CreateListing', () => {
       expect(navigateMock).not.toHaveBeenCalled();
     });
   });
+
+  it('shows an error when creating the listing record fails', async () => {
+    createCreateListingMocks({
+      listingError: { message: 'Insert failed' }
+    });
+    const { container } = render(<CreateListing />);
+    const fileInput = container.querySelector('#pic-upload');
+    const [categorySelect] = screen.getAllByRole('combobox');
+
+    await screen.findByRole('option', { name: 'Books' });
+    await userEvent.upload(fileInput, new File(['data'], 'camera.png', { type: 'image/png' }));
+    await userEvent.type(screen.getByPlaceholderText('e.g. Calculus Textbook'), 'Desk Lamp');
+    await userEvent.selectOptions(categorySelect, '1');
+    await userEvent.type(screen.getByPlaceholderText('0.00'), '149.99');
+    await userEvent.type(screen.getByPlaceholderText('Details about your item...'), 'Bright desk lamp');
+    await userEvent.click(screen.getByRole('button', { name: 'POST' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Error: Insert failed');
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it('renders safely when Supabase returns no categories', async () => {
+    const mocks = createCreateListingMocks();
+    mocks.categorySelect.mockResolvedValue({ data: null });
+
+    render(<CreateListing />);
+
+    expect(await screen.findByRole('button', { name: 'POST' })).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox')[0]).toHaveValue('');
+  });
+
+  it('shows an error when the user session cannot be retrieved', async () => {
+    createCreateListingMocks();
+    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: { message: 'User missing' } });
+
+    const { container } = render(<CreateListing />);
+    const fileInput = container.querySelector('#pic-upload');
+    const [categorySelect] = screen.getAllByRole('combobox');
+
+    await screen.findByRole('option', { name: 'Books' });
+    await userEvent.upload(fileInput, new File(['data'], 'camera.png', { type: 'image/png' }));
+    await userEvent.type(screen.getByPlaceholderText('e.g. Calculus Textbook'), 'Desk Lamp');
+    await userEvent.selectOptions(categorySelect, '1');
+    await userEvent.type(screen.getByPlaceholderText('0.00'), '149.99');
+    await userEvent.type(screen.getByPlaceholderText('Details about your item...'), 'Bright desk lamp');
+    await userEvent.click(screen.getByRole('button', { name: 'POST' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Error: User missing');
+      expect(navigateMock).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -1,5 +1,12 @@
 import '@testing-library/jest-dom';
 
+// Polyfill TextEncoder/TextDecoder for jsPDF and related libs in Jest
+if (typeof global.TextEncoder === 'undefined' || typeof global.TextDecoder === 'undefined') {
+  const { TextEncoder, TextDecoder } = require('util');
+  global.TextEncoder = global.TextEncoder || TextEncoder;
+  global.TextDecoder = global.TextDecoder || TextDecoder;
+}
+
 jest.mock('lucide-react', () => {
   const React = require('react');
 
