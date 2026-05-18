@@ -31,6 +31,14 @@ jobs:
             echo "✗ coverage/lcov.info not found"
           fi
 
+      - name: Verify lcov report exists
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "::warning::coverage/lcov.info not found — Codecov upload will be skipped"
+          else
+            echo "coverage/lcov.info found ($(wc -l < coverage/lcov.info) lines)"
+          fi
+
       - name: Upload coverage to Codecov
         if: always()
         uses: codecov/codecov-action@v5
@@ -38,6 +46,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
           fail_ci_if_error: false
+          verbose: true
 
   build:
     runs-on: ubuntu-latest
