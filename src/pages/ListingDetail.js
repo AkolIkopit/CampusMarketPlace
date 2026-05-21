@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { notifySuccess } from '../toast';
 import {
   ArrowLeft, MessageCircle, User,
   Star, MapPin, Loader2, Send
@@ -68,7 +69,7 @@ const ListingDetail = () => {
         setComment(""); 
         setShowForm(false); 
         await fetchAllData(); 
-        alert("Review posted!"); 
+        notifySuccess("Review posted!"); 
       }
     } finally { 
       setSubmitting(false); 
