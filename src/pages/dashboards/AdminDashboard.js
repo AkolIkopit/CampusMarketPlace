@@ -6,8 +6,10 @@ import {
   Bell, BellDot, X, LogOut, User, 
   FileText, Users, Box, BarChart3, Building2 
 } from "lucide-react";
+import MyProfile from "./MyProfile"; // Make sure this path is correct
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ profile }) {
+  const [view, setView] = useState('main'); // NEW: 'main' or 'profile'
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -65,7 +67,7 @@ export default function AdminDashboard() {
     <main className="dashboard-container">
       <header className="main-header">
         <nav className="header-nav">
-          <section className="logo-section">
+          <section className="logo-section" onClick={() => setView('main')} style={{cursor: 'pointer'}}>
             <img src="/UniMartlogo.png" alt="logo" className="header-logo" />
             <span className="logo-text">UniMart</span>
           </section>
@@ -95,7 +97,13 @@ export default function AdminDashboard() {
               <button className="burger-btn" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
               {menuOpen && (
                 <section className="dropdown-menu">
-                  <button className="dropdown-item"><User size={14} /> Profile</button>
+                  {/* FIXED: Added onClick to switch to profile view */}
+                  <button 
+                    className="dropdown-item" 
+                    onClick={() => { setView('profile'); setMenuOpen(false); }}
+                  >
+                    <User size={14} /> Profile
+                  </button>
                   <button className="dropdown-item logout" onClick={handleLogout}><LogOut size={14} /> Logout</button>
                 </section>
               )}
@@ -104,44 +112,56 @@ export default function AdminDashboard() {
         </nav>
       </header>
 
-      <section className="hero-section">
-        <span className="hero-kicker">UniMart Management</span>
-        <h1 className="hero-title">Manage your campus marketplace efficiently.</h1>
-        <p className="hero-description">Monitor users, moderate listings, and configure trade facilities.</p>
-      </section>
+      {/* --- CONDITIONAL RENDERING --- */}
+      {view === 'profile' ? (
+        /* This renders your teammate's MyProfile component exactly as it is */
+        <MyProfile 
+            profile={profile} 
+            onBack={() => setView('main')} 
+            navigate={navigate} 
+        />
+      ) : (
+        /* This is your standard Admin Dashboard content */
+        <>
+          <section className="hero-section">
+            <span className="hero-kicker">UniMart Management</span>
+            <h1 className="hero-title">Manage your campus marketplace efficiently.</h1>
+            <p className="hero-description">Monitor users, moderate listings, and configure trade facilities.</p>
+          </section>
 
-      <section className="quick-actions-grid">
-        <button className="action-block" onClick={() => navigate("/dashboard/admin/role-approval")}>
-          <FileText className="block-icon" color="#f0a500" />
-          <h3>Role Requests</h3>
-          <p>Review and approve user role upgrades.</p>
-        </button>
+          <section className="quick-actions-grid">
+            <button className="action-block" onClick={() => navigate("/dashboard/admin/role-approval")}>
+              <FileText className="block-icon" color="#f0a500" />
+              <h3>Role Requests</h3>
+              <p>Review and approve user role upgrades.</p>
+            </button>
 
-        <button className="action-block" onClick={() => navigate("/dashboard/admin/users")}>
-          <Users className="block-icon" color="#f0a500" />
-          <h3>User Management</h3>
-          <p>View, suspend, or manage platform users.</p>
-        </button>
+            <button className="action-block" onClick={() => navigate("/dashboard/admin/users")}>
+              <Users className="block-icon" color="#f0a500" />
+              <h3>User Management</h3>
+              <p>View, suspend, or manage platform users.</p>
+            </button>
 
-        <button className="action-block" onClick={() => navigate("/dashboard/admin/manage-listings")}>
-          <Box className="block-icon" color="#f0a500" />
-          <h3>Manage Listings</h3>
-          <p>Flag or remove unsafe marketplace items.</p>
-        </button>
+            <button className="action-block" onClick={() => navigate("/dashboard/admin/manage-listings")}>
+              <Box className="block-icon" color="#f0a500" />
+              <h3>Manage Listings</h3>
+              <p>Flag or remove unsafe marketplace items.</p>
+            </button>
 
-        <button className="action-block" onClick={() => navigate("/dashboard/admin/analytics")}>
-          <BarChart3 className="block-icon" color="#f0a500" />
-          <h3>Analytics</h3>
-          <p>Monitor platform activity and reports.</p>
-        </button>
+            <button className="action-block" onClick={() => navigate("/dashboard/admin/analytics")}>
+              <BarChart3 className="block-icon" color="#f0a500" />
+              <h3>Analytics</h3>
+              <p>Monitor platform activity and reports.</p>
+            </button>
 
-        {/* CLICKING THIS BUTTON NAVIGATES TO THE PATH BELOW */}
-        <button className="action-block full-width-card" onClick={() => navigate("/dashboard/admin/facility-settings")}>
-          <Building2 className="block-icon" color="#f0a500" />
-          <h3>Facility Settings</h3>
-          <p>Configure campus operating hours and slot capacity.</p>
-        </button>
-      </section>
+            <button className="action-block full-width-card" onClick={() => navigate("/dashboard/admin/facility-settings")}>
+              <Building2 className="block-icon" color="#f0a500" />
+              <h3>Facility Settings</h3>
+              <p>Configure campus operating hours and slot capacity.</p>
+            </button>
+          </section>
+        </>
+      )}
     </main>
   );
 }
