@@ -4,7 +4,7 @@
 A student-only peer-to-peer trading platform for university campuses.
 
 ## Tech Stack
-- React 18 + TypeScript
+- React 18 + JavaScript
 - Create React App
 - React Router v6
 - Supabase (auth + database)
