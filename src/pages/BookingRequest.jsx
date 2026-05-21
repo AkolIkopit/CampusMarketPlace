@@ -220,12 +220,16 @@ function BookingRequest() {
           // Removed unused activeBuyerId variable
       setSeller(sellerData);
 
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
       const { data: slotRows, error: slotError } = await supabase
         .from("trade_slots")
         .select("id, campus_name, start_time, end_time, max_capacity, current_bookings, is_active")
         .eq("campus_name", listingData.location || sellerData.campus || "Main Campus")
         .eq("is_active", true)
         .gte("end_time", new Date().toISOString())
+        .lte("start_time", sevenDaysFromNow.toISOString())
         .order("start_time", { ascending: true });
 
       if (slotError) {

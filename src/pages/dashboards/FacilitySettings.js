@@ -76,27 +76,38 @@ export default function FacilitySettings() {
     }
 
     try {
-        // 2. Calculate the next occurrence of the selected weekday to create a valid Timestamp
+        // 2. Calculate the next occurrence of the selected weekday, then create slots
+        //    for the next 4 weekly recurrences so bookings always have future availability.
         const today = new Date();
         const targetDayIndex = weekdays.indexOf(selectedDay);
         const currentDayIndex = today.getDay();
-        let daysUntilTarget = (targetDayIndex - currentDayIndex + 7) % 7;
-        
-        const targetDate = new Date();
-        targetDate.setDate(today.getDate() + daysUntilTarget);
-        
-        // Construct full ISO strings for the Database (timestamptz)
-        const finalStart = new Date(targetDate.setHours(newSlot.start.split(':')[0], newSlot.start.split(':')[1], 0)).toISOString();
-        const finalEnd = new Date(targetDate.setHours(newSlot.end.split(':')[0], newSlot.end.split(':')[1], 0)).toISOString();
+        const daysUntilTarget = (targetDayIndex - currentDayIndex + 7) % 7;
 
-        const { error } = await supabase.from('trade_slots').insert([{
-            campus_name: selectedCampus,
-            start_time: finalStart,
-            end_time: finalEnd,
-            max_capacity: parseInt(newSlot.capacity),
-            current_bookings: 0,
-            is_active: true
-        }]);
+        const [startHour, startMin] = newSlot.start.split(':').map(Number);
+        const [endHour, endMin] = newSlot.end.split(':').map(Number);
+
+        const slotsToInsert = [];
+        for (let week = 0; week < 4; week++) {
+            const slotDate = new Date(today);
+            slotDate.setDate(today.getDate() + daysUntilTarget + week * 7);
+
+            const startDate = new Date(slotDate);
+            startDate.setHours(startHour, startMin, 0, 0);
+
+            const endDate = new Date(slotDate);
+            endDate.setHours(endHour, endMin, 0, 0);
+
+            slotsToInsert.push({
+                campus_name: selectedCampus,
+                start_time: startDate.toISOString(),
+                end_time: endDate.toISOString(),
+                max_capacity: parseInt(newSlot.capacity),
+                current_bookings: 0,
+                is_active: true
+            });
+        }
+
+        const { error } = await supabase.from('trade_slots').insert(slotsToInsert);
 
         if (error) {
             alert("Database Rejected Slot: " + error.message);
