@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { useNavigate } from "react-router-dom"; // Added for navigation
+import { ArrowLeft } from "lucide-react"; // Added for the icon
 
 export default function RoleApproval() {
   const [applications, setApplications] = useState([]);
   const [loadingId, setLoadingId] = useState(null);
+  const navigate = useNavigate(); // Initialize navigate
 
   useEffect(() => { fetchApplications(); }, []);
 
@@ -39,20 +42,24 @@ export default function RoleApproval() {
 
       // 2. If Staff: Transfer JSON schedule to the official staff_roster table
       if (app.requested_role === 'staff' && app.availability) {
-        const schedule = typeof app.availability === 'string' ? JSON.parse(app.availability) : app.availability;
-        
-        const rosterRows = Object.entries(schedule)
-          .filter(([day, info]) => info.available === true)
-          .map(([day, info]) => ({
-            staff_id: app.user_id,
-            day_of_week: day,
-            campus_name: app.campus_location,
-            shift_start: info.start,
-            shift_end: info.end
-          }));
+        try {
+            const schedule = typeof app.availability === 'string' ? JSON.parse(app.availability) : app.availability;
+            
+            const rosterRows = Object.entries(schedule)
+              .filter(([day, info]) => info.available === true)
+              .map(([day, info]) => ({
+                staff_id: app.user_id,
+                day_of_week: day,
+                campus_name: app.campus_location,
+                shift_start: info.start,
+                shift_end: info.end
+              }));
 
-        if (rosterRows.length > 0) {
-          await supabase.from('staff_roster').insert(rosterRows);
+            if (rosterRows.length > 0) {
+              await supabase.from('staff_roster').insert(rosterRows);
+            }
+        } catch (e) {
+            console.error("No JSON roster found, likely an old text application.");
         }
       }
 
@@ -77,6 +84,19 @@ export default function RoleApproval() {
 
   return (
     <main className="dashboard-container">
+      {/* HEADER WITH BACK BUTTON */}
+      <header className="main-header" style={{background: '#0d1b2a', padding: '20px 40px', borderBottom: '3px solid #f0a500'}}>
+        <nav className="header-nav">
+          <button 
+            className="back-btn-gold" 
+            onClick={() => navigate(-1)}
+            style={{background: 'none', border: 'none', color: '#f0a500', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px'}}
+          >
+            <ArrowLeft size={20} /> Back
+          </button>
+        </nav>
+      </header>
+
       <section className="hero-section">
         <span className="hero-kicker">ADMIN</span>
         <h1 className="hero-title">Role Applications</h1>
