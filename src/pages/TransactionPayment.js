@@ -74,6 +74,13 @@ const handlePayment = async () => {
     return;
   }
 
+  // Guard: catch missing env vars before hitting PayFast
+  if (!MERCHANT_ID || !MERCHANT_KEY || !PAYFAST_URL) {
+    setError("PayFast configuration is missing. Restart the dev server and try again.");
+    console.error("PayFast env vars:", { MERCHANT_ID, MERCHANT_KEY, PAYFAST_URL });
+    return;
+  }
+
   const fields = {
     merchant_id: MERCHANT_ID,
     merchant_key: MERCHANT_KEY,
