@@ -8,6 +8,13 @@ import { supabase } from "../../supabase";
 import { notifyError, notifySuccess } from "../../toast";
 import "./MarketTrades.css";
 
+/*
+Module: MarketTrades.js
+Purpose: Staff-facing view for marketplace trade operations and reconciliations.
+Units: trade listings, booking/payment controls, filters
+Flow: Displays current trades and provides staff actions for processing handovers.
+*/
+
 export default function MarketTrades() {
 
   const [pendingTrades, setPendingTrades] = useState([]);

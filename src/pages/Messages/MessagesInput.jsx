@@ -1,3 +1,10 @@
+/*
+Module: MessagesInput.jsx
+Purpose: Composer component for sending messages with optional attachments and emoji.
+Units: local draft state, file attachment handling, emoji picker, send handler
+Flow: Maintains draft and attachment, calls `onSendMessage` prop to perform upload/insert.
+*/
+
 import { useState, useRef } from "react";
 import styles from "./Messages.module.css";
 

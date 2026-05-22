@@ -1,3 +1,10 @@
+/*
+Module: PaymentSuccess.js
+Purpose: Simple page shown after a successful payment.
+Units: presentational component showing confirmation and next steps.
+Flow: Display success message and optionally provide navigation to orders/dashboard.
+*/
+
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";

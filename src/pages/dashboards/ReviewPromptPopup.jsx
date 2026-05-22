@@ -1,3 +1,9 @@
+/*
+Module: ReviewPromptPopup.jsx
+Purpose: Small popup component to prompt buyers to leave a review after a transaction.
+Units: prompt content, call-to-action to navigate to listing or open review UI
+Flow: Triggered after a completed booking to encourage feedback; navigates to listing with query param.
+*/
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";

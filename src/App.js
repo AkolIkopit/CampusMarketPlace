@@ -1,3 +1,12 @@
+/*
+Module: App.js
+Purpose: Application root, routing, and session/profile lifecycle management.
+Units: fetchProfile, ensureProfile, withTimeout, getDashboardPath, SessionErrorScreen, ProtectedRoute, App component
+Flow: exports helper functions used across the app, defines `ProtectedRoute` for access control,
+      initializes and syncs Supabase session on mount, loads/creates user profiles and provides
+      top-level `Routes` that render pages or dashboards based on session/profile state.
+*/
+
 import ManageListings from "./pages/dashboards/ManageListings";
 import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";

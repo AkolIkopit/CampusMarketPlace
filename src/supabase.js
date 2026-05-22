@@ -1,3 +1,10 @@
+/*
+Module: supabase.js
+Purpose: Supabase client initialization used throughout the app.
+Units: supabaseUrl, supabaseKey, `supabase` client export
+Flow: Creates and exports a configured Supabase client for auth and DB operations.
+*/
+
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = "https://pjqoghabztvrywvwvfdp.supabase.co";

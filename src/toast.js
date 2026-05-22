@@ -1,3 +1,11 @@
+/*
+Module: toast.js
+Purpose: Centralized toast/notification helpers used by UI components.
+Units: baseToastOptions, showToast helper, exported notify helpers and toastOptions
+Flow: Wraps `react-hot-toast` with app-specific styling and convenience functions
+  (notify, notifySuccess, notifyError, notifyLoading) used across components.
+*/
+
 import { toast } from 'react-hot-toast';
 
 const baseToastOptions = {

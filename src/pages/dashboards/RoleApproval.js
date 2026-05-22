@@ -1,3 +1,9 @@
+/*
+Module: RoleApproval.js
+Purpose: Admin utility to approve or reject role upgrade requests.
+Units: list of requests, approve/reject actions, notifications
+Flow: Loads pending role requests and allows admins to process them.
+*/
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
 import { useNavigate } from "react-router-dom";

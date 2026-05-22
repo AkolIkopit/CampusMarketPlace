@@ -1,3 +1,10 @@
+/*
+Module: MyTrades.js
+Purpose: User view listing their trades and trade history.
+Units: trade list, filters, action buttons (accept/decline)
+Flow: Loads a student's trades and provides UI to manage them.
+*/
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";

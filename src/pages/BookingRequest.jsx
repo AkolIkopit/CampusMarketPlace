@@ -1,3 +1,9 @@
+/*
+Module: BookingRequest.jsx
+Purpose: Booking creation UI for scheduled pickups/dropoffs at trade facility.
+Units: date/time selection, validation, submission to booking backend
+Flow: Collects booking details and inserts booking record; used in transaction workflows.
+*/
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";

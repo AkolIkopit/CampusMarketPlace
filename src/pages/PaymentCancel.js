@@ -1,3 +1,10 @@
+/*
+Module: PaymentCancel.js
+Purpose: Page shown when payment is cancelled or fails.
+Units: presentational component showing failure/cancellation and actions.
+Flow: Displays cancellation message and guidance to retry or contact support.
+*/
+import React from 'react';
 import { useNavigate } from "react-router-dom";
 
 export default function PaymentCancel() {

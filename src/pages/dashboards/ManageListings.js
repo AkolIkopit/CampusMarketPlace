@@ -1,3 +1,10 @@
+/*
+Module: ManageListings.js
+Purpose: Admin tool for reviewing and moderating listings.
+Units: listings table, search/filter controls, moderation actions
+Flow: Fetches listings and exposes approve/reject or edit actions for admins.
+*/
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { notifySuccess } from '../../toast';

@@ -1,3 +1,10 @@
+/*
+Module: LandingPage.js
+Purpose: Public landing page shown to unauthenticated users.
+Units: hero, categories, stats, how-it-works sections and navigation CTA
+Flow: Presents discovery features and links to browse or authenticate.
+*/
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";

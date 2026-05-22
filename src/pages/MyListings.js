@@ -5,6 +5,13 @@ import { notifyError, notifySuccess } from '../toast';
 import { ArrowLeft, Trash2, Loader2, PackageOpen, User, MessageSquare, Edit3 } from 'lucide-react';
 import './MyListings.css';
 
+/*
+Module: MyListings.js
+Purpose: Page for users to view and manage their own listings.
+Units: data fetch for user's listings, listing cards, actions (edit/delete)
+Flow: Loads user's listings on mount and provides UI to navigate to edit/create flows.
+*/
+
 const MyListings = () => {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);

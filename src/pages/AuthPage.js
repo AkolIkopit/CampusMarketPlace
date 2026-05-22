@@ -1,4 +1,11 @@
 import React, { useEffect, useState } from "react";
+/*
+Module: AuthPage.js
+Purpose: Authentication UI for sign-in and sign-up flows.
+Units: forms for email/social logins, role selection, and intent persistence
+Flow: Presents login/signup forms and uses `auth` helpers to persist intent and redirect.
+*/
+import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { saveAuthIntent } from "../auth";
 import { supabase } from "../supabase";
