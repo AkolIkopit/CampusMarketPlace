@@ -53,10 +53,10 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
   };
 
   const fetchTransactions = async () => {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select(`*, listings(title, listing_images(image_url, is_primary))`)
-      .order('created_at', { ascending: false });
+   const { data, error } = await supabase
+  .from('transactions')
+  .select(`*, listing_title, listing_image, listing_price, listings(title, listing_images(image_url, is_primary))`)
+  .order('created_at', { ascending: false });
     if (!error) setTransactions(data || []);
 
     const { data: bookingsData, error: bookingsError } = await supabase
@@ -408,10 +408,11 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
               <li key={t.id} className="history-item">
                 {(() => {
                   const primaryImage = t.listings?.listing_images?.find((img) => img.is_primary) || t.listings?.listing_images?.[0];
-                  return <img src={primaryImage?.image_url || '/placeholder.jpg'} alt="" className="history-item-image" />;
+return <img src={primaryImage?.image_url || t.listing_image || '/placeholder.jpg'} alt="" className="history-item-image" />;
+               
                 })()}
                 <nav className="history-item-main">
-                  <strong>{t.listings?.title}</strong>
+               <strong>{t.listing_title || t.listings?.title || "Deleted Listing"}</strong>
                   <time>{new Date(t.created_at).toLocaleDateString()}</time>
                   {collectionReady ? (
                     <p className="collection-ready-note">Ready for collection at the trade facility.</p>

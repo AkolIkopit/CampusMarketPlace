@@ -266,7 +266,17 @@ function MessagesPage({ profile }) {
           transactionIds.length
             ? supabase
                 .from("transactions")
-                .select("id, status, booking_status, payment_status, agreed_amount, cash_shortfall_due")
+.select(`
+  id,
+  status,
+  booking_status,
+  payment_status,
+  agreed_amount,
+  cash_shortfall_due,
+  listing_title,
+  listing_image,
+  listing_price
+`)
                 .in("id", transactionIds)
             : Promise.resolve({ data: [], error: null }),
           transactionIds.length
@@ -294,7 +304,10 @@ function MessagesPage({ profile }) {
         const otherUserId = incoming ? message.sender_id : message.receiver_id;
         const conversationId = getConversationId(otherUserId, message.listing_id);
         const otherProfile = profileMap[otherUserId];
-        const listingTitle = listingMap[message.listing_id]?.title || "Listing";
+        const listingTitle =
+  transactionMap[message.transaction_id]?.listing_title ||
+  listingMap[message.listing_id]?.title ||
+  "Listing";
         const sellerId = listingMap[message.listing_id]?.seller_id || null;
 
         if (!conversationMap.has(conversationId)) {
