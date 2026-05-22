@@ -27,10 +27,12 @@ export default function TransactionPayment() {
 const fetchTransaction = async () => {
   const { data, error } = await supabase
     .from("transactions")
-    .select(`
-      *,
-      listings ( title )
-    `)
+   .select(`
+  *,
+  listings (
+    title
+  )
+`)
     .eq("id", transactionId)
     .maybeSingle();
 
@@ -108,7 +110,11 @@ const handlePayment = async () => {
   if (loading) return <main className="payment-container"><p>Loading...</p></main>;
   if (error) return <main className="payment-container"><p className="payment-error">{error}</p></main>;
 
-  const agreedAmount = Number(transaction.agreed_amount || 0);
+ const agreedAmount = Number(
+  transaction.listing_price ||
+  transaction.agreed_amount ||
+  0
+);
   const outstandingAmount = Number(transaction.cash_shortfall_due ?? agreedAmount);
   const isPartial = outstandingAmount > 0 && outstandingAmount < agreedAmount;
   const amountPaid = Math.max(agreedAmount - outstandingAmount, 0);
@@ -127,7 +133,13 @@ const handlePayment = async () => {
       <section className="payment-card">
 
         <header className="payment-card-header">
-          <h2>{transaction.listings?.title || "UniMart Purchase"}</h2>
+      <h2>
+  {
+    transaction.listing_title ||
+    transaction.listings?.title ||
+    "Deleted Listing"
+  }
+</h2>
           <span className={`payment-status-pill ${transaction.payment_status}`}>
             {transaction.payment_status.replace(/_/g, " ")}
           </span>
