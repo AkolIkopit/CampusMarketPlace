@@ -122,8 +122,9 @@ describe('UserManagement', () => {
 
     await clickActionButton('Suspend');
     await userEvent.selectOptions(screen.getByRole('combobox'), 'Policy');
-    await userEvent.type(screen.getByPlaceholderText('Provide audit log context...'), 'Repeated policy violations');
+    await userEvent.type(screen.getByPlaceholderText('Provide context for admin logs...'), 'Repeated policy violations');
     await userEvent.click(screen.getByRole('button', { name: /Confirm suspend/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, Proceed' }));
 
     await waitFor(() => {
       expect(updateEq).toHaveBeenCalledWith('id', 'user-1');
@@ -139,6 +140,7 @@ describe('UserManagement', () => {
     await screen.findByText('Bob Student');
 
     await userEvent.click(screen.getByRole('button', { name: /Reactivate/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, Proceed' }));
 
     await waitFor(() => {
       expect(updateEq).toHaveBeenCalledWith('id', 'user-2');
@@ -157,8 +159,9 @@ describe('UserManagement', () => {
     const deleteButtons = screen.getAllByRole('button', { name: /Delete/ });
     await userEvent.click(deleteButtons[0]);
     await userEvent.selectOptions(screen.getByRole('combobox'), 'Fraud');
-    await userEvent.type(screen.getByPlaceholderText('Provide audit log context...'), 'Fraudulent account');
+    await userEvent.type(screen.getByPlaceholderText('Provide context for admin logs...'), 'Fraudulent account');
     await userEvent.click(screen.getByRole('button', { name: /Confirm delete/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, Proceed' }));
 
     await waitFor(() => {
       expect(deleteEq).toHaveBeenCalledWith('id', 'user-1');
@@ -189,7 +192,7 @@ describe('UserManagement', () => {
     await userEvent.type(searchInput, 'Bob');
 
     expect(screen.queryByText('Alice Admin')).not.toBeInTheDocument();
-    expect(screen.getByText('EMPTY')).toBeInTheDocument();
+    expect(screen.getByText('NO USERS FOUND')).toBeInTheDocument();
   });
 
   it('filters users by role search term', async () => {
@@ -215,6 +218,6 @@ describe('UserManagement', () => {
     const searchInput = screen.getByPlaceholderText('Search students...');
     await userEvent.type(searchInput, 'zzznomatch');
 
-    expect(screen.getByText('EMPTY')).toBeInTheDocument();
+    expect(screen.getByText('NO USERS FOUND')).toBeInTheDocument();
   });
 });

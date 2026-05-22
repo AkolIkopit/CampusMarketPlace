@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MyListings from './MyListings';
 import { supabase } from '../supabase';
@@ -103,7 +103,9 @@ describe('MyListings', () => {
     expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
     expect(screen.getByText('+1 more reviews...')).toBeInTheDocument();
 
-    await userEvent.click(container.querySelector('.delete-btn'));
+    fireEvent.click(screen.getByTitle('Delete Listing'));
+    await screen.findByText('Confirm delete');
+    fireEvent.click(container.querySelector('.btn-confirm-delete'));
 
     await waitFor(() => {
       expect(deleteEq).toHaveBeenCalledWith('id', 'listing-1');
@@ -132,7 +134,9 @@ describe('MyListings', () => {
 
     expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
 
-    await userEvent.click(container.querySelector('.delete-btn'));
+    fireEvent.click(screen.getByTitle('Delete Listing'));
+    await screen.findByText('Confirm delete');
+    fireEvent.click(container.querySelector('.btn-confirm-delete'));
 
     await waitFor(() => {
       expect(window.alert).toHaveBeenCalledWith('Delete failed');

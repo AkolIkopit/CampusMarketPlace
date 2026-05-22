@@ -153,6 +153,7 @@ describe('MarketTrades', () => {
     await screen.findByRole('button', { name: 'Claim Sale / Trade' });
 
     await userEvent.click(screen.getByRole('button', { name: 'Claim Sale / Trade' }));
+    await userEvent.click(screen.getByText('Confirm'));
 
     await waitFor(() => {
       expect(updateEq).toHaveBeenCalledWith('id', 'trade-abc123');
@@ -168,6 +169,7 @@ describe('MarketTrades', () => {
     await screen.findByRole('button', { name: 'Claim Sale / Trade' });
 
     await userEvent.click(screen.getByRole('button', { name: 'Claim Sale / Trade' }));
+    await userEvent.click(screen.getByText('Cancel'));
 
     expect(updateEq).not.toHaveBeenCalled();
   });

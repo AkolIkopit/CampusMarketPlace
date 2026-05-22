@@ -40,12 +40,11 @@ describe('TradeStaffDashboard', () => {
     expect(screen.getByText('TRADE FACILITY STAFF')).toBeInTheDocument();
   });
 
-  it('renders all four action blocks', () => {
+  it('renders the current action blocks', () => {
     render(<TradeStaffDashboard />);
 
     expect(screen.getByText('Market')).toBeInTheDocument();
     expect(screen.getByText('My Assigned Trades & Sales')).toBeInTheDocument();
-    expect(screen.getByText('Completed Trades & Sales')).toBeInTheDocument();
     expect(screen.getByText('My Profile')).toBeInTheDocument();
   });
 
@@ -63,14 +62,6 @@ describe('TradeStaffDashboard', () => {
     await userEvent.click(screen.getByText('My Assigned Trades & Sales').closest('button'));
 
     expect(navigateMock).toHaveBeenCalledWith('/dashboard/staff/my-trades');
-  });
-
-  it('navigates to /dashboard/staff/completed on Completed Trades click', async () => {
-    render(<TradeStaffDashboard />);
-
-    await userEvent.click(screen.getByText('Completed Trades & Sales').closest('button'));
-
-    expect(navigateMock).toHaveBeenCalledWith('/dashboard/staff/completed');
   });
 
   it('opens the burger menu when ☰ is clicked', async () => {

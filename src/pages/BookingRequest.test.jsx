@@ -57,7 +57,12 @@ function createBookingMocks({
   authError = null,
   insertError = null,
   messageInsertError = null,
-  tradeSlots = baseTradeSlots
+  tradeSlots = baseTradeSlots,
+  booking = null,
+  bookingError = null,
+  transaction = { payment_status: 'fully_paid', cash_shortfall_due: 0 },
+  transactionError = null,
+  bookingUpdateError = null
 } = {}) {
   supabase.auth.getUser.mockResolvedValue({
     data: { user: currentUserId ? { id: currentUserId } : null },
@@ -78,26 +83,62 @@ function createBookingMocks({
   const sellerEq = jest.fn(() => ({ maybeSingle: sellerMaybeSingle }));
   const sellerSelect = jest.fn(() => ({ eq: sellerEq }));
 
+  const bookingMaybeSingle = jest.fn().mockResolvedValue({
+    data: bookingError ? null : booking,
+    error: bookingError
+  });
+  const bookingsSelectEq = jest.fn(() => ({ maybeSingle: bookingMaybeSingle }));
+  const bookingsSelect = jest.fn(() => ({ eq: bookingsSelectEq }));
   const bookingsInsert = jest.fn().mockResolvedValue({ error: insertError });
+  const bookingsUpdateEq = jest.fn().mockResolvedValue({ error: bookingUpdateError });
+  const bookingsUpdate = jest.fn(() => ({ eq: bookingsUpdateEq }));
   const messagesInsert = jest.fn().mockResolvedValue({ error: messageInsertError });
+  const profileNameMaybeSingle = jest.fn().mockResolvedValue({ data: { full_name: 'Buyer One' } });
+  const profileNameEq = jest.fn(() => ({ maybeSingle: profileNameMaybeSingle }));
+  const profileNameSelect = jest.fn(() => ({ eq: profileNameEq }));
   const tradeSlotsOrder = jest.fn().mockResolvedValue({ data: tradeSlots, error: null });
-  const tradeSlotsGte = jest.fn(() => ({ order: tradeSlotsOrder }));
+  const tradeSlotsLte = jest.fn(() => ({ order: tradeSlotsOrder }));
+  const tradeSlotsGte = jest.fn(() => ({ lte: tradeSlotsLte }));
   const tradeSlotsEqActive = jest.fn(() => ({ gte: tradeSlotsGte }));
   const tradeSlotsEqCampus = jest.fn(() => ({ eq: tradeSlotsEqActive }));
-  const tradeSlotsSelect = jest.fn(() => ({ eq: tradeSlotsEqCampus }));
+  const tradeSlotCountMaybeSingle = jest.fn().mockResolvedValue({
+    data: { current_bookings: 0 },
+    error: null
+  });
+  const tradeSlotCountEq = jest.fn(() => ({ maybeSingle: tradeSlotCountMaybeSingle }));
+  const tradeSlotsSelect = jest.fn((query) => {
+    if (query === 'current_bookings') return { eq: tradeSlotCountEq };
+    return { eq: tradeSlotsEqCampus };
+  });
   const tradeSlotsUpdateEq = jest.fn().mockResolvedValue({ error: null });
   const tradeSlotsUpdate = jest.fn(() => ({ eq: tradeSlotsUpdateEq }));
+  const transactionMaybeSingle = jest.fn().mockResolvedValue({
+    data: transaction,
+    error: transactionError
+  });
+  const transactionEq = jest.fn(() => ({ maybeSingle: transactionMaybeSingle }));
+  const transactionSelect = jest.fn(() => ({ eq: transactionEq }));
 
   supabase.from.mockImplementation((table) => {
     if (table === 'listings') return { select: listingSelect };
-    if (table === 'profiles') return { select: sellerSelect };
-    if (table === 'bookings') return { insert: bookingsInsert };
+    if (table === 'profiles') {
+      let profileSelectCalls = 0;
+      return {
+        select: jest.fn((query) => {
+          profileSelectCalls += 1;
+          if (query === 'full_name' || profileSelectCalls > 1) return profileNameSelect(query);
+          return sellerSelect(query);
+        })
+      };
+    }
+    if (table === 'bookings') return { select: bookingsSelect, insert: bookingsInsert, update: bookingsUpdate };
     if (table === 'messages') return { insert: messagesInsert };
     if (table === 'trade_slots') return { select: tradeSlotsSelect, update: tradeSlotsUpdate };
+    if (table === 'transactions') return { select: transactionSelect };
     throw new Error(`Unexpected table: ${table}`);
   });
 
-  return { bookingsInsert, messagesInsert, tradeSlotsUpdate };
+  return { bookingsInsert, bookingsUpdateEq, messagesInsert, tradeSlotsUpdate };
 }
 
 describe('BookingRequest', () => {
@@ -343,5 +384,117 @@ describe('BookingRequest', () => {
     expect(navigateMock).toHaveBeenCalledWith(
       expect.stringContaining('/messages?')
     );
+  });
+
+  it('books a collection slot for a paid ready booking', async () => {
+    __setSearchParams('mode=collection&booking=booking-1&item=Physics+Textbook');
+    const { bookingsUpdateEq, messagesInsert } = createBookingMocks({
+      booking: {
+        id: 'booking-1',
+        transaction_id: 'transaction-1',
+        listing_id: 'listing-1',
+        buyer_id: 'buyer-1',
+        seller_id: 'seller-1',
+        status: 'ready_for_collection',
+        agreed_price: 250,
+        item_received: true,
+        item_released: false,
+        cash_shortfall: 0
+      }
+    });
+
+    render(<BookingRequest />);
+
+    expect(await screen.findByText('Collection slot')).toBeInTheDocument();
+    expect(screen.getByText('This item has been dropped off and is ready for buyer collection.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Book collection slot' }));
+
+    await waitFor(() => {
+      expect(bookingsUpdateEq).toHaveBeenCalledWith('id', 'booking-1');
+    });
+    expect(messagesInsert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        listing_id: 'listing-1',
+        sender_id: 'buyer-1',
+        receiver_id: 'seller-1',
+        transaction_id: 'transaction-1'
+      })
+    ]);
+    expect(await screen.findByText(/Collection slot booked/i)).toBeInTheDocument();
+  });
+
+  it('blocks collection when no booking id is provided', async () => {
+    __setSearchParams('mode=collection');
+    createBookingMocks();
+
+    render(<BookingRequest />);
+
+    expect(await screen.findByText('No booking selected for collection.')).toBeInTheDocument();
+  });
+
+  it('blocks collection when the viewer is not the buyer', async () => {
+    __setSearchParams('mode=collection&booking=booking-1');
+    createBookingMocks({
+      currentUserId: 'other-user',
+      booking: {
+        id: 'booking-1',
+        listing_id: 'listing-1',
+        buyer_id: 'buyer-1',
+        seller_id: 'seller-1',
+        status: 'ready_for_collection',
+        item_received: true,
+        item_released: false
+      }
+    });
+
+    render(<BookingRequest />);
+
+    expect(await screen.findByText('Only the buyer can book a collection slot.')).toBeInTheDocument();
+  });
+
+  it('blocks collection until payment is fully complete', async () => {
+    __setSearchParams('mode=collection&booking=booking-1');
+    createBookingMocks({
+      booking: {
+        id: 'booking-1',
+        transaction_id: 'transaction-1',
+        listing_id: 'listing-1',
+        buyer_id: 'buyer-1',
+        seller_id: 'seller-1',
+        status: 'ready_for_collection',
+        item_received: true,
+        item_released: false,
+        cash_shortfall: 0
+      },
+      transaction: { payment_status: 'pending', cash_shortfall_due: 20 }
+    });
+
+    render(<BookingRequest />);
+
+    expect(await screen.findByText('Payment must be completed before booking a collection slot.')).toBeInTheDocument();
+  });
+
+  it('shows a collection update error when saving the slot fails', async () => {
+    __setSearchParams('mode=collection&booking=booking-1');
+    createBookingMocks({
+      booking: {
+        id: 'booking-1',
+        listing_id: 'listing-1',
+        buyer_id: 'buyer-1',
+        seller_id: 'seller-1',
+        status: 'ready_for_collection',
+        item_received: true,
+        item_released: false
+      },
+      bookingUpdateError: { message: 'Slot update failed' }
+    });
+
+    render(<BookingRequest />);
+
+    await screen.findByText('Collection slot');
+    await userEvent.click(screen.getByRole('button', { name: 'Book collection slot' }));
+
+    expect(await screen.findByText('Slot update failed')).toBeInTheDocument();
   });
 });

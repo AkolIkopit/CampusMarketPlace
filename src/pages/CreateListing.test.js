@@ -21,7 +21,10 @@ function createCreateListingMocks({
   uploadError = null,
   listingError = null,
   listingData = null,
-  updateError = null
+  updateError = null,
+  economicData = null,
+  publicUrlError = null,
+  listBucketsResult = { data: [{ name: 'listing-Images' }], error: null }
 } = {}) {
   const categorySelect = jest.fn().mockResolvedValue({ data: categories });
   const listingSingle = jest.fn().mockResolvedValue({
@@ -42,13 +45,14 @@ function createCreateListingMocks({
   const listingImagesUpdate = jest.fn(() => ({ eq: listingImagesUpdateEq }));
   const listingImagesInsert = jest.fn().mockResolvedValue({ error: null });
 
-  const saEconomicMaybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
+  const saEconomicMaybeSingle = jest.fn().mockResolvedValue({ data: economicData, error: null });
   const saEconomicIlike = jest.fn(() => ({ maybeSingle: saEconomicMaybeSingle }));
   const saEconomicSelect = jest.fn(() => ({ ilike: saEconomicIlike }));
 
   const upload = jest.fn().mockResolvedValue({ error: uploadError });
   const getPublicUrl = jest.fn(() => ({
-    data: { publicUrl: 'https://cdn.example.com/listing.png' }
+    data: publicUrlError ? null : { publicUrl: 'https://cdn.example.com/listing.png' },
+    error: publicUrlError
   }));
 
   supabase.from.mockImplementation((table) => {
@@ -75,6 +79,7 @@ function createCreateListingMocks({
     upload,
     getPublicUrl
   });
+  supabase.storage.listBuckets = jest.fn().mockResolvedValue(listBucketsResult);
 
   supabase.auth.getUser.mockResolvedValue({
     data: { user: { id: 'user-1' } }
@@ -89,6 +94,15 @@ function createCreateListingMocks({
     listingUpdate,
     upload
   };
+}
+
+async function fillValidCreateForm(container) {
+  const fileInput = container.querySelector('#pic-upload');
+  const [categorySelect] = screen.getAllByRole('combobox');
+
+  await screen.findByRole('option', { name: 'Books' });
+  await userEvent.upload(fileInput, new File(['data'], 'camera.png', { type: 'image/png' }));
+  await userEvent.selectOptions(categorySelect, '1');
 }
 
 describe('CreateListing', () => {
@@ -134,6 +148,57 @@ describe('CreateListing', () => {
     expect(window.alert).toHaveBeenCalledWith('Please select a category!');
   });
 
+  it('requires a title after category and image are chosen', async () => {
+    createCreateListingMocks();
+
+    const { container } = render(<CreateListing />);
+    await fillValidCreateForm(container);
+    await userEvent.type(screen.getByPlaceholderText('0.00'), '149.99');
+    await userEvent.type(screen.getByPlaceholderText('Details about your item...'), 'Bright desk lamp');
+    fireEvent.submit(container.querySelector('form'));
+
+    expect(window.alert).toHaveBeenCalledWith('Please enter a title!');
+  });
+
+  it('requires a description before posting', async () => {
+    createCreateListingMocks();
+
+    const { container } = render(<CreateListing />);
+    await fillValidCreateForm(container);
+    await userEvent.type(screen.getByPlaceholderText('e.g. Calculus Textbook'), 'Desk Lamp');
+    await userEvent.type(screen.getByPlaceholderText('0.00'), '149.99');
+    fireEvent.submit(container.querySelector('form'));
+
+    expect(window.alert).toHaveBeenCalledWith('Please add details about your item!');
+  });
+
+  it('requires a positive price before posting', async () => {
+    createCreateListingMocks();
+
+    const { container } = render(<CreateListing />);
+    await fillValidCreateForm(container);
+    await userEvent.type(screen.getByPlaceholderText('e.g. Calculus Textbook'), 'Desk Lamp');
+    await userEvent.type(screen.getByPlaceholderText('Details about your item...'), 'Bright desk lamp');
+    fireEvent.submit(container.querySelector('form'));
+
+    expect(window.alert).toHaveBeenCalledWith('Please enter a valid price!');
+  });
+
+  it('requires quantity of at least one for new listings', async () => {
+    createCreateListingMocks();
+
+    const { container } = render(<CreateListing />);
+    await fillValidCreateForm(container);
+    await userEvent.type(screen.getByPlaceholderText('e.g. Calculus Textbook'), 'Desk Lamp');
+    await userEvent.type(screen.getByPlaceholderText('0.00'), '149.99');
+    await userEvent.clear(screen.getByPlaceholderText('1'));
+    await userEvent.type(screen.getByPlaceholderText('1'), '0');
+    await userEvent.type(screen.getByPlaceholderText('Details about your item...'), 'Bright desk lamp');
+    fireEvent.submit(container.querySelector('form'));
+
+    expect(window.alert).toHaveBeenCalledWith('Please enter a quantity of at least 1.');
+  });
+
   it('uploads the image, creates the listing, and redirects on success', async () => {
     const { listingImagesInsert, listingInsert, upload } = createCreateListingMocks();
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
@@ -164,6 +229,7 @@ describe('CreateListing', () => {
           listing_type: 'trade',
           condition: 'Like New',
           location: 'Med Campus',
+          quantity: 1,
           status: 'active'
         }
       ]);
@@ -237,9 +303,129 @@ describe('CreateListing', () => {
         listing_type: 'trade',
         condition: 'Like New',
         location: 'Med Campus',
+        quantity: 1,
         status: 'active'
       });
       expect(navigateMock).toHaveBeenCalledWith('/my-listings');
+    });
+  });
+
+  it('shows an edit-mode load error when the listing cannot be found', async () => {
+    createCreateListingMocks({
+      listingData: null,
+      listingError: { message: 'Missing listing' }
+    });
+    __setSearchParams('listing=listing-1');
+
+    render(<CreateListing />);
+
+    expect(await screen.findByText('Unable to load listing for editing.')).toBeInTheDocument();
+  });
+
+  it('marks an edited listing sold out when quantity is set to zero', async () => {
+    const filledListing = {
+      id: 'listing-1',
+      seller_id: 'user-1',
+      title: 'Old Lamp',
+      category_id: 1,
+      description: 'Old description',
+      price: 120.5,
+      listing_type: 'sale',
+      condition: 'Good',
+      location: 'Main Campus',
+      quantity: 1,
+      listing_images: [{ image_url: 'https://cdn.example.com/old.png', is_primary: true }]
+    };
+
+    const { listingUpdate } = createCreateListingMocks({ listingData: filledListing });
+    __setSearchParams('listing=listing-1');
+
+    render(<CreateListing />);
+
+    await screen.findByText('Edit Listing');
+    await screen.findByDisplayValue('Old Lamp');
+    const quantityInput = screen.getByPlaceholderText('1');
+    await userEvent.clear(quantityInput);
+    await userEvent.type(quantityInput, '0');
+    expect(screen.getByText('Setting quantity to 0 will mark this listing as sold out.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Update Listing' }));
+
+    await waitFor(() => {
+      expect(listingUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        quantity: 0,
+        status: 'sold_out'
+      }));
+    });
+  });
+
+  it('blocks editing when the current user does not own the listing', async () => {
+    const filledListing = {
+      id: 'listing-1',
+      seller_id: 'other-user',
+      title: 'Old Lamp',
+      category_id: 1,
+      description: 'Old description',
+      price: 120.5,
+      listing_type: 'sale',
+      condition: 'Good',
+      location: 'Main Campus',
+      quantity: 1,
+      listing_images: [{ image_url: 'https://cdn.example.com/old.png', is_primary: true }]
+    };
+
+    createCreateListingMocks({ listingData: filledListing });
+    __setSearchParams('listing=listing-1');
+
+    render(<CreateListing />);
+
+    await screen.findByText('Edit Listing');
+    await screen.findByDisplayValue('Old Lamp');
+    await userEvent.click(screen.getByRole('button', { name: 'Update Listing' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith('Error: You are not authorized to update this listing.');
+    });
+  });
+
+  it('shows a smart price suggestion and applies it', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      json: jest.fn().mockResolvedValue([{}, [{ value: 10 }]])
+    });
+    createCreateListingMocks({
+      economicData: {
+        base_new_price: 100,
+        cpi_factor: 1.05,
+        source_info: 'Database CPI'
+      }
+    });
+
+    render(<CreateListing />);
+
+    await screen.findByRole('option', { name: 'Books' });
+    await userEvent.selectOptions(screen.getAllByRole('combobox')[0], '1');
+
+    expect(await screen.findByText('UniMart Smart Price')).toBeInTheDocument();
+    expect(screen.getByText('Suggested:')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Apply Suggestion' }));
+
+    expect(screen.getByPlaceholderText('0.00')).toHaveValue(61);
+    fetchSpy.mockRestore();
+  });
+
+  it('falls back to listed buckets when storage bucket upload fails', async () => {
+    createCreateListingMocks({
+      uploadError: { message: 'Bucket not found', statusCode: 404 },
+      listBucketsResult: { data: [{ name: 'avatars' }], error: null }
+    });
+    const { container } = render(<CreateListing />);
+    await fillValidCreateForm(container);
+    await userEvent.type(screen.getByPlaceholderText('e.g. Calculus Textbook'), 'Desk Lamp');
+    await userEvent.type(screen.getByPlaceholderText('0.00'), '149.99');
+    await userEvent.type(screen.getByPlaceholderText('Details about your item...'), 'Bright desk lamp');
+    await userEvent.click(screen.getByRole('button', { name: 'POST' }));
+
+    await waitFor(() => {
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Available buckets: avatars'));
     });
   });
 
