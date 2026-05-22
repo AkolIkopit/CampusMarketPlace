@@ -15,6 +15,8 @@ import BuyerPopup from "./BuyerPopup";
 import Seller_Popup from "./Seller_Popup";
 import ReviewPromptPopup from "./ReviewPromptPopup";
 
+const logoSrc = `${process.env.PUBLIC_URL || ''}/UniMartlogo.png`;
+
 const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -185,7 +187,8 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       <header className="main-header">
         <nav className="header-nav">
           <section className="logo-section" onClick={() => setView('market')}>
-            <img src="/UniMartlogo.png" alt="Logo" className="header-logo" /><h1 className="logo-text">UniMart</h1>
+            <img src={logoSrc} alt="UniMart logo" className="header-logo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <h1 className="logo-text">UniMart</h1>
           </section>
           <nav className="header-actions">
             <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>

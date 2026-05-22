@@ -816,6 +816,8 @@ function MessagesPage({ profile }) {
     ? "This chat is ready. Send a message to start the conversation."
     : "Choose a person from the list to open the full conversation.";
 
+  const logoSrc = `${process.env.PUBLIC_URL || ''}/UniMartlogo.png`;
+
   const handleSelectConversation = (conversationId) => {
     setActiveConversationId(conversationId);
 
@@ -835,7 +837,7 @@ function MessagesPage({ profile }) {
       <header className={styles["messages-hero"]}>
         <section>
           <p className={styles.eyebrow}>
-            <img src="/UniMartlogo.png" alt="UNIMART" className={styles["hero-logo"]} />
+            <img src={logoSrc} alt="UniMart logo" className={styles["hero-logo"]} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             UNIMART
           </p>
           <h1>Messages</h1>
