@@ -11,14 +11,14 @@ import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
-// Load PayFast configuration from environment variables
-const PAYFAST_URL = process.env.REACT_APP_PAYFAST_URL;
-const MERCHANT_ID = process.env.REACT_APP_PAYFAST_MERCHANT_ID;
-const MERCHANT_KEY = process.env.REACT_APP_PAYFAST_MERCHANT_KEY;
-const PASSPHRASE = process.env.REACT_APP_PAYFAST_PASSPHRASE;
-const NOTIFY_URL = process.env.REACT_APP_NOTIFY_URL;
-const RETURN_URL = process.env.REACT_APP_PAYFAST_RETURN_URL;
-const CANCEL_URL = process.env.REACT_APP_PAYFAST_CANCEL_URL;
+// PayFast Sandbox configuration
+const PAYFAST_URL   = "https://sandbox.payfast.co.za/eng/process";
+const MERCHANT_ID   = "10000100";
+const MERCHANT_KEY  = "46f0cd694581a";
+const PASSPHRASE    = "jt7NOE43FZPn";
+const RETURN_URL    = `${window.location.origin}/payment/success`;
+const CANCEL_URL    = `${window.location.origin}/payment/cancel`;
+const NOTIFY_URL    = process.env.REACT_APP_NOTIFY_URL || "";
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -74,12 +74,6 @@ const handlePayment = async () => {
     return;
   }
 
-  // Guard: catch missing env vars before hitting PayFast
-  if (!MERCHANT_ID || !MERCHANT_KEY || !PAYFAST_URL) {
-    setError("PayFast configuration is missing. Restart the dev server and try again.");
-    console.error("PayFast env vars:", { MERCHANT_ID, MERCHANT_KEY, PAYFAST_URL });
-    return;
-  }
 
   const fields = {
     merchant_id: MERCHANT_ID,
