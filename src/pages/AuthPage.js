@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from "react";
 /*
 Module: AuthPage.js
 Purpose: Authentication UI for sign-in and sign-up flows.

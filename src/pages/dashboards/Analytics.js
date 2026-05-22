@@ -4,7 +4,6 @@ Purpose: Admin analytics dashboard displaying metrics and charts.
 Units: data fetchers, visualization components, filters
 Flow: Loads analytics data and renders charts and summaries for admins.
 */
-import React from 'react';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { notifyError } from '../../toast';
