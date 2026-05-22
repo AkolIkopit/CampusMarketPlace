@@ -211,6 +211,31 @@
   margin: 0;
 }
 
+.listing-qty-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2ecc71;
+  margin: 3px 0 0;
+}
+
+.my-listing-sold-out-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(230, 57, 70, 0.9);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 16px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+}
+
 /* --- 6. COMPACT REVIEWS LIST --- */
 .listing-reviews-summary {
   border-top: 1px solid #f0f0f0;

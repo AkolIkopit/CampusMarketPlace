@@ -113,6 +113,9 @@ const MyListings = () => {
                     />
                   );
                 })()}
+                {item.status === 'sold_out' && (
+                  <span className="my-listing-sold-out-badge">SOLD OUT</span>
+                )}
                 <button
                   className="edit-btn"
                   onClick={(e) => {
@@ -137,6 +140,14 @@ const MyListings = () => {
                   <mark className="listing-cat">{item.categories?.name}</mark>
                   <h3>{item.title}</h3>
                   <p className="listing-price">R {item.price}</p>
+                  {item.quantity != null && (
+                    <p
+                      className="listing-qty-label"
+                      style={item.status === 'sold_out' ? { color: '#e63946' } : {}}
+                    >
+                      {item.status === 'sold_out' ? 'Out of stock' : `${item.quantity} in stock`}
+                    </p>
+                  )}
                 </header>
 
                 <footer className="listing-reviews-summary">

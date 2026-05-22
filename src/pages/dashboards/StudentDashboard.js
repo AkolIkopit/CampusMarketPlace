@@ -62,7 +62,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
         const { data: recent } = await supabase
           .from('listings')
           .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
-          .eq('status', 'active')
+          .in('status', ['active', 'sold_out'])
           .order('created_at', { ascending: false })
           .limit(10);
         setRecentListings(recent || []);
@@ -97,7 +97,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
     if (!profile?.id) return;
 
     const fetchMarket = async () => {
-      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).eq('status', 'active');
+      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).in('status', ['active', 'sold_out']);
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
       if (selectedCondition !== 'all') query = query.eq('condition', selectedCondition);
       if (minPrice) query = query.gte('price', Number(minPrice));
@@ -300,8 +300,9 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 const ListingCard = ({ item }) => {
   const navigate = useNavigate();
   const primaryImage = item.listing_images?.find((img) => img.is_primary) || item.listing_images?.[0];
+  const isSoldOut = item.status === 'sold_out';
   return (
-    <article className="listing-card-item" onClick={() => navigate(`/listing/${item.id}`)}>
+    <article className={`listing-card-item${isSoldOut ? ' listing-card-sold-out' : ''}`} onClick={() => navigate(`/listing/${item.id}`)}>
       <header className="listing-card-top">
         <figure className="listing-img-container">
           <img
@@ -310,6 +311,7 @@ const ListingCard = ({ item }) => {
             style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
           />
         </figure>
+        {isSoldOut && <span className="sold-out-overlay-badge">SOLD OUT</span>}
         <section className="seller-mini-info">
           {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
           <p>{item.profiles?.full_name || 'Student'}</p>

@@ -56,8 +56,16 @@ export default function MyTrades() {
       .update(updates)
       .eq("id", tradeId);
 
-    if (error) console.error(error.message);
-    else fetchTrades(currentUser.id);
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    // Quantity decrement + sold_out status are handled automatically by the
+    // Postgres trigger `trg_decrement_quantity_on_receipt`, which fires when
+    // item_received flips to TRUE. No client-side update needed here.
+
+    fetchTrades(currentUser.id);
   };
 
   const formatSlotTime = (slotTime) => {
