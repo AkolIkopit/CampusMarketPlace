@@ -11,14 +11,14 @@ import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
-// PayFast Sandbox configuration
-const PAYFAST_URL   = "https://sandbox.payfast.co.za/eng/process";
-const MERCHANT_ID   = process.env.REACT_APP_PAYFAST_MERCHANT_ID || "10000100";
-const MERCHANT_KEY  = process.env.REACT_APP_PAYFAST_MERCHANT_KEY || "46f0cd694581a";
-const PASSPHRASE    = process.env.REACT_APP_PAYFAST_PASSPHRASE || "jt7NOE43FZPn";
-const RETURN_URL    = `${window.location.origin}/payment/success`;
-const CANCEL_URL    = `${window.location.origin}/payment/cancel`;
-const NOTIFY_URL    = process.env.REACT_APP_NOTIFY_URL || "";
+// PayFast configuration from environment variables
+const PAYFAST_URL  = process.env.REACT_APP_PAYFAST_URL;
+const MERCHANT_ID  = process.env.REACT_APP_PAYFAST_MERCHANT_ID;
+const MERCHANT_KEY = process.env.REACT_APP_PAYFAST_MERCHANT_KEY;
+const PASSPHRASE   = process.env.REACT_APP_PAYFAST_PASSPHRASE || "";
+const RETURN_URL   = process.env.REACT_APP_PAYFAST_RETURN_URL;
+const CANCEL_URL   = process.env.REACT_APP_PAYFAST_CANCEL_URL;
+const NOTIFY_URL   = process.env.REACT_APP_NOTIFY_URL || "";
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -93,12 +93,12 @@ const handlePayment = async () => {
     .map(([k, v]) => `${k}=${encodeURIComponent(String(v).trim()).replace(/%20/g, "+")}`)
     .join("&");
 
-  // Default sandbox test account has NO passphrase set — omit it
-  const signature = md5(pfParamString);
+  // Append passphrase if set on the merchant account
+  const signatureInput = PASSPHRASE
+    ? `${pfParamString}&passphrase=${encodeURIComponent(PASSPHRASE.trim()).replace(/%20/g, "+")}`
+    : pfParamString;
 
-  console.log("PayFast POST fields:", fields);
-  console.log("Signature input:", pfParamString);
-  console.log("MD5 signature:", signature);
+  const signature = md5(signatureInput);
 
   const form = document.createElement("form");
   form.method = "POST";
