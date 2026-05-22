@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { notifyError, notifySuccess } from '../toast';
 import { ArrowLeft, Trash2, Loader2, PackageOpen, User, MessageSquare, Edit3 } from 'lucide-react';
 import './MyListings.css';
 
@@ -8,6 +9,8 @@ const MyListings = () => {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchUserListings();
@@ -38,16 +41,30 @@ const MyListings = () => {
     setLoading(false);
   };
 
-  const handleDelete = async (e, id) => {
+  const handleDeleteClick = (e, item) => {
     e.stopPropagation();
+    setPendingDelete(item);
+  };
 
-    if (!window.confirm('Delete this listing permanently?')) return;
+  const cancelDelete = (e) => {
+    e?.stopPropagation();
+    setPendingDelete(null);
+  };
 
-    const { error } = await supabase.from('listings').delete().eq('id', id);
+  const confirmDelete = async (e) => {
+    e?.stopPropagation();
+    if (!pendingDelete) return;
+
+    setDeleteLoading(true);
+    const { error } = await supabase.from('listings').delete().eq('id', pendingDelete.id);
+    setDeleteLoading(false);
+
     if (!error) {
-      setListings(listings.filter((l) => l.id !== id));
+      setListings((current) => current.filter((l) => l.id !== pendingDelete.id));
+      notifySuccess(`Deleted ${pendingDelete.title}.`);
+      setPendingDelete(null);
     } else {
-      alert(error.message);
+      notifyError(error.message);
     }
   };
 
@@ -108,7 +125,7 @@ const MyListings = () => {
                 </button>
                 <button
                   className="delete-btn"
-                  onClick={(e) => handleDelete(e, item.id)}
+                  onClick={(e) => handleDeleteClick(e, item)}
                   title="Delete Listing"
                 >
                   <Trash2 size={18} />
@@ -155,6 +172,21 @@ const MyListings = () => {
             </article>
           ))}
         </section>
+      )}
+
+      {pendingDelete && (
+        <div className="delete-confirm-backdrop" onClick={cancelDelete}>
+          <div className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
+            <h2>Confirm delete</h2>
+            <p>Are you sure you want to delete "{pendingDelete.title}" permanently?</p>
+            <div className="delete-confirm-actions">
+              <button className="btn-cancel-delete" onClick={cancelDelete} type="button">Cancel</button>
+              <button className="btn-confirm-delete" onClick={confirmDelete} type="button" disabled={deleteLoading}>
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

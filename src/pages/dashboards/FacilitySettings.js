@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, Users, Plus, Trash2, MapPin, 
-  Calendar, Check, AlertCircle, User 
+  User 
 } from 'lucide-react';
 import LoadingScreen from '../../components/LoadingScreen';
+import toast, { Toaster } from 'react-hot-toast'; // Added for notifications
 import './FacilitySettings.css';
 
 export default function FacilitySettings() {
@@ -31,7 +33,6 @@ export default function FacilitySettings() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Staff Working the ENTIRE DAY at this campus
       const { data: staff, error: staffErr } = await supabase
         .from('staff_roster')
         .select(`*, profiles:staff_id(full_name, avatar_url)`)
@@ -41,7 +42,6 @@ export default function FacilitySettings() {
       if (staffErr) console.error("Staff Fetch Error:", staffErr);
       setStaffPool(staff || []);
 
-      // 2. Fetch Student Visiting Slots
       const { data: slots, error: slotErr } = await supabase
         .from('trade_slots')
         .select('*')
@@ -50,7 +50,6 @@ export default function FacilitySettings() {
       
       if (slotErr) console.error("Slot Fetch Error:", slotErr);
 
-      // Filter slots that happen on the selected day of the week
       const filteredSlots = slots?.filter(slot => {
           const date = new Date(slot.start_time);
           return weekdays[date.getDay()] === selectedDay;
@@ -71,9 +70,14 @@ export default function FacilitySettings() {
     );
 
     if (!isStaffAvailable) {
-        alert(`❌ NO STAFF ON DUTY: No worker is rostered for the full window ${newSlot.start}-${newSlot.end} on ${selectedDay}.`);
+        toast.error(`No staff on duty for the window ${newSlot.start}-${newSlot.end}`, {
+            duration: 4000,
+            style: { border: '1px solid #e63946', padding: '16px', color: '#e63946' }
+        });
         return;
     }
+
+    const toastId = toast.loading("Creating slot...");
 
     try {
         // 2. Calculate the next occurrence of the selected weekday, then create slots
@@ -110,21 +114,29 @@ export default function FacilitySettings() {
         const { error } = await supabase.from('trade_slots').insert(slotsToInsert);
 
         if (error) {
-            alert("Database Rejected Slot: " + error.message);
+            toast.error("Database Error: " + error.message, { id: toastId });
         } else {
+            toast.success("Trading slot added successfully!", { id: toastId });
             setNewSlot({ start: "", end: "", capacity: 5 });
             fetchData();
+            notifySuccess("Slot added successfully!");
         }
     } catch (err) {
-        alert("System Error: " + err.message);
+        toast.error("System Error: " + err.message, { id: toastId });
     }
   };
 
   const handleDeleteSlot = async (id) => {
-    if (window.confirm("Remove this window?")) {
+    if (window.confirm("Are you sure you want to remove this time window?")) {
+        const toastId = toast.loading("Removing slot...");
         const { error } = await supabase.from('trade_slots').delete().eq('id', id);
-        if (error) alert(error.message);
-        else fetchData();
+        
+        if (error) {
+            toast.error("Could not delete: " + error.message, { id: toastId });
+        } else {
+            toast.success("Slot removed.", { id: toastId });
+            fetchData();
+        }
     }
   };
 
@@ -132,6 +144,9 @@ export default function FacilitySettings() {
 
   return (
     <main className="dashboard-container facility-theme">
+      {/* Toast provider */}
+      <Toaster position="top-right" reverseOrder={false} />
+
       <section className="aurora-bg" aria-hidden="true"><hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" /></section>
 
       <header className="main-header glass-header">
@@ -169,7 +184,7 @@ export default function FacilitySettings() {
                 <button type="submit" className="btn-add-window"><Plus size={16} /> Add Slot</button>
             </form>
             <div className="pane-scroll">
-                {timeSlots.length === 0 ? <p className="empty-txt">Empty</p> : timeSlots.map(slot => (
+                {timeSlots.length === 0 ? <p className="empty-txt">No windows configured for this day.</p> : timeSlots.map(slot => (
                     <div key={slot.id} className="slot-allocation-row">
                         <div style={{display:'flex', flexDirection:'column'}}>
                             <strong style={{color: '#0d1b2a'}}>
@@ -178,7 +193,9 @@ export default function FacilitySettings() {
                             </strong>
                             <span style={{fontSize: '11px', color: '#666'}}>Available: {slot.max_capacity - (slot.current_bookings || 0)} / {slot.max_capacity}</span>
                         </div>
-                        <button onClick={() => handleDeleteSlot(slot.id)} style={{background:'none', border:'none', cursor:'pointer'}}><Trash2 size={16} color="#e63946" /></button>
+                        <button onClick={() => handleDeleteSlot(slot.id)} style={{background:'none', border:'none', cursor:'pointer'}} title="Delete Slot">
+                            <Trash2 size={16} color="#e63946" />
+                        </button>
                     </div>
                 ))}
             </div>
@@ -192,10 +209,10 @@ export default function FacilitySettings() {
           </header>
           <div className="pane-inner">
             <div className="pane-scroll">
-                {staffPool.length === 0 ? <p className="empty-txt">Empty</p> : staffPool.map((s, idx) => (
+                {staffPool.length === 0 ? <p className="empty-txt">No staff rostered for this day.</p> : staffPool.map((s, idx) => (
                     <div key={idx} className="worker-row">
                         <div className="worker-avatar-wrap">
-                            {s.profiles?.avatar_url ? <img src={s.profiles.avatar_url} style={{width:'100%'}} /> : <User size={20} color="#0d1b2a" />}
+                            {s.profiles?.avatar_url ? <img src={s.profiles.avatar_url} alt="Avatar" style={{width:'100%', borderRadius: '50%'}} /> : <User size={20} color="#0d1b2a" />}
                         </div>
                         <div className="worker-info">
                             <strong>{s.profiles?.full_name}</strong>

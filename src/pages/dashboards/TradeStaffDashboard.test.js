@@ -31,7 +31,7 @@ describe('TradeStaffDashboard', () => {
   it('renders the hero heading for trade staff', () => {
     render(<TradeStaffDashboard />);
 
-    expect(screen.getByText('Manage marketplace trades and exchanges.')).toBeInTheDocument();
+    expect(screen.getByText('Manage marketplace sales or trades and exchanges.')).toBeInTheDocument();
   });
 
   it('renders the TRADE FACILITY STAFF kicker', () => {
@@ -44,8 +44,8 @@ describe('TradeStaffDashboard', () => {
     render(<TradeStaffDashboard />);
 
     expect(screen.getByText('Market')).toBeInTheDocument();
-    expect(screen.getByText('My Trades')).toBeInTheDocument();
-    expect(screen.getByText('Completed Trades')).toBeInTheDocument();
+    expect(screen.getByText('My Assigned Trades & Sales')).toBeInTheDocument();
+    expect(screen.getByText('Completed Trades & Sales')).toBeInTheDocument();
     expect(screen.getByText('My Profile')).toBeInTheDocument();
   });
 
@@ -60,7 +60,7 @@ describe('TradeStaffDashboard', () => {
   it('navigates to /dashboard/staff/my-trades on My Trades click', async () => {
     render(<TradeStaffDashboard />);
 
-    await userEvent.click(screen.getByText('My Trades').closest('button'));
+    await userEvent.click(screen.getByText('My Assigned Trades & Sales').closest('button'));
 
     expect(navigateMock).toHaveBeenCalledWith('/dashboard/staff/my-trades');
   });
@@ -68,7 +68,7 @@ describe('TradeStaffDashboard', () => {
   it('navigates to /dashboard/staff/completed on Completed Trades click', async () => {
     render(<TradeStaffDashboard />);
 
-    await userEvent.click(screen.getByText('Completed Trades').closest('button'));
+    await userEvent.click(screen.getByText('Completed Trades & Sales').closest('button'));
 
     expect(navigateMock).toHaveBeenCalledWith('/dashboard/staff/completed');
   });
@@ -78,7 +78,6 @@ describe('TradeStaffDashboard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '☰' }));
 
-    expect(screen.getByText('Edit Profile')).toBeInTheDocument();
     expect(screen.getByText('Logout')).toBeInTheDocument();
   });
 
@@ -110,7 +109,7 @@ describe('TradeStaffDashboard', () => {
     render(<TradeStaffDashboard profile={{ id: 'staff-1', full_name: 'Staff User', phone_number: '0123456789', student_number: '12345', campus: 'Main Campus', bio: 'Staff bio', avatar_url: '/avatar.png' }} />);
 
     await userEvent.click(screen.getByRole('button', { name: '☰' }));
-    await userEvent.click(screen.getByText('Edit Profile'));
+    await userEvent.click(screen.getByText('My Profile').closest('button'));
 
     expect(await screen.findByText('Save Changes')).toBeInTheDocument();
   });

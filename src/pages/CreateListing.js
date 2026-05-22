@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Loader2, Lightbulb } from 'lucide-react';
 import { supabase } from '../supabase';
+import { notifyError, notifySuccess } from '../toast';
 import LoadingScreen from '../components/LoadingScreen';
 import './CreateListing.css';
 
@@ -127,43 +128,47 @@ const CreateListing = () => {
         return;
       }
 
-      // 1. Fetch live inflation from the World Bank API
-      const liveMultiplier = await fetchLiveSAInflation();
+      try {
+        // 1. Fetch live inflation from the World Bank API
+        const liveMultiplier = await fetchLiveSAInflation();
 
-      // 2. Fetch the category base data from Supabase
-      let { data: econ } = await supabase
-        .from('sa_economic_indicators')
-        .select('*')
-        .ilike('category_name', selectedCat.name) 
-        .maybeSingle();
-
-      // Fuzzy match logic for symbols (Art & Craft)
-      if (!econ) {
-        const firstWord = selectedCat.name.split(' ')[0];
-        const { data: fuzzyEcon } = await supabase
+        // 2. Fetch the category base data from Supabase
+        let { data: econ } = await supabase
           .from('sa_economic_indicators')
           .select('*')
-          .ilike('category_name', `${firstWord}%`)
+          .ilike('category_name', selectedCat.name) 
           .maybeSingle();
-        econ = fuzzyEcon;
-      }
 
-      if (econ) {
-        // Use the Live World Bank multiplier if available, otherwise use the DB's static CPI
-        const currentInflation = liveMultiplier || econ.cpi_factor;
-        
-        const weights = { 'New': 0.9, 'Like New': 0.75, 'Good': 0.55, 'Fair': 0.35, 'Poor': 0.15 };
-        
-        // CALCULATION: (Research Price * Live World Bank Inflation) * Condition
-        const currentMarketNewPrice = econ.base_new_price * currentInflation;
-        const suggested = currentMarketNewPrice * (weights[formData.condition] || 0.5);
+        // Fuzzy match logic for symbols (Art & Craft)
+        if (!econ) {
+          const firstWord = selectedCat.name.split(' ')[0];
+          const { data: fuzzyEcon } = await supabase
+            .from('sa_economic_indicators')
+            .select('*')
+            .ilike('category_name', `${firstWord}%`)
+            .maybeSingle();
+          econ = fuzzyEcon;
+        }
 
-        setSuggestion({
-          price: Math.round(suggested),
-          // Prove it's live in the UI
-          source: liveMultiplier ? "Live World Bank SA Data" : econ.source_info
-        });
-      } else {
+        if (econ) {
+          // Use the Live World Bank multiplier if available, otherwise use the DB's static CPI
+          const currentInflation = liveMultiplier || econ.cpi_factor;
+          
+          const weights = { 'New': 0.9, 'Like New': 0.75, 'Good': 0.55, 'Fair': 0.35, 'Poor': 0.15 };
+          
+          // CALCULATION: (Research Price * Live World Bank Inflation) * Condition
+          const currentMarketNewPrice = econ.base_new_price * currentInflation;
+          const suggested = currentMarketNewPrice * (weights[formData.condition] || 0.5);
+
+          setSuggestion({
+            price: Math.round(suggested),
+            // Prove it's live in the UI
+            source: liveMultiplier ? "Live World Bank SA Data" : econ.source_info
+          });
+        } else {
+          setSuggestion(null);
+        }
+      } catch (err) {
         setSuggestion(null);
       }
       setIsFetchingSuggestion(false);
@@ -248,27 +253,27 @@ const CreateListing = () => {
     e.preventDefault();
 
     if (!imageFile && !existingImageUrl) {
-      window.alert('Please add a picture!');
+      notifyError('Please add a picture!');
       return;
     }
 
     if (!formData.category_id) {
-      window.alert('Please select a category!');
+      notifyError('Please select a category!');
       return;
     }
 
     if (!formData.title.trim()) {
-      window.alert('Please enter a title!');
+      notifyError('Please enter a title!');
       return;
     }
 
     if (!formData.description.trim()) {
-      window.alert('Please add details about your item!');
+      notifyError('Please add details about your item!');
       return;
     }
 
     if (!formData.price || Number(formData.price) <= 0) {
-      window.alert('Please enter a valid price!');
+      notifyError('Please enter a valid price!');
       return;
     }
 
@@ -336,7 +341,7 @@ const CreateListing = () => {
           await uploadImage(user.id, resolvedListingId);
         }
 
-        window.alert('Listing updated successfully!');
+        notifySuccess('Listing updated successfully!');
         navigate('/my-listings');
         return;
       }
@@ -350,10 +355,10 @@ const CreateListing = () => {
       if (listingError || !listing?.id) throw listingError || new Error('Listing creation failed.');
 
       await uploadImage(user.id, listing.id);
-      window.alert('Listing Posted successfully!');
+      notifySuccess('Listing Posted successfully!');
       navigate('/dashboard/student');
     } catch (err) {
-      window.alert(`Error: ${err?.message || 'Something went wrong.'}`);
+      notifyError(`Error: ${err?.message || 'Something went wrong.'}`);
     } finally {
       setLoading(false);
     }

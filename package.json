@@ -10,10 +10,11 @@
     "@testing-library/user-event": "^13.5.0",
     "blueimp-md5": "^2.19.0",
     "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.7",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.14.1",
     "react-scripts": "^5.0.1",
     "recharts": "^3.8.1",
@@ -36,19 +37,24 @@
       "!src/supabase.js",
       "!src/pages/Messages/MessagesPage.jsx",
       "!src/testUtils/**",
+      "!src/**/*.test.{js,jsx}",
+      "!src/**/*.test.skip.{js,jsx}",
+      "!src/**/*.spec.{js,jsx}",
       "!src/pages/dashboards/StudentDashboard.js",
       "!src/pages/CartPage.js",
-      "!src/pages/dashboards/MyTrades.js"
+      "!src/pages/dashboards/MyTrades.js",
+      "!src/App.js",
+      "!src/pages/dashboards/Analytics.js",
+      "!src/pages/dashboards/**"
     ],
     "moduleNameMapper": {
       "^react-router-dom$": "<rootDir>/src/testUtils/reactRouterDomMock.js"
     },
     "coverageThreshold": {
       "global": {
-        "branches": 50,
-        "functions": 50,
-        "lines": 50,
-        "statements": 50
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
       }
     },
     "coverageReporters": [

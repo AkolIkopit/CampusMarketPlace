@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "../../supabase";
 import "./MyTrades.css";
 
 export default function MyTrades() {
   const [trades, setTrades] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => { loadData(); }, []);
 
@@ -66,6 +69,9 @@ export default function MyTrades() {
     <main className="dashboard-container">
 
       <section className="hero-section">
+        <button type="button" className="back-btn-gold" onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} /> Back
+        </button>
         <span className="hero-kicker">MY WORK</span>
         <h1 className="hero-title">Sales & Trades</h1>
         <p className="hero-description">

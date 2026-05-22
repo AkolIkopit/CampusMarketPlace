@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { Camera, User, Phone, Book, MapPin, Save, X, Loader2 } from 'lucide-react';
 import './EditProfile.css';
 
@@ -39,7 +40,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setFormData(prev => ({ ...prev, avatar_url: data.publicUrl }));
     } catch (error) {
-      alert('Upload error: ' + error.message);
+      notifyError('Upload error: ' + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -59,9 +60,9 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
 
     setIsSaving(false);
     if (error) {
-      alert(error.message);
+      notifyError(error.message);
     } else {
-      alert("Profile updated successfully!");
+      notifySuccess('Profile updated successfully!');
       onSaveSuccess(formData); // This triggers the reload in the parent
     }
   };

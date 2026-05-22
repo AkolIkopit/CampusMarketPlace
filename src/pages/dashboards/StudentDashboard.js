@@ -6,6 +6,7 @@ import {
   Menu, X, User, LogOut, Filter, MapPin,
   PartyPopper, Loader2, OctagonX, Clock
 } from 'lucide-react';
+import { notifyError } from '../../toast';
 import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
 import LoadingScreen from '../../components/LoadingScreen';
@@ -82,7 +83,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       await supabase.from('profiles').update({ role: targetRole }).eq('id', approvedApp.user_id);
       await supabase.from('role_applications').update({ status: 'completed' }).eq('id', approvedApp.id);
       window.location.href = targetRole === 'admin' ? '/dashboard/admin' : '/dashboard/staff';
-    } catch (err) { alert(err.message); setIsProcessing(false); }
+    } catch (err) { notifyError(err.message); setIsProcessing(false); }
   };
 
   useEffect(() => {

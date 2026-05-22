@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError } from '../../toast';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area 
@@ -92,7 +93,7 @@ const Analytics = () => {
 
   const exportToCSV = (data, filename) => {
     if (!data || data.length === 0) {
-      alert("No data available to export.");
+      notifyError("No data available to export.");
       return;
     }
     const headers = Object.keys(data[0]);
@@ -110,7 +111,7 @@ const Analytics = () => {
 
   const exportToPDF = (title, data) => {
     if (!data || data.length === 0) {
-        alert("Report data is empty.");
+        notifyError("Report data is empty.");
         return;
     }
 
@@ -147,7 +148,7 @@ const Analytics = () => {
         doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
         console.error("PDF Generation Error:", err);
-        alert("Failed to generate PDF. Check console for details.");
+        notifyError("Failed to generate PDF. Check console for details.");
     }
   };
 

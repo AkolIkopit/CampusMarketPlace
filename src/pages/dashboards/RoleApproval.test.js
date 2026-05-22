@@ -12,15 +12,20 @@ jest.mock('../../supabase', () => ({
 const sampleApplications = [
   {
     id: 'app-1',
+    user_id: 'user-1',
     full_name: 'Jane Doe',
     requested_role: 'staff',
     campus_location: 'Main Campus',
     motivation: 'I want to help students.',
     experience: '2 years volunteering',
-    availability: 'Mon-Fri'
+    availability: {
+      Monday: { available: true, start: '08:00', end: '12:00' },
+      Tuesday: { available: false, start: '08:00', end: '12:00' }
+    }
   },
   {
     id: 'app-2',
+    user_id: 'user-2',
     full_name: 'John Smith',
     requested_role: 'admin',
     campus_location: 'Education Campus',
@@ -47,10 +52,17 @@ function createRoleApprovalMocks({ applications = sampleApplications, updateErro
   });
 
   const update = jest.fn(() => ({ eq: updateEq }));
+  const insert = jest.fn().mockResolvedValue({ error: null });
 
   supabase.from.mockImplementation((table) => {
     if (table === 'role_applications') {
       return { select, update };
+    }
+    if (table === 'profiles') {
+      return { update };
+    }
+    if (table === 'staff_roster') {
+      return { insert };
     }
     throw new Error(`Unexpected table: ${table}`);
   });
@@ -98,7 +110,7 @@ describe('RoleApproval', () => {
     });
 
     expect(window.alert).toHaveBeenCalledWith(
-      'Application approved! The user will be prompted to accept on their dashboard.'
+      'Staff member approved and schedule synchronized to roster!'
     );
   });
 

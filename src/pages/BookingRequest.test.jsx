@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BookingRequest from './BookingRequest';
 import { supabase } from '../supabase';
@@ -234,6 +234,50 @@ describe('BookingRequest', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Request booking' }));
 
     expect(await screen.findByText('Booking conflict')).toBeInTheDocument();
+  });
+
+  it('shows an error when no drop-off slot is selected', async () => {
+    createBookingMocks();
+
+    render(<BookingRequest />);
+
+    await screen.findByText('Listing details');
+
+    fireEvent.change(screen.getByLabelText('Choose a drop-off slot'), { target: { value: '' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Request booking' }));
+
+    expect(await screen.findByText('Please select a drop-off slot.')).toBeInTheDocument();
+  });
+
+  it('logs a notification error when the booking is created but message insert fails', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    createBookingMocks({ messageInsertError: { message: 'Notification failed' } });
+
+    render(<BookingRequest />);
+
+    await screen.findByText('Listing details');
+    await userEvent.click(screen.getByRole('button', { name: 'Request booking' }));
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        'Booking notification error:',
+        expect.objectContaining({ message: 'Notification failed' })
+      );
+    });
+    expect(await screen.findByText(/Booking request submitted/i)).toBeInTheDocument();
+
+    consoleError.mockRestore();
+  });
+
+  it('shows an auth error when the session fails to load', async () => {
+    __setSearchParams('listing=listing-1');
+    createBookingMocks({ authError: { message: 'Session invalid' } });
+
+    render(<BookingRequest />);
+
+    expect(
+      await screen.findByText('Unable to load your session. Please refresh and try again.')
+    ).toBeInTheDocument();
   });
 
   it('navigates back when the Back button is clicked', async () => {

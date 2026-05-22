@@ -2,7 +2,10 @@
 
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "../../supabase";
+import { notifyError, notifySuccess } from "../../toast";
 import "./MarketTrades.css";
 
 export default function MarketTrades() {
@@ -12,6 +15,9 @@ export default function MarketTrades() {
   const [completedTrades, setCompletedTrades] = useState([]);
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [pendingClaim, setPendingClaim] = useState(null);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
 
@@ -81,13 +87,17 @@ export default function MarketTrades() {
   };
 
   // CLAIM SALE / TRADE
-  const claimTrade = async (tradeId) => {
+  const handleClaimClick = (trade) => {
+    setPendingClaim(trade);
+  };
 
-    const confirmClaim = window.confirm(
-      "Are you sure you want to handle this sale/trade?"
-    );
+  const cancelClaim = () => {
+    setPendingClaim(null);
+  };
 
-    if (!confirmClaim) return;
+  const confirmClaim = async () => {
+    if (!pendingClaim) return;
+    setClaimLoading(true);
 
     const { error } = await supabase
       .from("bookings")
@@ -95,15 +105,16 @@ export default function MarketTrades() {
         staff_id: currentUser.id,
         status: "assigned"
       })
-      .eq("id", tradeId);
+      .eq("id", pendingClaim.id);
+
+    setClaimLoading(false);
 
     if (error) {
-
-      console.error(error.message);
-
+      notifyError(error.message);
     } else {
-
+      notifySuccess("Sale/trade assigned successfully.");
       fetchTrades();
+      setPendingClaim(null);
     }
   };
 
@@ -118,6 +129,9 @@ export default function MarketTrades() {
 
       {/* HERO */}
       <section className="market-hero">
+        <button type="button" className="back-btn-gold" onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} /> Back
+        </button>
 
         <span className="market-kicker">
           MARKET MANAGEMENT
@@ -224,9 +238,7 @@ export default function MarketTrades() {
 
                 <button
                   className="claim-btn"
-                  onClick={() =>
-                    claimTrade(trade.id)
-                  }
+                  onClick={() => handleClaimClick(trade)}
                 >
                   Claim Sale / Trade
                 </button>
@@ -301,6 +313,20 @@ export default function MarketTrades() {
 
       </section>
 
+      {pendingClaim && (
+        <div className="delete-confirm-backdrop" onClick={cancelClaim}>
+          <div className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
+            <h2>Confirm assignment</h2>
+            <p>Do you want to take responsibility for "{pendingClaim.listings?.title || 'this trade'}"?</p>
+            <div className="delete-confirm-actions">
+              <button className="btn-cancel-delete" type="button" onClick={cancelClaim}>Cancel</button>
+              <button className="btn-confirm-delete" type="button" onClick={confirmClaim} disabled={claimLoading}>
+                {claimLoading ? 'Assigning...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
