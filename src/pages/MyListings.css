@@ -369,10 +369,27 @@
   to { transform: rotate(360deg); }
 }
 
-/* Responsive adjustments */
+/* ── Mobile Responsive ─────────────────────────────────── */
 @media (max-width: 768px) {
-  .my-listings-page { padding: 30px 5%; }
-  .page-header h1 { font-size: 2.2rem; }
+  .my-listings-page { padding: 20px 5%; }
+  .page-header h1 { font-size: 2rem; }
+  .page-header p { font-size: 0.95rem; }
+  .my-listings-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+}
+
+@media (max-width: 540px) {
+  .my-listings-page { padding: 16px 4%; }
+  .page-header h1 { font-size: 1.7rem; }
+  .my-listings-grid { grid-template-columns: 1fr; gap: 16px; }
+  .my-listing-card { border-radius: 22px; }
+  .listing-img-box { height: 160px; }
+  .listing-details { padding: 18px; gap: 14px; }
+  .listing-header-main h3 { font-size: 1.1rem; }
+  .listing-price { font-size: 1.15rem; }
+}
+
+@media (max-width: 400px) {
+  .my-listings-page { padding: 14px 3%; }
 }
 
 .delete-confirm-backdrop {

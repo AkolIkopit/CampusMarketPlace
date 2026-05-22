@@ -88,9 +88,20 @@
   opacity: 0.9;
 }
 
-/* Custom responsiveness for smaller screens */
+/* ── Mobile Responsive ─────────────────────────────────── */
 @media (max-width: 900px) {
-  .analytics-page-grid {
-    grid-template-columns: 1fr;
-  }
+  .analytics-page-grid { grid-template-columns: 1fr; padding: 20px 16px; }
+}
+
+@media (max-width: 600px) {
+  .analytics-page-grid { padding: 14px 12px; gap: 16px; }
+  .analytics-chart-card { padding: 18px 14px; border-radius: 18px; }
+  .report-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .export-btn-group { width: 100%; justify-content: flex-end; }
+  .back-panel-btn { width: 100%; justify-content: center; padding: 12px; }
+}
+
+@media (max-width: 400px) {
+  .analytics-page-grid { padding: 12px 8px; }
+  .analytics-chart-card { padding: 14px 10px; }
 }

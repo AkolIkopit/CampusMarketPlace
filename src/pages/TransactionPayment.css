@@ -168,3 +168,23 @@
 
 .btn-primary { background: #0d1b2a; color: #f0a500; }
 .btn-secondary { background: #f6f8fb; color: #2c3e50; border: 1px solid #ddd; }
+
+/* ── Mobile Responsive ─────────────────────────────────── */
+@media (max-width: 600px) {
+  .payment-hero { padding: 28px 16px; }
+  .payment-title { font-size: 22px; }
+  .payment-card { margin: 16px; border-radius: 14px; }
+  .payment-card-header { padding: 14px 16px; }
+  .payment-info-grid { grid-template-columns: 1fr; padding: 16px; gap: 8px; }
+  .payment-form { padding: 0 16px 16px; }
+  .payment-actions { flex-direction: column-reverse; gap: 8px; }
+  .payment-actions .btn { width: 100%; text-align: center; justify-content: center; padding: 13px; }
+  .payment-complete { padding: 20px 16px; }
+}
+
+@media (max-width: 400px) {
+  .payment-hero { padding: 22px 12px; }
+  .payment-card { margin: 12px; }
+  .payment-info-grid { padding: 12px; }
+  .payment-form { padding: 0 12px 12px; }
+}

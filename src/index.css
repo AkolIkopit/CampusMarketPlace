@@ -74,3 +74,25 @@ body {
 .anim-delay-3   { animation-delay: 0.35s; }
 .anim-delay-4   { animation-delay: 0.5s; }
 .anim-delay-5   { animation-delay: 0.65s; }
+
+/* ── Mobile Global Defaults ────────────────────────── */
+/* Ensure all interactive elements are comfortably tappable */
+button, a, select, input, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text from overflowing its container on small screens */
+h1, h2, h3, h4, h5, h6, p, span, li {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Prevent images from blowing out their containers */
+img { max-width: 100%; height: auto; }
+
+/* Minimum tap target size for touch (WCAG 2.5.5) */
+@media (max-width: 860px) {
+  button, a[role="button"] {
+    min-height: 44px;
+  }
+}

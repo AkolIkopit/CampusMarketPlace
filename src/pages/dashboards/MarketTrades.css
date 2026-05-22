@@ -193,14 +193,18 @@
 }
 
 @media (max-width: 900px) {
+  .market-grid { grid-template-columns: 1fr; padding: 0 5%; }
+  .market-title { font-size: 2.2rem; }
+  .hero-section { padding: 40px 5%; }
+}
 
-  .market-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .market-title {
-    font-size: 2.2rem;
-  }
+@media (max-width: 600px) {
+  .hero-section { padding: 28px 4%; }
+  .hero-title { font-size: clamp(22px, 6vw, 34px); }
+  .market-grid { padding: 0 4%; gap: 16px; }
+  .market-column { padding: 18px; border-radius: 16px; }
+  .trade-card { padding: 16px; }
+  .trade-top { flex-wrap: wrap; gap: 8px; }
 }
 
 .market-hero {
