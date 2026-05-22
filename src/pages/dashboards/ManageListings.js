@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Trash2, Flag, CheckCircle, 
@@ -128,7 +129,7 @@ export default function ManageListings() {
         })
         .eq('id', sellerId);
       
-      if (!error) alert(`Suspension Triggered: ${sellerName} has been locked out of the dashboard.`);
+      if (!error) notifySuccess(`Suspended: ${sellerName} has been locked out.`);
     }
   };
 

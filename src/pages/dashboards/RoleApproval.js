@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabase";
+import { notifyError, notifySuccess } from "../../toast";
 
 export default function RoleApproval() {
   const [applications, setApplications] = useState([]);
@@ -59,10 +60,10 @@ export default function RoleApproval() {
       // 3. Mark application approved
       await supabase.from("role_applications").update({ status: "approved" }).eq("id", app.id);
 
-      alert("Staff member approved and schedule synchronized to roster!");
+      notifySuccess("Staff member approved and scheduled!");
       fetchApplications();
     } catch (err) {
-      alert("Approval Error: " + err.message);
+      notifyError("Approval Error: " + err.message);
     } finally {
       setLoadingId(null);
     }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Trash2, ShieldAlert, CheckCircle, 
@@ -58,7 +59,7 @@ export default function UserManagement() {
 
   const handleConfirmAction = async (targetUser) => {
     if (!reason || !description) {
-        alert("Please select a reason and provide a description.");
+        notifyError("Please select a reason and provide a description.");
         return;
     }
     const { data: { user: admin } } = await supabase.auth.getUser();
@@ -90,11 +91,11 @@ export default function UserManagement() {
             if (delError) throw new Error("Delete Profile Error: " + delError.message + " (Check if user has listings first!)");
         }
 
-        alert("Action successfully processed!");
+        notifySuccess("Action successfully processed!");
         fetchData();
         updateCounts();
     } catch (err) {
-        alert(err.message); // This will show you exactly what Supabase is unhappy about
+        notifyError(err.message);
     }
   };
 
@@ -105,9 +106,9 @@ export default function UserManagement() {
         suspension_details: null 
     }).eq('id', id);
 
-    if (error) alert("Reactivate Error: " + error.message);
+    if (error) notifyError("Reactivate Error: " + error.message);
     else {
-        alert("User account reinstated.");
+        notifySuccess("User account reinstated.");
         fetchData();
         updateCounts();
     }

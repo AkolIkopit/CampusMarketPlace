@@ -17,6 +17,22 @@
   color: #7c3aed;
 }
 
+.back-btn-gold {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.back-btn-gold:hover {
+  opacity: 0.85;
+}
+
 .market-title {
   font-size: 3rem;
   margin-top: 10px;
@@ -147,5 +163,90 @@
   .market-title {
     font-size: 2.2rem;
   }
+}
+
+.market-hero {
+  display: grid;
+  gap: 18px;
+}
+
+.back-btn-gold {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.back-btn-gold:hover {
+  opacity: 0.85;
+}
+
+.delete-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 27, 42, 0.7);
+  z-index: 999;
+  padding: 20px;
+}
+
+.delete-confirm-card {
+  width: min(100%, 420px);
+  background: #fff;
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+.delete-confirm-card h2 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 1.5rem;
+}
+
+.delete-confirm-card p {
+  margin: 0 0 22px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-cancel-delete,
+.btn-confirm-delete {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 22px;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 110px;
+}
+
+.btn-cancel-delete {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.btn-confirm-delete {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.btn-confirm-delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 

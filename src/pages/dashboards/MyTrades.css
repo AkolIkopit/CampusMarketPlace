@@ -10,6 +10,27 @@
   font-size: 15px;
 }
 
+.hero-section {
+  display: grid;
+  gap: 18px;
+}
+
+.back-btn-gold {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.back-btn-gold:hover {
+  opacity: 0.85;
+}
+
 /* CARD */
 .trade-card {
   background: white;

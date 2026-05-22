@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, Users, Plus, Trash2, MapPin, 
@@ -71,7 +72,7 @@ export default function FacilitySettings() {
     );
 
     if (!isStaffAvailable) {
-        alert(`❌ NO STAFF ON DUTY: No worker is rostered for the full window ${newSlot.start}-${newSlot.end} on ${selectedDay}.`);
+        notifyError(`No worker rostered for ${newSlot.start}-${newSlot.end} on ${selectedDay}.`);
         return;
     }
 
@@ -99,22 +100,24 @@ export default function FacilitySettings() {
         }]);
 
         if (error) {
-            alert("Database Rejected Slot: " + error.message);
+            notifyError("Slot Error: " + error.message);
         } else {
             setNewSlot({ start: "", end: "", capacity: 5 });
             fetchData();
+            notifySuccess("Slot added successfully!");
         }
     } catch (err) {
-        alert("System Error: " + err.message);
+        notifyError("System Error: " + err.message);
     }
   };
 
   const handleDeleteSlot = async (id) => {
-    if (window.confirm("Remove this window?")) {
-        const { error } = await supabase.from('trade_slots').delete().eq('id', id);
-        if (error) alert(error.message);
-        else fetchData();
-    }
+    const confirmed = window.confirm("Remove this window?");
+    if (!confirmed) return;
+    
+    const { error } = await supabase.from('trade_slots').delete().eq('id', id);
+    if (error) notifyError(error.message);
+    else { fetchData(); notifySuccess("Slot deleted."); }
   };
 
   if (loading) return <LoadingScreen />;
