@@ -349,3 +349,69 @@
   .my-listings-page { padding: 30px 5%; }
   .page-header h1 { font-size: 2.2rem; }
 }
+
+.delete-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 27, 42, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.delete-confirm-card {
+  width: min(100%, 420px);
+  background: #f7f3ec;
+  border: 1px solid rgba(240, 169, 30, 0.2);
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 24px 80px rgba(13, 27, 42, 0.25);
+  text-align: center;
+}
+
+.delete-confirm-card h2 {
+  margin: 0 0 12px;
+  color: #0d1b2a;
+  font-size: 1.5rem;
+}
+
+.delete-confirm-card p {
+  margin: 0 0 24px;
+  color: #324153;
+  line-height: 1.6;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-cancel-delete,
+.btn-confirm-delete {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-weight: 800;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.btn-cancel-delete {
+  background: white;
+  color: #0d1b2a;
+  border: 1px solid rgba(13, 27, 42, 0.1);
+}
+
+.btn-confirm-delete {
+  background: #0d1b2a;
+  color: #f0a500;
+}
+
+.btn-confirm-delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

@@ -5,6 +5,7 @@ import {
   User, IdCard, Loader2, Box, ShoppingCart, Package, Calendar, Plus
 } from 'lucide-react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import LoadingScreen from '../../components/LoadingScreen';
 import './MyProfile.css'; 
 
@@ -209,11 +210,11 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
     }]);
 
     if (!error) { 
-      alert("Application submitted successfully!"); 
+      notifySuccess("Application submitted successfully!"); 
       setView('profile'); 
       fetchApplication(); 
     } else { 
-      alert(error.message); 
+      notifyError(error.message); 
     }
     setLoading(false);
   };

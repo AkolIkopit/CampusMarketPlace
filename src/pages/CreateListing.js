@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Loader2, Lightbulb } from 'lucide-react';
 import { supabase } from '../supabase';
+import { notifyError, notifySuccess } from '../toast';
 import LoadingScreen from '../components/LoadingScreen';
 import './CreateListing.css';
 
@@ -252,27 +253,27 @@ const CreateListing = () => {
     e.preventDefault();
 
     if (!imageFile && !existingImageUrl) {
-      window.alert('Please add a picture!');
+      notifyError('Please add a picture!');
       return;
     }
 
     if (!formData.category_id) {
-      window.alert('Please select a category!');
+      notifyError('Please select a category!');
       return;
     }
 
     if (!formData.title.trim()) {
-      window.alert('Please enter a title!');
+      notifyError('Please enter a title!');
       return;
     }
 
     if (!formData.description.trim()) {
-      window.alert('Please add details about your item!');
+      notifyError('Please add details about your item!');
       return;
     }
 
     if (!formData.price || Number(formData.price) <= 0) {
-      window.alert('Please enter a valid price!');
+      notifyError('Please enter a valid price!');
       return;
     }
 
@@ -340,7 +341,7 @@ const CreateListing = () => {
           await uploadImage(user.id, resolvedListingId);
         }
 
-        window.alert('Listing updated successfully!');
+        notifySuccess('Listing updated successfully!');
         navigate('/my-listings');
         return;
       }
@@ -354,10 +355,10 @@ const CreateListing = () => {
       if (listingError || !listing?.id) throw listingError || new Error('Listing creation failed.');
 
       await uploadImage(user.id, listing.id);
-      window.alert('Listing Posted successfully!');
+      notifySuccess('Listing Posted successfully!');
       navigate('/dashboard/student');
     } catch (err) {
-      window.alert(`Error: ${err?.message || 'Something went wrong.'}`);
+      notifyError(`Error: ${err?.message || 'Something went wrong.'}`);
     } finally {
       setLoading(false);
     }

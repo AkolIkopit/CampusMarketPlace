@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, Users, Plus, Trash2, MapPin, 
@@ -105,6 +106,7 @@ export default function FacilitySettings() {
             toast.success("Trading slot added successfully!", { id: toastId });
             setNewSlot({ start: "", end: "", capacity: 5 });
             fetchData();
+            notifySuccess("Slot added successfully!");
         }
     } catch (err) {
         toast.error("System Error: " + err.message, { id: toastId });
