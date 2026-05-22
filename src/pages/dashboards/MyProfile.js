@@ -53,15 +53,9 @@ const MyProfile = ({ profile, onEditClick, onBack, navigate, onOpenRolePopup }) 
   };
 
   const fetchTransactions = async () => {
-    const { data, error } = await supabase
+   const { data, error } = await supabase
   .from('transactions')
-  .select(`
-    *,
-    listing_title,
-    listing_image,
-    listing_price,
-    listings(title, listing_images(image_url, is_primary))
-  `)
+  .select(`*, listing_title, listing_image, listing_price, listings(title, listing_images(image_url, is_primary))`)
   .order('created_at', { ascending: false });
     if (!error) setTransactions(data || []);
 

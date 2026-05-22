@@ -95,6 +95,7 @@ const ListingDetail = () => {
   };
 
   const createTransaction = async ({ type, action, amount, cashAmount = 0, tradeItem = '' }) => {
+    console.log("createTransaction called", { type, action, amount });
     setTransactionLoading(true);
     setTransactionError("");
 
@@ -143,6 +144,7 @@ const payload = {
   listing_price: listing.price,
   listing_description: listing.description || null,
 };
+console.log("Transaction payload:", JSON.stringify(payload, null, 2));
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert([payload])
