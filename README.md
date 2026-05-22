@@ -1,6 +1,6 @@
 # CampusSwap — Campus Marketplace
 
-[![codecov](https://codecov.io/gh/AkolIkopit/CampusMarketPlace/graph/badge.svg?token=P53OBVYJ3Z)](https://codecov.io/gh/AkolIkopit/CampusMarketPlace)
+[![codecov](https://codecov.io/gh/AkolIkopit/CampusMarketPlace/branch/main/graph/badge.svg?token=P53OBVYJ3Z)](https://codecov.io/gh/AkolIkopit/CampusMarketPlace)
 
 A student-only peer-to-peer trading platform for university campuses.
 
