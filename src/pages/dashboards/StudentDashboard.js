@@ -180,7 +180,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const filteredRecentListings = recentListings;
   const filteredMarketListings = normalizedSearch
-    ? marketListings.filter((item) => item.title?.toLowerCase() === normalizedSearch)
+    ? marketListings.filter((item) =>
+        item.title?.toLowerCase().includes(normalizedSearch) ||
+        item.categories?.name?.toLowerCase().includes(normalizedSearch)
+      )
     : marketListings;
 
   const setView = (newV) => { setSearchParams({ view: newV }); setIsMenuOpen(false); };
