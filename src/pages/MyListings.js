@@ -186,8 +186,8 @@ const MyListings = () => {
       )}
 
       {pendingDelete && (
-        <div className="delete-confirm-backdrop" onClick={cancelDelete}>
-          <div className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
+        <dialog className="delete-confirm-backdrop" onClick={cancelDelete}>
+          <article className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
             <h2>Confirm delete</h2>
             <p>Are you sure you want to delete "{pendingDelete.title}" permanently?</p>
             <div className="delete-confirm-actions">
@@ -196,8 +196,8 @@ const MyListings = () => {
                 {deleteLoading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
-          </div>
-        </div>
+          </article>
+        </dialog>
       )}
     </main>
   );

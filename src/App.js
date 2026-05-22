@@ -201,7 +201,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={!session ? <LandingPage /> : (loading ? <LoadingScreen /> : (profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <LoadingScreen />))} />
         <Route path="/auth" element={!session ? <AuthPage /> : (loading ? <LoadingScreen /> : (profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <LoadingScreen />))} />
-        <Route path="/waiting-room" element={<div style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></div>} />
+        <Route path="/waiting-room" element={<main style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></main>} />
         
         <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
      

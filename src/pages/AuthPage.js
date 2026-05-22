@@ -111,14 +111,14 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-left">
-        <div className="auth-left-inner">
+    <main className="auth-page">
+      <aside className="auth-left">
+        <header className="auth-left-inner">
           <a href="/" className="nav-logo auth-logo">
             <span className="nav-logo-mark">UM</span>
             <span className="nav-logo-text">UniMart</span>
           </a>
-          <div className="auth-left-content">
+          <section className="auth-left-content">
             <h2 className="auth-tagline">The campus <br /> <em>marketplace</em> <br /> you&apos;ve been waiting for.</h2>
             <p className="auth-tagline-sub">Buy, sell, and trade with fellow students securely.</p>
             <div className="auth-features">
@@ -129,15 +129,15 @@ const AuthPage = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </section>
           <div className="auth-deco" aria-hidden="true">
             <div className="auth-deco-card"><span>BK</span><div><p>Chemistry Textbook</p><p className="deco-price">R 220</p></div></div>
             <div className="auth-deco-card auth-deco-card-2"><span>LP</span><div><p>MacBook Air M1</p><p className="deco-price">R 11,500</p></div></div>
           </div>
-        </div>
-      </div>
+        </header>
+      </aside>
 
-      <div className="auth-right">
+      <section className="auth-right">
         <div className="auth-form-wrap">
           <button type="button" className="auth-back-btn" onClick={handleBack}><ArrowLeftIcon /> Back</button>
           <div className="auth-tabs">
@@ -167,8 +167,8 @@ const AuthPage = () => {
             <button className="btn-submit" type="submit" disabled={loading}>{loading ? "Processing..." : mode === "login" ? "Log in" : "Create account"}</button>
           </form>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

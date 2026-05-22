@@ -68,7 +68,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
   };
 
   return (
-    <div className="ep-workspace">
+    <main className="ep-workspace">
       <div className="ep-card">
         <header className="ep-header">
           <h2>Edit My Profile</h2>
@@ -144,7 +144,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
           </footer>
         </form>
       </div>
-    </div>
+    </main>
   );
 };
 
