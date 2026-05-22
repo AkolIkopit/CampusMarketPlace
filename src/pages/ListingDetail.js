@@ -125,6 +125,7 @@ const ListingDetail = () => {
   };
 
   const createTransaction = async ({ type, action, amount, cashAmount = 0, tradeItem = '' }) => {
+    console.log("createTransaction called", { type, action, amount });
     setTransactionLoading(true);
     setTransactionError("");
 
@@ -154,19 +155,26 @@ const ListingDetail = () => {
       const requestedAmount = Number(amount ?? 0);
       const topUpAmount = Number(cashAmount || 0);
 
-      const payload = {
-        buyer_id: user.id,
-        seller_id: listing.seller_id,
-        listing_id: id,
-        amount: requestedAmount,
-        agreed_amount: requestedAmount,
-        cash_shortfall_due: type === 'trade' ? topUpAmount : 0,
-        status: 'pending_seller_acceptance',
-        transaction_type: type === 'offer' ? 'sale' : type,
-        payment_status: 'unpaid',
-        booking_status: 'not_booked'
-      };
+     const primaryImageSnapshot = listing.listing_images?.find((img) => img.is_primary) || listing.listing_images?.[0];
 
+const payload = {
+  buyer_id: user.id,
+  seller_id: listing.seller_id,
+  listing_id: id,
+  amount: requestedAmount,
+  agreed_amount: requestedAmount,
+  cash_shortfall_due: type === 'trade' ? topUpAmount : 0,
+  status: 'pending_seller_acceptance',
+  transaction_type: type === 'offer' ? 'sale' : type,
+  payment_status: 'unpaid',
+  booking_status: 'not_booked',
+
+  listing_title: listing.title,
+  listing_image: primaryImageSnapshot?.image_url || null,
+  listing_price: listing.price,
+  listing_description: listing.description || null,
+};
+console.log("Transaction payload:", JSON.stringify(payload, null, 2));
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert([payload])
