@@ -46,6 +46,12 @@ function createListingDetailMocks({
   const reviewEq = jest.fn(() => ({ order: reviewOrder }));
   const reviewSelect = jest.fn(() => ({ eq: reviewEq }));
 
+  const bookingMaybeSingle = jest.fn().mockResolvedValue({ data: null });
+  const bookingLimit = jest.fn(() => ({ maybeSingle: bookingMaybeSingle }));
+  const bookingOrder = jest.fn(() => ({ limit: bookingLimit }));
+  const bookingEq = jest.fn(() => ({ order: bookingOrder }));
+  const bookingSelect = jest.fn(() => ({ eq: bookingEq }));
+
   const transactionMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'transaction-1' }, error: null });
   const transactionSelect = jest.fn(() => ({ maybeSingle: transactionMaybeSingle }));
   const transactionInsert = jest.fn(() => ({ select: transactionSelect }));
@@ -54,6 +60,7 @@ function createListingDetailMocks({
   supabase.from.mockImplementation((table) => {
     if (table === 'listings') return { select: listingSelect };
     if (table === 'reviews') return { select: reviewSelect, insert: reviewInsert };
+    if (table === 'bookings') return { select: bookingSelect };
     if (table === 'transactions') return { insert: transactionInsert };
     throw new Error(`Unexpected table: ${table}`);
   });
