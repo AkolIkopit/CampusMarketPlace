@@ -4,13 +4,14 @@ import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
-const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
-const MERCHANT_ID = "10048982";
-const MERCHANT_KEY = "8fr5hx4alngq6";
-const PASSPHRASE = "andre12345678";
-const NOTIFY_URL = "https://pjqoghabztvrywvwvfdp.supabase.co/functions/v1/payfast-notify";
-const RETURN_URL = "http://localhost:3000/payment/success";
-const CANCEL_URL = "http://localhost:3000/payment/cancel";
+// Load PayFast configuration from environment variables
+const PAYFAST_URL = process.env.REACT_APP_PAYFAST_URL;
+const MERCHANT_ID = process.env.REACT_APP_PAYFAST_MERCHANT_ID;
+const MERCHANT_KEY = process.env.REACT_APP_PAYFAST_MERCHANT_KEY;
+const PASSPHRASE = process.env.REACT_APP_PAYFAST_PASSPHRASE;
+const NOTIFY_URL = process.env.REACT_APP_NOTIFY_URL;
+const RETURN_URL = process.env.REACT_APP_PAYFAST_RETURN_URL;
+const CANCEL_URL = process.env.REACT_APP_PAYFAST_CANCEL_URL;
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -89,7 +90,7 @@ const handlePayment = async () => {
 
   const form = document.createElement("form");
   form.method = "POST";
-  form.action = PAYFAST_SANDBOX_URL;
+  form.action = PAYFAST_URL;
 
   const allFields = {
     ...fields,

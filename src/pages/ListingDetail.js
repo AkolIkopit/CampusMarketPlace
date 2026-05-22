@@ -50,21 +50,30 @@ const ListingDetail = () => {
     if (listData) setListing(listData);
     if (revData) setReviews(revData);
 
-    // Determine if the current user is eligible to leave a review:
-    // they must have a completed, item-released booking for this listing
-    // and must not have already reviewed it.
+    // Determine if the current user is eligible to leave a review.
+    // They must have a completed, item-released booking for this listing,
+    // and at least one booking must be newer than the user's last review.
     if (userId) {
       const { data: completedBooking } = await supabase
         .from("bookings")
-        .select("id")
+        .select("id, created_at")
         .eq("buyer_id", userId)
         .eq("listing_id", id)
         .eq("status", "completed")
         .eq("item_released", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      const alreadyReviewed = (revData || []).some((r) => r.reviewer_id === userId);
-      setCanReview(!!completedBooking && !alreadyReviewed);
+      const latestReviewDate = (revData || [])
+        .filter((r) => r.reviewer_id === userId && r.created_at)
+        .map((r) => new Date(r.created_at))
+        .sort((a, b) => b - a)[0];
+
+      const bookingDate = completedBooking?.created_at ? new Date(completedBooking.created_at) : null;
+      const hasRecentBooking = bookingDate && (!latestReviewDate || bookingDate > latestReviewDate);
+
+      setCanReview(!!hasRecentBooking);
     } else {
       setCanReview(false);
     }

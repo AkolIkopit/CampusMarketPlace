@@ -35,7 +35,7 @@ export default function ReviewPromptPopup({ userId }) {
     // 1. Fetch all completed trades where this user was the buyer
     const { data: completedBookings, error } = await supabase
       .from("bookings")
-      .select("id, listing_id, listings(title)")
+      .select("id, listing_id, created_at, listings(title)")
       .eq("buyer_id", id)
       .eq("status", "completed")
       .eq("item_released", true);
@@ -47,19 +47,44 @@ export default function ReviewPromptPopup({ userId }) {
     const candidates = completedBookings.filter((b) => !dismissed.includes(b.id));
     if (!candidates.length) return;
 
-    // 3. Remove listings the user already reviewed
+    // 3. Remove listings the user has already reviewed for the latest completed booking.
     const listingIds = candidates.map((b) => b.listing_id);
     const { data: existingReviews } = await supabase
       .from("reviews")
-      .select("listing_id")
+      .select("listing_id, created_at")
       .eq("reviewer_id", id)
       .in("listing_id", listingIds);
 
-    const reviewed = new Set((existingReviews || []).map((r) => r.listing_id));
-    const unreviewed = candidates.filter((b) => !reviewed.has(b.listing_id));
+    const latestReviewByListing = (existingReviews || []).reduce((acc, review) => {
+      if (!review.created_at) return acc;
+      const reviewDate = new Date(review.created_at);
+      const current = acc[review.listing_id];
+      if (!current || reviewDate > current) {
+        acc[review.listing_id] = reviewDate;
+      }
+      return acc;
+    }, {});
 
-    if (unreviewed.length > 0) {
-      setPending(unreviewed);
+    const unreviewed = candidates.filter((booking) => {
+      const bookingDate = booking.created_at ? new Date(booking.created_at) : null;
+      const latestReviewDate = latestReviewByListing[booking.listing_id];
+      return !bookingDate || !latestReviewDate || bookingDate > latestReviewDate;
+    });
+
+    const latestUnreviewedByListing = Object.values(
+      unreviewed.reduce((acc, booking) => {
+        const current = acc[booking.listing_id];
+        const bookingDate = booking.created_at ? new Date(booking.created_at) : new Date(0);
+        const currentDate = current?.created_at ? new Date(current.created_at) : new Date(0);
+        if (!current || bookingDate > currentDate) {
+          acc[booking.listing_id] = booking;
+        }
+        return acc;
+      }, {})
+    );
+
+    if (latestUnreviewedByListing.length > 0) {
+      setPending(latestUnreviewedByListing);
       setVisible(true);
     }
   };

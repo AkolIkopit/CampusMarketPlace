@@ -3,7 +3,7 @@ import { supabase } from '../../supabase';
 import { notifyError } from '../../toast';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area 
+  PieChart, Pie, Cell, LineChart, Line 
 } from 'recharts';
 import { 
   ArrowLeft, FileText, Table as TableIcon, TrendingUp, ShieldAlert, Calendar, Trash2
@@ -27,6 +27,7 @@ const Analytics = () => {
   const [statusComparison, setStatusComparison] = useState([]); 
   const [flagReasons, setFlagReasons] = useState([]);
   const [deleteReasons, setDeleteReasons] = useState([]);
+  const [completedTransactionsOverTime, setCompletedTransactionsOverTime] = useState([]);
 
   // VIBRANT COLOR PALETTE
   const COLORS = ['#3498db', '#f0a500', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f', '#0d1b2a'];
@@ -81,6 +82,30 @@ const Analytics = () => {
         { day: 'Fri', available: 10, reserved: 0 },
         { day: 'Sat', available: 10, reserved: 0 },
       ]);
+
+      // 6. Completed transactions over time
+      const { data: completedBookings } = await supabase
+        .from('bookings')
+        .select('updated_at, created_at')
+        .eq('status', 'completed')
+        .eq('item_released', true);
+
+      const transactionMap = {};
+      completedBookings?.forEach((booking) => {
+        const timestamp = booking.updated_at || booking.created_at;
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return;
+        const isoDay = date.toISOString().slice(0, 10);
+        transactionMap[isoDay] = (transactionMap[isoDay] || 0) + 1;
+      });
+
+      const sortedDates = Object.keys(transactionMap).sort();
+      setCompletedTransactionsOverTime(
+        sortedDates.map((day) => ({
+          day: new Date(day).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          completed: transactionMap[day]
+        }))
+      );
 
     } catch (error) {
       console.error("Fetch Error:", error);
@@ -208,7 +233,29 @@ const Analytics = () => {
           </div>
         </article>
 
-        {/* 3. FLAGGING REASONS */}
+        {/* 3. COMPLETED TRANSACTIONS OVER TIME */}
+        <article className="analytics-chart-card">
+          <div className="report-header">
+            <h3 className="report-title"><TrendingUp size={20} color="#f0a500"/> Completed Transactions Over Time</h3>
+            <div className="export-btn-group">
+              <button onClick={() => exportToCSV(completedTransactionsOverTime, 'completed_transactions_over_time')} className="export-btn"><TableIcon size={14}/></button>
+              <button onClick={() => exportToPDF('Completed Transactions Over Time', completedTransactionsOverTime)} className="export-btn"><FileText size={14}/></button>
+            </div>
+          </div>
+          <div style={{width: '100%', height: 250}}>
+            <ResponsiveContainer>
+              <LineChart data={completedTransactionsOverTime} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="completed" stroke="#f0a500" strokeWidth={3} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        {/* 4. FLAGGING REASONS */}
         <article className="analytics-chart-card">
           <div className="report-header">
             <h3 className="report-title"><ShieldAlert size={20} color="#f0a500"/> Flagging Reasons</h3>
