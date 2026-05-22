@@ -61,7 +61,7 @@ A student-only peer-to-peer trading platform for university campuses.
 - **Home** — Browse available items and listings
 - **List Item** — Post a new item for sale or trade
 - **My Items** — View and manage your posted items
-- **Messages** — Chat with other users about items
+- **Messages** — Chat with other users about items.
 - **Profile** — Manage account settings and user information
 - **Bookings** (Staff/Admin) — Manage drop-off and collection bookings
 
