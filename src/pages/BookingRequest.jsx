@@ -559,7 +559,7 @@ function BookingRequest() {
                     </option>
                   ) : availableSlots.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {option.label} ({option.capacity - option.booked} spaces left)
+                      {option.label}
                     </option>
                   ))}
                 </select>

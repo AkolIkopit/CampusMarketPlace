@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { notifySuccess } from '../toast';
 import {
@@ -14,10 +14,12 @@ const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 const ListingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [listing, setListing] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [canReview, setCanReview] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
@@ -30,7 +32,8 @@ const ListingDetail = () => {
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
+    const userId = user?.id || null;
+    setCurrentUserId(userId);
 
     const { data: listData } = await supabase
       .from('listings')
@@ -46,12 +49,39 @@ const ListingDetail = () => {
 
     if (listData) setListing(listData);
     if (revData) setReviews(revData);
+
+    // Determine if the current user is eligible to leave a review:
+    // they must have a completed, item-released booking for this listing
+    // and must not have already reviewed it.
+    if (userId) {
+      const { data: completedBooking } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("buyer_id", userId)
+        .eq("listing_id", id)
+        .eq("status", "completed")
+        .eq("item_released", true)
+        .maybeSingle();
+
+      const alreadyReviewed = (revData || []).some((r) => r.reviewer_id === userId);
+      setCanReview(!!completedBooking && !alreadyReviewed);
+    } else {
+      setCanReview(false);
+    }
+
     setLoading(false);
   }, [id]);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  // Auto-open the review form when arriving via the review prompt popup
+  useEffect(() => {
+    if (canReview && searchParams.get("review") === "true") {
+      setShowForm(true);
+    }
+  }, [canReview, searchParams]);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -314,21 +344,23 @@ const ListingDetail = () => {
         <section className="reviews-container">
           <header className="section-header">
             <h2>Reviews & Feedback</h2>
-            <button className="add-review-toggle" onClick={() => setShowForm(!showForm)}>
-              {showForm ? "Cancel" : "Write a Review"}
-            </button>
+            {canReview && (
+              <button className="add-review-toggle" onClick={() => setShowForm(!showForm)}>
+                {showForm ? "Cancel" : "Write a Review"}
+              </button>
+            )}
           </header>
 
-          {showForm && (
+          {canReview && showForm && (
             <form className="review-form-box" onSubmit={handleReviewSubmit}>
               <fieldset className="rating-selector">
                 <legend>Rating</legend>
                 <nav className="star-input-group">
                   {[1, 2, 3, 4, 5].map((num) => (
-                    <button 
-                      key={num} 
-                      type="button" 
-                      className={num <= rating ? "star-btn active" : "star-btn"} 
+                    <button
+                      key={num}
+                      type="button"
+                      className={num <= rating ? "star-btn active" : "star-btn"}
                       onClick={() => setRating(num)}
                     >
                       <Star size={24} fill={num <= rating ? "#f3a91e" : "none"} />
@@ -336,17 +368,17 @@ const ListingDetail = () => {
                   ))}
                 </nav>
               </fieldset>
-              
+
               <fieldset className="comment-input-area">
                 <legend>Feedback</legend>
-                <textarea 
-                  required 
-                  placeholder="Experience with seller..." 
-                  value={comment} 
+                <textarea
+                  required
+                  placeholder="Share your experience with the seller..."
+                  value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 ></textarea>
               </fieldset>
-              
+
               <button type="submit" className="submit-review-btn" disabled={submitting}>
                 {submitting ? <Loader2 className="spinner" /> : <><Send size={18} /> Post Review</>}
               </button>

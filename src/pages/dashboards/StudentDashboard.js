@@ -13,6 +13,7 @@ import LoadingScreen from '../../components/LoadingScreen';
 import './StudentDashboard.css';
 import BuyerPopup from "./BuyerPopup";
 import Seller_Popup from "./Seller_Popup";
+import ReviewPromptPopup from "./ReviewPromptPopup";
 
 const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
@@ -259,6 +260,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       )}
       <BuyerPopup userId={profile?.id} />
       <Seller_Popup userId={profile?.id} />
+      <ReviewPromptPopup userId={profile?.id} />
     </main>
   );
 };
