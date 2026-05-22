@@ -138,6 +138,19 @@
 @media (max-width: 600px) {
   .form-fields-grid { grid-template-columns: 1fr; }
   .input-field.full-width { grid-column: span 1; }
+  .create-listing-page { padding: 16px; }
+  .create-card-container { padding: 22px 18px; border-radius: 28px; }
+  .image-upload-box { height: 220px; }
+  .post-btn { font-size: 1.6rem; padding: 15px; }
+  .top-nav-bar { margin-bottom: 16px; }
+}
+
+@media (max-width: 400px) {
+  .create-listing-page { padding: 12px; }
+  .create-card-container { padding: 18px 14px; border-radius: 22px; }
+  .image-upload-box { height: 180px; }
+  .post-btn { font-size: 1.3rem; }
+  .radio-options { flex-direction: column; gap: 10px; }
 }
 
 /* --- Price Suggestion Box --- */

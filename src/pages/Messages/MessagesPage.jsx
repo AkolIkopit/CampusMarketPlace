@@ -1,3 +1,10 @@
+/*
+Module: MessagesPage.jsx
+Purpose: Messaging UI composing conversation list and chat window.
+Units: ConversationList, ChatWindow, helpers for formatting and attachment handling
+Flow: Loads conversations and messages, selects active thread, and renders chat components.
+*/
+
 import ConversationList from "./ConversationList.jsx";
 import ChatWindow from "./ChatWindow.jsx";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -266,7 +273,17 @@ function MessagesPage({ profile }) {
           transactionIds.length
             ? supabase
                 .from("transactions")
-                .select("id, status, booking_status, payment_status, agreed_amount, cash_shortfall_due")
+.select(`
+  id,
+  status,
+  booking_status,
+  payment_status,
+  agreed_amount,
+  cash_shortfall_due,
+  listing_title,
+  listing_image,
+  listing_price
+`)
                 .in("id", transactionIds)
             : Promise.resolve({ data: [], error: null }),
           transactionIds.length
@@ -294,7 +311,10 @@ function MessagesPage({ profile }) {
         const otherUserId = incoming ? message.sender_id : message.receiver_id;
         const conversationId = getConversationId(otherUserId, message.listing_id);
         const otherProfile = profileMap[otherUserId];
-        const listingTitle = listingMap[message.listing_id]?.title || "Listing";
+        const listingTitle =
+  transactionMap[message.transaction_id]?.listing_title ||
+  listingMap[message.listing_id]?.title ||
+  "Listing";
         const sellerId = listingMap[message.listing_id]?.seller_id || null;
 
         if (!conversationMap.has(conversationId)) {
@@ -803,6 +823,8 @@ function MessagesPage({ profile }) {
     ? "This chat is ready. Send a message to start the conversation."
     : "Choose a person from the list to open the full conversation.";
 
+  const logoSrc = `${process.env.PUBLIC_URL || ''}/UniMartlogo.png`;
+
   const handleSelectConversation = (conversationId) => {
     setActiveConversationId(conversationId);
 
@@ -822,7 +844,7 @@ function MessagesPage({ profile }) {
       <header className={styles["messages-hero"]}>
         <section>
           <p className={styles.eyebrow}>
-            <img src="/UniMartlogo.png" alt="UNIMART" className={styles["hero-logo"]} />
+            <img src={logoSrc} alt="UniMart logo" className={styles["hero-logo"]} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             UNIMART
           </p>
           <h1>Messages</h1>

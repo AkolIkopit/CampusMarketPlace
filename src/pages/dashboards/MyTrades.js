@@ -1,10 +1,20 @@
+/*
+Module: MyTrades.js
+Purpose: User view listing their trades and trade history.
+Units: trade list, filters, action buttons (accept/decline)
+Flow: Loads a student's trades and provides UI to manage them.
+*/
+
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "../../supabase";
 import "./MyTrades.css";
 
 export default function MyTrades() {
   const [trades, setTrades] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => { loadData(); }, []);
 
@@ -53,8 +63,16 @@ export default function MyTrades() {
       .update(updates)
       .eq("id", tradeId);
 
-    if (error) console.error(error.message);
-    else fetchTrades(currentUser.id);
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    // Quantity decrement + sold_out status are handled automatically by the
+    // Postgres trigger `trg_decrement_quantity_on_receipt`, which fires when
+    // item_received flips to TRUE. No client-side update needed here.
+
+    fetchTrades(currentUser.id);
   };
 
   const formatSlotTime = (slotTime) => {
@@ -66,6 +84,9 @@ export default function MyTrades() {
     <main className="dashboard-container">
 
       <section className="hero-section">
+        <button type="button" className="back-btn-gold" onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} /> Back
+        </button>
         <span className="hero-kicker">MY WORK</span>
         <h1 className="hero-title">Sales & Trades</h1>
         <p className="hero-description">

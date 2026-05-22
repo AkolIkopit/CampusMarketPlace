@@ -1,3 +1,9 @@
+/*
+Module: TradeStaffDashboard.js
+Purpose: Dashboard for trade facility staff with tools and task list.
+Units: quick actions, reporting, handover tasks
+Flow: Presents staff-specific controls and navigates to work pages.
+*/
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -46,7 +52,7 @@ export default function TradeStaffDashboard({ profile }) {
       <section className="logo-section">
 
         <img
-          src="/logo.png"
+          src="/UniMartlogo.png"
           alt="logo"
           className="header-logo"
         />
@@ -143,26 +149,6 @@ export default function TradeStaffDashboard({ profile }) {
 
       <p>
         Manage the trades and sales currently assigned to you.
-      </p>
-
-    </button>
-
-    {/* COMPLETED */}
-    <button
-      className="action-block"
-      onClick={() => navigate("/dashboard/staff/completed")}
-    >
-
-      <span className="block-icon">
-        ✅
-      </span>
-
-      <h3>
-        Completed Trades & Sales
-      </h3>
-
-      <p>
-        Review recently completed marketplace exchanges.
       </p>
 
     </button>

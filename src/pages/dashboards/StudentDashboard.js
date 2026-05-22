@@ -1,17 +1,27 @@
+/*
+Module: StudentDashboard.js
+Purpose: Student-facing dashboard showing personal listings, bookings and shortcuts.
+Units: summary tiles, recent activity, quick links to create/listings/messages
+Flow: Loads user-specific data and displays dashboard widgets and navigation.
+*/
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabase';
-import { 
-  Plus, ShoppingBag, Box, MessageCircle, 
-  Menu, X, User, LogOut, Filter, MapPin,
+import {
+  Plus, ShoppingBag, Box, MessageCircle,
+  Menu, X, User, LogOut, Filter, MapPin, Search,
   PartyPopper, Loader2, OctagonX, Clock
 } from 'lucide-react';
+import { notifyError } from '../../toast';
 import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
 import LoadingScreen from '../../components/LoadingScreen';
 import './StudentDashboard.css';
 import BuyerPopup from "./BuyerPopup";
 import Seller_Popup from "./Seller_Popup";
+import ReviewPromptPopup from "./ReviewPromptPopup";
+
+const logoSrc = `${process.env.PUBLIC_URL || ''}/UniMartlogo.png`;
 
 const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
@@ -33,12 +43,20 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const [showPopup, setShowPopup] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Filter & Search panels (mobile drawers)
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
   // Filter States
   const [selectedCat, setSelectedCat] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
   const [selectedCondition, setSelectedCondition] = useState('all');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [listingSearch, setListingSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Search is applied on explicit submit (Search button) or clear.
 
   const campusOptions = ["Main Campus", "Education Campus", "Med Campus"];
   const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
@@ -54,7 +72,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
         const { data: recent } = await supabase
           .from('listings')
           .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
-          .eq('status', 'active')
+          .in('status', ['active', 'sold_out'])
           .order('created_at', { ascending: false })
           .limit(10);
         setRecentListings(recent || []);
@@ -82,14 +100,14 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       await supabase.from('profiles').update({ role: targetRole }).eq('id', approvedApp.user_id);
       await supabase.from('role_applications').update({ status: 'completed' }).eq('id', approvedApp.id);
       window.location.href = targetRole === 'admin' ? '/dashboard/admin' : '/dashboard/staff';
-    } catch (err) { alert(err.message); setIsProcessing(false); }
+    } catch (err) { notifyError(err.message); setIsProcessing(false); }
   };
 
   useEffect(() => {
     if (!profile?.id) return;
 
     const fetchMarket = async () => {
-      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).eq('status', 'active');
+      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).in('status', ['active', 'sold_out']);
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
       if (selectedCondition !== 'all') query = query.eq('condition', selectedCondition);
       if (minPrice) query = query.gte('price', Number(minPrice));
@@ -159,6 +177,15 @@ const StudentDashboard = ({ profile: initialProfile }) => {
     };
   }, [profile?.id]);
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredRecentListings = recentListings;
+  const filteredMarketListings = normalizedSearch
+    ? marketListings.filter((item) =>
+        item.title?.toLowerCase().includes(normalizedSearch) ||
+        item.categories?.name?.toLowerCase().includes(normalizedSearch)
+      )
+    : marketListings;
+
   const setView = (newV) => { setSearchParams({ view: newV }); setIsMenuOpen(false); };
 
   if (loading && !profile) return <LoadingScreen />;
@@ -173,10 +200,31 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       <header className="main-header">
         <nav className="header-nav">
           <section className="logo-section" onClick={() => setView('market')}>
-            <img src="/UniMartlogo.png" alt="Logo" className="header-logo" /><h1 className="logo-text">UniMart</h1>
+            <img src={logoSrc} alt="UniMart logo" className="header-logo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <h1 className="logo-text">UniMart</h1>
           </section>
           <nav className="header-actions">
-            <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
+            {view === 'market' && (
+              <>
+                <button
+                  className="icon-btn search-toggle-btn"
+                  onClick={() => { setIsSearchOpen(o => !o); setIsFilterOpen(false); setIsMenuOpen(false); }}
+                  aria-label="Toggle search"
+                  aria-expanded={isSearchOpen}
+                >
+                  {isSearchOpen ? <X size={20} /> : <Search size={20} />}
+                </button>
+                <button
+                  className="icon-btn filter-toggle-btn"
+                  onClick={() => { setIsFilterOpen(o => !o); setIsSearchOpen(false); setIsMenuOpen(false); }}
+                  aria-label="Toggle filters"
+                  aria-expanded={isFilterOpen}
+                >
+                  {isFilterOpen ? <X size={20} /> : <Filter size={20} />}
+                </button>
+              </>
+            )}
+            <button className="icon-btn" onClick={() => { setIsMenuOpen(!isMenuOpen); setIsFilterOpen(false); setIsSearchOpen(false); }}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
           </nav>
         </nav>
       </header>
@@ -211,16 +259,35 @@ const StudentDashboard = ({ profile: initialProfile }) => {
               <figure className="block-icon"><MessageCircle size={24} /></figure>
               <nav className="action-title-row"><h3>My Messages</h3>{unreadMessageCount > 0 && <mark className="message-count-badge">{unreadMessageCount}</mark>}</nav>
             </article>
-            <article className="action-block" onClick={() => navigate('/browse')}><figure className="block-icon"><ShoppingBag size={24} /></figure><h3>Browse All</h3></article>
           </section>
 
           <section className="feed-outer-section">
             <header className="section-header"><h2>Recent Listings (Top 10)</h2></header>
-            <section className="listings-grid-layout">{recentListings.map(item => <ListingCard key={item.id} item={item} />)}</section>
+            <section className="listings-grid-layout">
+              {filteredRecentListings.length > 0 ? filteredRecentListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">No recent listings available.</p>}
+            </section>
           </section>
 
+          <form className={`search-ribbon${isSearchOpen ? ' search-open' : ''}`} onSubmit={(e) => { e.preventDefault(); setSearchQuery(listingSearch); setIsSearchOpen(false); }}>
+            <div className="search-bar-inner">
+              <input
+                type="text"
+                className="search-input"
+                value={listingSearch}
+                onChange={(e) => setListingSearch(e.target.value)}
+                placeholder="Search listings by name"
+              />
+              {listingSearch && (
+                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setListingSearch(''); setSearchQuery(''); setIsSearchOpen(false); }}>
+                  ×
+                </button>
+              )}
+            </div>
+            <button type="submit" className="search-button">Search</button>
+          </form>
+
           <section className="market-layout">
-            <aside className="filter-sidebar">
+            <aside className={`filter-sidebar${isFilterOpen ? ' filter-open' : ''}`}>
               <header className="sidebar-header"><Filter size={18} /><h3>Filters</h3></header>
               <form className="filter-form">
                 <fieldset className="filter-group"><legend>Campus</legend><select value={selectedCampus} onChange={(e) => setSelectedCampus(e.target.value)}><option value="all">All Campuses</option>{campusOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></fieldset>
@@ -231,12 +298,12 @@ const StudentDashboard = ({ profile: initialProfile }) => {
                    <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
                 </fieldset>
                 <fieldset className="filter-group"><legend>Category</legend><select value={selectedCat} onChange={(e) => setSelectedCat(e.target.value)}><option value="all">All</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></fieldset>
-                <button type="button" className="reset-btn" onClick={() => { setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</button>
+                <button type="button" className="reset-btn" onClick={() => { setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice(''); setIsFilterOpen(false); }}>Clear Filters</button>
               </form>
             </aside>
             <section className="market-results">
               <header className="section-header"><h2>Market Feed</h2></header>
-              <section className="listings-grid-layout">{marketListings.length > 0 ? marketListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">No items found.</p>}</section>
+              <section className="listings-grid-layout">{filteredMarketListings.length > 0 ? filteredMarketListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">{normalizedSearch ? 'No items match your search.' : 'No items found.'}</p>}</section>
             </section>
           </section>
         </>
@@ -258,6 +325,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
       )}
       <BuyerPopup userId={profile?.id} />
       <Seller_Popup userId={profile?.id} />
+      <ReviewPromptPopup userId={profile?.id} />
     </main>
   );
 };
@@ -265,8 +333,9 @@ const StudentDashboard = ({ profile: initialProfile }) => {
 const ListingCard = ({ item }) => {
   const navigate = useNavigate();
   const primaryImage = item.listing_images?.find((img) => img.is_primary) || item.listing_images?.[0];
+  const isSoldOut = item.status === 'sold_out';
   return (
-    <article className="listing-card-item" onClick={() => navigate(`/listing/${item.id}`)}>
+    <article className={`listing-card-item${isSoldOut ? ' listing-card-sold-out' : ''}`} onClick={() => navigate(`/listing/${item.id}`)}>
       <header className="listing-card-top">
         <figure className="listing-img-container">
           <img
@@ -275,6 +344,7 @@ const ListingCard = ({ item }) => {
             style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
           />
         </figure>
+        {isSoldOut && <span className="sold-out-overlay-badge">SOLD OUT</span>}
         <section className="seller-mini-info">
           {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
           <p>{item.profiles?.full_name || 'Student'}</p>

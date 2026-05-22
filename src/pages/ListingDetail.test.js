@@ -1,4 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+/*
+Test: ListingDetail.test.js
+Purpose: Unit tests for `ListingDetail` page covering rendering, interactions, and DB flows.
+Units: helper mock builders, supabase mocks, router mocks, multiple `it` cases validating
+   listing rendering, transactions, messaging navigation, review submission and UI toggles.
+Flow: sets up mocked Supabase responses, mounts the component under test, asserts UI and
+  side-effect behavior such as inserts and navigation.
+*/
+
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ListingDetail from './ListingDetail';
 import { supabase } from '../supabase';
@@ -46,15 +55,31 @@ function createListingDetailMocks({
   const reviewEq = jest.fn(() => ({ order: reviewOrder }));
   const reviewSelect = jest.fn(() => ({ eq: reviewEq }));
 
+  const bookingMaybeSingle = jest.fn().mockResolvedValue({
+    data: { id: 'booking-1', created_at: '2026-05-01T10:00:00.000Z' }
+  });
+  const bookingLimit = jest.fn(() => ({ maybeSingle: bookingMaybeSingle }));
+  const bookingOrder = jest.fn(() => ({ limit: bookingLimit }));
+  const bookingEqChain = { eq: jest.fn(() => bookingEqChain), order: bookingOrder };
+  const bookingEq = jest.fn(() => bookingEqChain);
+  const bookingSelect = jest.fn(() => ({ eq: bookingEq }));
+
   const transactionMaybeSingle = jest.fn().mockResolvedValue({ data: { id: 'transaction-1' }, error: null });
   const transactionSelect = jest.fn(() => ({ maybeSingle: transactionMaybeSingle }));
   const transactionInsert = jest.fn(() => ({ select: transactionSelect }));
   const reviewInsert = jest.fn().mockResolvedValue({ error: insertError });
+  const messageInsert = jest.fn().mockResolvedValue({ error: null });
+  const profileMaybeSingle = jest.fn().mockResolvedValue({ data: { full_name: 'Buyer One' } });
+  const profileEq = jest.fn(() => ({ maybeSingle: profileMaybeSingle }));
+  const profileSelect = jest.fn(() => ({ eq: profileEq }));
 
   supabase.from.mockImplementation((table) => {
     if (table === 'listings') return { select: listingSelect };
     if (table === 'reviews') return { select: reviewSelect, insert: reviewInsert };
+    if (table === 'bookings') return { select: bookingSelect };
     if (table === 'transactions') return { insert: transactionInsert };
+    if (table === 'messages') return { insert: messageInsert };
+    if (table === 'profiles') return { select: profileSelect };
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -135,7 +160,7 @@ describe('ListingDetail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Make Offer' }));
     await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
-    await userEvent.type(screen.getByPlaceholderText('Experience with seller...'), 'Smooth handoff');
+    await userEvent.type(screen.getByPlaceholderText('Share your experience with the seller...'), 'Smooth handoff');
     // Button text is "Post Review" not "Post"
     await userEvent.click(screen.getByRole('button', { name: 'Post Review' }));
 
@@ -155,7 +180,7 @@ describe('ListingDetail', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Make Offer' }));
     await userEvent.type(screen.getByLabelText('Offer Amount'), '120');
-    await userEvent.click(screen.getByRole('button', { name: 'Send Offer' }));
+    fireEvent.click(screen.getByText('Send Offer'));
 
     await waitFor(() => expect(transactionInsert).toHaveBeenCalled());
     expect(navigateMock).toHaveBeenCalledWith(expect.stringContaining('action=offer'));
@@ -212,7 +237,7 @@ describe('ListingDetail', () => {
     expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
-    await userEvent.type(screen.getByPlaceholderText('Experience with seller...'), 'Smooth handoff');
+    await userEvent.type(screen.getByPlaceholderText('Share your experience with the seller...'), 'Smooth handoff');
     await userEvent.click(screen.getByRole('button', { name: 'Post Review' }));
 
     await waitFor(() => {
@@ -250,10 +275,10 @@ describe('ListingDetail', () => {
     expect(await screen.findByText('Desk Lamp')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Write a Review' }));
-    expect(screen.getByPlaceholderText('Experience with seller...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Share your experience with the seller...')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.queryByPlaceholderText('Experience with seller...')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Share your experience with the seller...')).not.toBeInTheDocument();
   });
 
   it('renders existing reviews with reviewer name and comment', async () => {
@@ -292,6 +317,6 @@ describe('ListingDetail', () => {
     if (starButtons.length > 0) {
       await userEvent.click(starButtons[2]);
     }
-    expect(screen.getByPlaceholderText('Experience with seller...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Share your experience with the seller...')).toBeInTheDocument();
   });
 });

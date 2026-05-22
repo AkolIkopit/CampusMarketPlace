@@ -13,6 +13,9 @@ const mockClearAuthIntent = jest.fn();
 const mockReadAuthIntent = jest.fn();
 const mockGetDefaultFullName = jest.fn();
 
+jest.mock('./pages/dashboards/Analytics', () => () => <div>Analytics</div>);
+jest.mock('./pages/AuthPage', () => () => <div>AuthPage</div>);
+
 jest.mock('./supabase', () => ({
   supabase: {
     from: jest.fn(),

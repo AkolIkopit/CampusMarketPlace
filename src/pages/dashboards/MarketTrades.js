@@ -2,8 +2,18 @@
 
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "../../supabase";
+import { notifyError, notifySuccess } from "../../toast";
 import "./MarketTrades.css";
+
+/*
+Module: MarketTrades.js
+Purpose: Staff-facing view for marketplace trade operations and reconciliations.
+Units: trade listings, booking/payment controls, filters
+Flow: Displays current trades and provides staff actions for processing handovers.
+*/
 
 export default function MarketTrades() {
 
@@ -12,6 +22,9 @@ export default function MarketTrades() {
   const [completedTrades, setCompletedTrades] = useState([]);
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [pendingClaim, setPendingClaim] = useState(null);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
 
@@ -81,13 +94,17 @@ export default function MarketTrades() {
   };
 
   // CLAIM SALE / TRADE
-  const claimTrade = async (tradeId) => {
+  const handleClaimClick = (trade) => {
+    setPendingClaim(trade);
+  };
 
-    const confirmClaim = window.confirm(
-      "Are you sure you want to handle this sale/trade?"
-    );
+  const cancelClaim = () => {
+    setPendingClaim(null);
+  };
 
-    if (!confirmClaim) return;
+  const confirmClaim = async () => {
+    if (!pendingClaim) return;
+    setClaimLoading(true);
 
     const { error } = await supabase
       .from("bookings")
@@ -95,15 +112,16 @@ export default function MarketTrades() {
         staff_id: currentUser.id,
         status: "assigned"
       })
-      .eq("id", tradeId);
+      .eq("id", pendingClaim.id);
+
+    setClaimLoading(false);
 
     if (error) {
-
-      console.error(error.message);
-
+      notifyError(error.message);
     } else {
-
+      notifySuccess("Sale/trade assigned successfully.");
       fetchTrades();
+      setPendingClaim(null);
     }
   };
 
@@ -117,17 +135,20 @@ export default function MarketTrades() {
     <main className="market-page">
 
       {/* HERO */}
-      <section className="market-hero">
+      <section className="hero-section">
+        <button type="button" className="back-btn-gold" onClick={() => navigate(-1)}>
+          <ArrowLeft size={18} /> Back
+        </button>
 
-        <span className="market-kicker">
+        <span className="hero-kicker">
           MARKET MANAGEMENT
         </span>
 
-        <h1 className="market-title">
+        <h1 className="hero-title">
           Marketplace Sales & Trades
         </h1>
 
-        <p className="market-description">
+        <p className="hero-description">
           Manage marketplace transactions, assign responsibility,
           and monitor completed exchanges.
         </p>
@@ -224,9 +245,7 @@ export default function MarketTrades() {
 
                 <button
                   className="claim-btn"
-                  onClick={() =>
-                    claimTrade(trade.id)
-                  }
+                  onClick={() => handleClaimClick(trade)}
                 >
                   Claim Sale / Trade
                 </button>
@@ -301,6 +320,20 @@ export default function MarketTrades() {
 
       </section>
 
+      {pendingClaim && (
+        <dialog className="delete-confirm-backdrop" onClick={cancelClaim}>
+          <article className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
+            <h2>Confirm assignment</h2>
+            <p>Do you want to take responsibility for "{pendingClaim.listings?.title || 'this trade'}"?</p>
+            <div className="delete-confirm-actions">
+              <button className="btn-cancel-delete" type="button" onClick={cancelClaim}>Cancel</button>
+              <button className="btn-confirm-delete" type="button" onClick={confirmClaim} disabled={claimLoading}>
+                {claimLoading ? 'Assigning...' : 'Confirm'}
+              </button>
+            </div>
+          </article>
+        </dialog>
+      )}
     </main>
   );
 }

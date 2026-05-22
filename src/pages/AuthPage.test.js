@@ -102,9 +102,7 @@ describe('AuthPage', () => {
       });
     });
 
-    expect(
-      screen.getByText('Account created! Check your email to confirm your address.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Account created! Check your email to confirm your address.')).toBeInTheDocument();
   });
 
   it('surfaces signup validation errors before calling Supabase', async () => {
@@ -179,7 +177,6 @@ describe('AuthPage', () => {
   });
 
   it('navigates to the site root when history is too short', async () => {
-    __setSearchParams('mode=login');
     const originalLength = window.history.length;
     Object.defineProperty(window.history, 'length', { value: 1, configurable: true });
 

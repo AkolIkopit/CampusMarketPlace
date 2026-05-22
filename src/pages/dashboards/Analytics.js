@@ -1,8 +1,15 @@
+/*
+Module: Analytics.js
+Purpose: Admin analytics dashboard displaying metrics and charts.
+Units: data fetchers, visualization components, filters
+Flow: Loads analytics data and renders charts and summaries for admins.
+*/
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError } from '../../toast';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area 
+  PieChart, Pie, Cell, LineChart, Line 
 } from 'recharts';
 import { 
   ArrowLeft, FileText, Table as TableIcon, TrendingUp, ShieldAlert, Calendar, Trash2
@@ -26,6 +33,7 @@ const Analytics = () => {
   const [statusComparison, setStatusComparison] = useState([]); 
   const [flagReasons, setFlagReasons] = useState([]);
   const [deleteReasons, setDeleteReasons] = useState([]);
+  const [completedTransactionsOverTime, setCompletedTransactionsOverTime] = useState([]);
 
   // VIBRANT COLOR PALETTE
   const COLORS = ['#3498db', '#f0a500', '#2ecc71', '#e74c3c', '#9b59b6', '#1abc9c', '#f1c40f', '#0d1b2a'];
@@ -70,16 +78,49 @@ const Analytics = () => {
       dLogs?.forEach(log => { dMap[log.reason_category] = (dMap[log.reason_category] || 0) + 1; });
       setDeleteReasons(Object.keys(dMap).map(key => ({ reason: key, count: dMap[key] })));
 
-      // 5. Facility Usage Logic (As requested: Monday 9 available, 1 reserved)
-      setTradeUtilization([
-        { day: 'Sun', available: 10, reserved: 0 },
-        { day: 'Mon', available: 9, reserved: 1 },
-        { day: 'Tue', available: 10, reserved: 0 },
-        { day: 'Wed', available: 10, reserved: 0 },
-        { day: 'Thu', available: 10, reserved: 0 },
-        { day: 'Fri', available: 10, reserved: 0 },
-        { day: 'Sat', available: 10, reserved: 0 },
-      ]);
+      // 5. Facility Usage - aggregate live slot data by day of week
+      const { data: slotRows } = await supabase
+        .from('trade_slots')
+        .select('start_time, max_capacity, current_bookings');
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayMap = {};
+      dayNames.forEach(d => { dayMap[d] = { available: 0, reserved: 0 }; });
+
+      slotRows?.forEach(slot => {
+        const day = dayNames[new Date(slot.start_time).getDay()];
+        if (!day) return;
+        const reserved = Number(slot.current_bookings || 0);
+        const available = Math.max(0, Number(slot.max_capacity || 0) - reserved);
+        dayMap[day].reserved += reserved;
+        dayMap[day].available += available;
+      });
+
+      setTradeUtilization(dayNames.map(d => ({ day: d, ...dayMap[d] })));
+
+      // 6. Completed transactions over time
+      const { data: completedBookings } = await supabase
+        .from('bookings')
+        .select('updated_at, created_at')
+        .eq('status', 'completed')
+        .eq('item_released', true);
+
+      const transactionMap = {};
+      completedBookings?.forEach((booking) => {
+        const timestamp = booking.updated_at || booking.created_at;
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return;
+        const isoDay = date.toISOString().slice(0, 10);
+        transactionMap[isoDay] = (transactionMap[isoDay] || 0) + 1;
+      });
+
+      const sortedDates = Object.keys(transactionMap).sort();
+      setCompletedTransactionsOverTime(
+        sortedDates.map((day) => ({
+          day: new Date(day).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          completed: transactionMap[day]
+        }))
+      );
 
     } catch (error) {
       console.error("Fetch Error:", error);
@@ -92,7 +133,7 @@ const Analytics = () => {
 
   const exportToCSV = (data, filename) => {
     if (!data || data.length === 0) {
-      alert("No data available to export.");
+      notifyError("No data available to export.");
       return;
     }
     const headers = Object.keys(data[0]);
@@ -110,7 +151,7 @@ const Analytics = () => {
 
   const exportToPDF = (title, data) => {
     if (!data || data.length === 0) {
-        alert("Report data is empty.");
+        notifyError("Report data is empty.");
         return;
     }
 
@@ -147,7 +188,7 @@ const Analytics = () => {
         doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}.pdf`);
     } catch (err) {
         console.error("PDF Generation Error:", err);
-        alert("Failed to generate PDF. Check console for details.");
+        notifyError("Failed to generate PDF. Check console for details.");
     }
   };
 
@@ -207,7 +248,29 @@ const Analytics = () => {
           </div>
         </article>
 
-        {/* 3. FLAGGING REASONS */}
+        {/* 3. COMPLETED TRANSACTIONS OVER TIME */}
+        <article className="analytics-chart-card">
+          <div className="report-header">
+            <h3 className="report-title"><TrendingUp size={20} color="#f0a500"/> Completed Transactions Over Time</h3>
+            <div className="export-btn-group">
+              <button onClick={() => exportToCSV(completedTransactionsOverTime, 'completed_transactions_over_time')} className="export-btn"><TableIcon size={14}/></button>
+              <button onClick={() => exportToPDF('Completed Transactions Over Time', completedTransactionsOverTime)} className="export-btn"><FileText size={14}/></button>
+            </div>
+          </div>
+          <div style={{width: '100%', height: 250}}>
+            <ResponsiveContainer>
+              <LineChart data={completedTransactionsOverTime} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="completed" stroke="#f0a500" strokeWidth={3} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        {/* 4. FLAGGING REASONS */}
         <article className="analytics-chart-card">
           <div className="report-header">
             <h3 className="report-title"><ShieldAlert size={20} color="#f0a500"/> Flagging Reasons</h3>

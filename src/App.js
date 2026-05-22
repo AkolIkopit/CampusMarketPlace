@@ -1,3 +1,12 @@
+/*
+Module: App.js
+Purpose: Application root, routing, and session/profile lifecycle management.
+Units: fetchProfile, ensureProfile, withTimeout, getDashboardPath, SessionErrorScreen, ProtectedRoute, App component
+Flow: exports helper functions used across the app, defines `ProtectedRoute` for access control,
+      initializes and syncs Supabase session on mount, loads/creates user profiles and provides
+      top-level `Routes` that render pages or dashboards based on session/profile state.
+*/
+
 import ManageListings from "./pages/dashboards/ManageListings";
 import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
@@ -18,6 +27,8 @@ import BookingRequest from "./pages/BookingRequest";
 import MessagesPage from "./pages/Messages/MessagesPage";
 import LoadingScreen from "./components/LoadingScreen";
 import RoleApproval from "./pages/dashboards/RoleApproval";
+import { Toaster } from "react-hot-toast";
+import { toastOptions, notifyError } from "./toast";
 
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
@@ -38,10 +49,11 @@ export async function ensureProfile(user) {
 
   if (existingProfile) {
     if (existingProfile.is_banned) {
-        await supabase.auth.signOut();
-        alert("Your account has been suspended.");
-        return null;
+      await supabase.auth.signOut();
+      notifyError("Your account has been suspended.");
+      return null;
     }
+
     clearAuthIntent();
     return existingProfile;
   }
@@ -194,10 +206,11 @@ export default function App() {
 
   return (
     <Router>
+      <Toaster toastOptions={toastOptions} />
       <Routes>
         <Route path="/" element={!session ? <LandingPage /> : (loading ? <LoadingScreen /> : (profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <LoadingScreen />))} />
         <Route path="/auth" element={!session ? <AuthPage /> : (loading ? <LoadingScreen /> : (profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <LoadingScreen />))} />
-        <Route path="/waiting-room" element={<div style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></div>} />
+        <Route path="/waiting-room" element={<main style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></main>} />
         
         <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
      

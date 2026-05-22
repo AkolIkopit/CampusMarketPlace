@@ -1,6 +1,15 @@
+/*
+Module: ListingDetail.js
+Purpose: Display a single listing with images, seller info, reviews and transaction actions.
+Units: data fetch (listing, reviews), review form, transaction creation, UI state (modals, loading)
+Flow: on mount fetches listing and reviews, determines review eligibility, provides handlers
+  to post reviews, create transactions (sale/offer/trade), and navigate to messaging.
+*/
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { notifySuccess } from '../toast';
 import {
   ArrowLeft, MessageCircle, User,
   Star, MapPin, Loader2, Send
@@ -13,10 +22,12 @@ const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 const ListingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [listing, setListing] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [canReview, setCanReview] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
@@ -29,7 +40,8 @@ const ListingDetail = () => {
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
+    const userId = user?.id || null;
+    setCurrentUserId(userId);
 
     const { data: listData } = await supabase
       .from('listings')
@@ -45,12 +57,48 @@ const ListingDetail = () => {
 
     if (listData) setListing(listData);
     if (revData) setReviews(revData);
+
+    // Determine if the current user is eligible to leave a review.
+    // They must have a completed, item-released booking for this listing,
+    // and at least one booking must be newer than the user's last review.
+    if (userId) {
+      const { data: completedBooking } = await supabase
+        .from("bookings")
+        .select("id, created_at")
+        .eq("buyer_id", userId)
+        .eq("listing_id", id)
+        .eq("status", "completed")
+        .eq("item_released", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const latestReviewDate = (revData || [])
+        .filter((r) => r.reviewer_id === userId && r.created_at)
+        .map((r) => new Date(r.created_at))
+        .sort((a, b) => b - a)[0];
+
+      const bookingDate = completedBooking?.created_at ? new Date(completedBooking.created_at) : null;
+      const hasRecentBooking = bookingDate && (!latestReviewDate || bookingDate > latestReviewDate);
+
+      setCanReview(!!hasRecentBooking);
+    } else {
+      setCanReview(false);
+    }
+
     setLoading(false);
   }, [id]);
 
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
+
+  // Auto-open the review form when arriving via the review prompt popup
+  useEffect(() => {
+    if (canReview && searchParams.get("review") === "true") {
+      setShowForm(true);
+    }
+  }, [canReview, searchParams]);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -68,7 +116,7 @@ const ListingDetail = () => {
         setComment(""); 
         setShowForm(false); 
         await fetchAllData(); 
-        alert("Review posted!"); 
+        notifySuccess("Review posted!"); 
       }
     } finally { 
       setSubmitting(false); 
@@ -94,6 +142,7 @@ const ListingDetail = () => {
   };
 
   const createTransaction = async ({ type, action, amount, cashAmount = 0, tradeItem = '' }) => {
+    console.log("createTransaction called", { type, action, amount });
     setTransactionLoading(true);
     setTransactionError("");
 
@@ -123,19 +172,26 @@ const ListingDetail = () => {
       const requestedAmount = Number(amount ?? 0);
       const topUpAmount = Number(cashAmount || 0);
 
-      const payload = {
-        buyer_id: user.id,
-        seller_id: listing.seller_id,
-        listing_id: id,
-        amount: requestedAmount,
-        agreed_amount: requestedAmount,
-        cash_shortfall_due: type === 'trade' ? topUpAmount : 0,
-        status: 'pending_seller_acceptance',
-        transaction_type: type === 'offer' ? 'sale' : type,
-        payment_status: 'unpaid',
-        booking_status: 'not_booked'
-      };
+     const primaryImageSnapshot = listing.listing_images?.find((img) => img.is_primary) || listing.listing_images?.[0];
 
+const payload = {
+  buyer_id: user.id,
+  seller_id: listing.seller_id,
+  listing_id: id,
+  amount: requestedAmount,
+  agreed_amount: requestedAmount,
+  cash_shortfall_due: type === 'trade' ? topUpAmount : 0,
+  status: 'pending_seller_acceptance',
+  transaction_type: type === 'offer' ? 'sale' : type,
+  payment_status: 'unpaid',
+  booking_status: 'not_booked',
+
+  listing_title: listing.title,
+  listing_image: primaryImageSnapshot?.image_url || null,
+  listing_price: listing.price,
+  listing_description: listing.description || null,
+};
+console.log("Transaction payload:", JSON.stringify(payload, null, 2));
       const { data: transaction, error: transactionError } = await supabase
         .from('transactions')
         .insert([payload])
@@ -217,6 +273,8 @@ const ListingDetail = () => {
   const listingType = (listing.listing_type || 'either').toLowerCase();
   const allowsSale = listingType === 'sale' || listingType === 'either';
   const allowsTrade = listingType === 'trade' || listingType === 'either';
+  const isSoldOut = listing.status === 'sold_out' || Number(listing.quantity) === 0;
+  const quantityAvailable = listing.quantity != null ? Number(listing.quantity) : null;
 
   return (
     <main className="listing-detail-page">
@@ -243,8 +301,12 @@ const ListingDetail = () => {
           <section className="detail-content">
             <header className="product-header">
               <mark className="product-category-tag">{listing.categories.name}</mark>
+              {isSoldOut && <mark className="sold-out-badge">SOLD OUT</mark>}
               <h1>{listing.title}</h1>
               <p className="product-price">R {listing.price}</p>
+              {!isSoldOut && quantityAvailable !== null && (
+                <p className="quantity-available">{quantityAvailable} available</p>
+              )}
             </header>
             
             <article className="product-description">
@@ -266,19 +328,24 @@ const ListingDetail = () => {
               </header>
               
               <footer className="purchase-actions multi-action">
+                {isSoldOut && (
+                  <p className="sold-out-action-notice">This item is currently sold out and cannot be purchased.</p>
+                )}
                 {allowsSale ? (
                   <>
                     <button
                       className="buy-now-btn"
                       onClick={() => handleTransactionIntent('buy')}
-                      disabled={isOwnListing}
+                      disabled={isOwnListing || isSoldOut}
+                      title={isSoldOut ? 'This listing is sold out' : undefined}
                     >
                       Buy Now
                     </button>
                     <button
                       className="make-offer-btn"
                       onClick={() => handleTransactionIntent('offer')}
-                      disabled={isOwnListing}
+                      disabled={isOwnListing || isSoldOut}
+                      title={isSoldOut ? 'This listing is sold out' : undefined}
                     >
                       Make Offer
                     </button>
@@ -288,7 +355,8 @@ const ListingDetail = () => {
                   <button
                     className="request-trade-btn"
                     onClick={() => handleTransactionIntent('trade')}
-                    disabled={isOwnListing}
+                    disabled={isOwnListing || isSoldOut}
+                    title={isSoldOut ? 'This listing is sold out' : undefined}
                   >
                     Request Trade
                   </button>
@@ -313,21 +381,23 @@ const ListingDetail = () => {
         <section className="reviews-container">
           <header className="section-header">
             <h2>Reviews & Feedback</h2>
-            <button className="add-review-toggle" onClick={() => setShowForm(!showForm)}>
-              {showForm ? "Cancel" : "Write a Review"}
-            </button>
+            {canReview && (
+              <button className="add-review-toggle" onClick={() => setShowForm(!showForm)}>
+                {showForm ? "Cancel" : "Write a Review"}
+              </button>
+            )}
           </header>
 
-          {showForm && (
+          {canReview && showForm && (
             <form className="review-form-box" onSubmit={handleReviewSubmit}>
               <fieldset className="rating-selector">
                 <legend>Rating</legend>
                 <nav className="star-input-group">
                   {[1, 2, 3, 4, 5].map((num) => (
-                    <button 
-                      key={num} 
-                      type="button" 
-                      className={num <= rating ? "star-btn active" : "star-btn"} 
+                    <button
+                      key={num}
+                      type="button"
+                      className={num <= rating ? "star-btn active" : "star-btn"}
                       onClick={() => setRating(num)}
                     >
                       <Star size={24} fill={num <= rating ? "#f3a91e" : "none"} />
@@ -335,17 +405,17 @@ const ListingDetail = () => {
                   ))}
                 </nav>
               </fieldset>
-              
+
               <fieldset className="comment-input-area">
                 <legend>Feedback</legend>
-                <textarea 
-                  required 
-                  placeholder="Experience with seller..." 
-                  value={comment} 
+                <textarea
+                  required
+                  placeholder="Share your experience with the seller..."
+                  value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 ></textarea>
               </fieldset>
-              
+
               <button type="submit" className="submit-review-btn" disabled={submitting}>
                 {submitting ? <Loader2 className="spinner" /> : <><Send size={18} /> Post Review</>}
               </button>

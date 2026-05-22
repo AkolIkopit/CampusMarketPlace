@@ -1,16 +1,24 @@
+/*
+Module: TransactionPayment.js
+Purpose: Handles payment flow for a transaction (payment form + redirect/confirmation).
+Units: UI form, payment submission logic, success/cancel handling.
+Flow: Renders transaction payment UI and coordinates with backend/payment gateway to complete payments.
+*/
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
-const PAYFAST_SANDBOX_URL = "https://sandbox.payfast.co.za/eng/process";
-const MERCHANT_ID = "10048982";
-const MERCHANT_KEY = "8fr5hx4alngq6";
-const PASSPHRASE = "andre12345678";
-const NOTIFY_URL = "https://pjqoghabztvrywvwvfdp.supabase.co/functions/v1/payfast-notify";
-const RETURN_URL = "http://localhost:3000/payment/success";
-const CANCEL_URL = "http://localhost:3000/payment/cancel";
+// Load PayFast configuration from environment variables
+const PAYFAST_URL = process.env.REACT_APP_PAYFAST_URL;
+const MERCHANT_ID = process.env.REACT_APP_PAYFAST_MERCHANT_ID;
+const MERCHANT_KEY = process.env.REACT_APP_PAYFAST_MERCHANT_KEY;
+const PASSPHRASE = process.env.REACT_APP_PAYFAST_PASSPHRASE;
+const NOTIFY_URL = process.env.REACT_APP_NOTIFY_URL;
+const RETURN_URL = process.env.REACT_APP_PAYFAST_RETURN_URL;
+const CANCEL_URL = process.env.REACT_APP_PAYFAST_CANCEL_URL;
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -27,10 +35,12 @@ export default function TransactionPayment() {
 const fetchTransaction = async () => {
   const { data, error } = await supabase
     .from("transactions")
-    .select(`
-      *,
-      listings ( title )
-    `)
+   .select(`
+  *,
+  listings (
+    title
+  )
+`)
     .eq("id", transactionId)
     .maybeSingle();
 
@@ -87,7 +97,7 @@ const handlePayment = async () => {
 
   const form = document.createElement("form");
   form.method = "POST";
-  form.action = PAYFAST_SANDBOX_URL;
+  form.action = PAYFAST_URL;
 
   const allFields = {
     ...fields,
@@ -108,7 +118,11 @@ const handlePayment = async () => {
   if (loading) return <main className="payment-container"><p>Loading...</p></main>;
   if (error) return <main className="payment-container"><p className="payment-error">{error}</p></main>;
 
-  const agreedAmount = Number(transaction.agreed_amount || 0);
+ const agreedAmount = Number(
+  transaction.listing_price ||
+  transaction.agreed_amount ||
+  0
+);
   const outstandingAmount = Number(transaction.cash_shortfall_due ?? agreedAmount);
   const isPartial = outstandingAmount > 0 && outstandingAmount < agreedAmount;
   const amountPaid = Math.max(agreedAmount - outstandingAmount, 0);
@@ -127,7 +141,13 @@ const handlePayment = async () => {
       <section className="payment-card">
 
         <header className="payment-card-header">
-          <h2>{transaction.listings?.title || "UniMart Purchase"}</h2>
+      <h2>
+  {
+    transaction.listing_title ||
+    transaction.listings?.title ||
+    "Deleted Listing"
+  }
+</h2>
           <span className={`payment-status-pill ${transaction.payment_status}`}>
             {transaction.payment_status.replace(/_/g, " ")}
           </span>

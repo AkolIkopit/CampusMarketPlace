@@ -1,3 +1,10 @@
+/*
+Module: setupTests.js
+Purpose: Test environment setup for Jest and React Testing Library.
+Units: global test helpers and jest-dom setup
+Flow: Imported by test runner to enhance assertions and configure mocks.
+*/
+
 import '@testing-library/jest-dom';
 
 // Polyfill TextEncoder/TextDecoder for jsPDF and related libs in Jest

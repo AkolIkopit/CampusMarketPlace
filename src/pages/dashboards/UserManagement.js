@@ -1,11 +1,19 @@
+/*
+Module: UserManagement.js
+Purpose: Admin interface to view and manage user accounts and roles.
+Units: user table, role assignment, suspension actions
+Flow: Fetches users and exposes management actions for admins.
+*/
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Trash2, ShieldAlert, CheckCircle, 
-  Search, User, MessageSquare, X 
+  Search, User, MessageSquare, X, AlertTriangle 
 } from 'lucide-react';
 import LoadingScreen from '../../components/LoadingScreen';
+import toast, { Toaster } from 'react-hot-toast'; 
 import './UserManagement.css';
 
 export default function UserManagement() {
@@ -14,14 +22,20 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   
   const [activeTotal, setActiveTotal] = useState(0);
   const [suspendedTotal, setSuspendedTotal] = useState(0);
 
+  // Expansion and Form state
   const [expandedId, setExpandedId] = useState(null);
   const [actionType, setActionType] = useState(null); 
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
+
+  // --- CUSTOM CONFIRMATION OVERLAY STATE ---
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [targetUser, setTargetUser] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -38,8 +52,11 @@ export default function UserManagement() {
       .eq('is_suspended', isSuspendedQuery)
       .order('full_name', { ascending: true });
 
-    if (error) console.error(error);
-    else setUsers(data || []);
+    if (error) {
+      toast.error("Failed to fetch users");
+    } else {
+      setUsers(data || []);
+    }
     setLoading(false);
   };
 
@@ -51,20 +68,36 @@ export default function UserManagement() {
   };
 
   const toggleExpand = (id, type) => {
-    if (expandedId === id && actionType === type) setExpandedId(null);
-    else { setExpandedId(id); setActionType(type); }
-    setReason(""); setDescription("");
+    if (expandedId === id && actionType === type) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+      setActionType(type);
+    }
+    setReason("");
+    setDescription("");
   };
 
-  const handleConfirmAction = async (targetUser) => {
+  // 1. Step one: Trigger the custom popup
+  const triggerConfirmation = (user) => {
     if (!reason || !description) {
-        alert("Please select a reason and provide a description.");
-        return;
+      toast.error("Please provide reason and details first.");
+      return;
     }
-    const { data: { user: admin } } = await supabase.auth.getUser();
+    setTargetUser(user);
+    setShowConfirm(true);
+  };
 
+  // 2. Step two: Execute the actual DB logic
+  const handleFinalAction = async () => {
+    setShowConfirm(false);
+    setIsProcessing(true);
+    const toastId = toast.loading(`Executing ${actionType}...`);
+    
     try {
-        // 1. Attempt to Log the action
+        const { data: { user: admin } } = await supabase.auth.getUser();
+
+        // Log action
         const { error: logError } = await supabase.from('moderation_logs').insert([{
             admin_id: admin.id,
             target_id: targetUser.id,
@@ -75,39 +108,53 @@ export default function UserManagement() {
             extra_description: description
         }]);
 
-        if (logError) throw new Error("Log Table Error: " + logError.message);
+        if (logError) throw new Error("Log Error: " + logError.message);
 
-        // 2. Perform DB Update or Delete
         if (actionType === 'suspend') {
             const { error: updError } = await supabase.from('profiles').update({ 
                 is_suspended: true, 
                 suspension_reason: reason, 
                 suspension_details: description 
             }).eq('id', targetUser.id);
-            if (updError) throw new Error("Update Profile Error: " + updError.message);
+            if (updError) throw updError;
+            toast.success("User suspended.", { id: toastId });
         } else {
             const { error: delError } = await supabase.from('profiles').delete().eq('id', targetUser.id);
-            if (delError) throw new Error("Delete Profile Error: " + delError.message + " (Check if user has listings first!)");
+            if (delError) {
+              if (delError.code === '23503') throw new Error("User has active listings. Delete those first.");
+              throw delError;
+            }
+            toast.success("User permanently deleted.", { id: toastId });
         }
 
-        alert("Action successfully processed!");
         fetchData();
         updateCounts();
     } catch (err) {
-        alert(err.message); // This will show you exactly what Supabase is unhappy about
+        toast.error(err.message, { id: toastId });
+    } finally {
+        setIsProcessing(false);
     }
   };
 
-  const handleReactivate = async (id) => {
+  const handleReactivate = async (user) => {
+    setTargetUser(user);
+    setActionType('reactivate');
+    setShowConfirm(true);
+  };
+
+  const handleFinalReactivate = async () => {
+    setShowConfirm(false);
+    const toastId = toast.loading("Restoring user...");
     const { error } = await supabase.from('profiles').update({ 
         is_suspended: false, 
         suspension_reason: null, 
         suspension_details: null 
-    }).eq('id', id);
+    }).eq('id', targetUser.id);
 
-    if (error) alert("Reactivate Error: " + error.message);
-    else {
-        alert("User account reinstated.");
+    if (error) {
+        toast.error("Error: " + error.message, { id: toastId });
+    } else {
+        toast.success("User reinstated.", { id: toastId });
         fetchData();
         updateCounts();
     }
@@ -121,6 +168,30 @@ export default function UserManagement() {
 
   return (
     <main className="dashboard-container mod-white-theme">
+      <Toaster position="top-center" />
+      
+      {/* --- BETTER CONFIRMATION POPUP (MODAL) --- */}
+      {showConfirm && (
+        <div className="custom-overlay">
+          <div className="confirm-modal-card">
+            <AlertTriangle size={48} color="#f0a500" style={{ marginBottom: '15px' }} />
+            <h2>Confirm {actionType === 'reactivate' ? 'Reactivation' : actionType.toUpperCase()}</h2>
+            <p>Are you sure you want to {actionType} <strong>{targetUser?.full_name}</strong>?</p>
+            {actionType === 'delete' && <p className="warning-text">This action is permanent and cannot be undone.</p>}
+            
+            <div className="modal-btn-row">
+              <button className="modal-btn-cancel" onClick={() => setShowConfirm(false)}>Cancel</button>
+              <button 
+                className={`modal-btn-confirm ${actionType === 'delete' ? 'bg-red' : 'bg-navy'}`}
+                onClick={actionType === 'reactivate' ? handleFinalReactivate : handleFinalAction}
+              >
+                Yes, Proceed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="aurora-bg" aria-hidden="true">
         <hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" />
       </section>
@@ -147,7 +218,7 @@ export default function UserManagement() {
 
       <section className="centered-mod-layout">
         <div className="mod-feed-column">
-          {filteredUsers.length === 0 ? <div className="empty-state-big">EMPTY</div> : (
+          {filteredUsers.length === 0 ? <div className="empty-state-big">NO USERS FOUND</div> : (
             filteredUsers.map(user => (
               <article key={user.id} className={`mod-card-white ${expandedId === user.id ? 'active-expansion' : ''}`}>
                 <div className="card-main-content">
@@ -168,19 +239,19 @@ export default function UserManagement() {
                 <div className="card-footer-actions">
                   {currentTab === 'active' ? (
                     <>
-                      <button className="mod-btn-navy" onClick={() => toggleExpand(user.id, 'suspend')}>
+                      <button className="mod-btn-navy" onClick={() => toggleExpand(user.id, 'suspend')} disabled={isProcessing}>
                         <ShieldAlert size={18} /> Suspend
                       </button>
-                      <button className="mod-btn-red" onClick={() => toggleExpand(user.id, 'delete')}>
+                      <button className="mod-btn-red" onClick={() => toggleExpand(user.id, 'delete')} disabled={isProcessing}>
                         <Trash2 size={18} /> Delete
                       </button>
                     </>
                   ) : (
                     <>
-                      <button className="mod-btn-navy" style={{color: '#27ae60'}} onClick={() => handleReactivate(user.id)}>
+                      <button className="mod-btn-navy" style={{color: '#27ae60'}} onClick={() => handleReactivate(user)} disabled={isProcessing}>
                         <CheckCircle size={18} /> Reactivate
                       </button>
-                      <button className="mod-btn-red" onClick={() => toggleExpand(user.id, 'delete')}>
+                      <button className="mod-btn-red" onClick={() => toggleExpand(user.id, 'delete')} disabled={isProcessing}>
                         Permanent Delete
                       </button>
                     </>
@@ -191,7 +262,7 @@ export default function UserManagement() {
                   <div className="expansion-form-area">
                     <div className="expansion-divider"></div>
                     <div className="field-group">
-                      <label>Reason for {actionType}</label>
+                      <label>Reason for {actionType?.toUpperCase()}</label>
                       <select value={reason} onChange={(e) => setReason(e.target.value)}>
                           <option value="">-- Select Category --</option>
                           <option value="Fraud">Fraudulent Activity</option>
@@ -203,9 +274,11 @@ export default function UserManagement() {
                     </div>
                     <div className="field-group">
                       <label>Additional Details</label>
-                      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide audit log context..." />
+                      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Provide context for admin logs..." />
                     </div>
-                    <button className="confirm-inline" disabled={!reason || !description} onClick={() => handleConfirmAction(user)}>Confirm {actionType}</button>
+                    <button className="confirm-inline" disabled={!reason || !description || isProcessing} onClick={() => triggerConfirmation(user)}>
+                      {isProcessing ? "Processing..." : `Confirm ${actionType}`}
+                    </button>
                   </div>
                 )}
               </article>

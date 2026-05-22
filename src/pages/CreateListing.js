@@ -1,7 +1,14 @@
+/*
+Module: CreateListing.js
+Purpose: Page to create or edit a listing with form inputs and image uploads.
+Units: form fields, image upload logic, category selection, submit handler
+Flow: Collects listing information and sends to Supabase to insert/update listing.
+*/
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Loader2, Lightbulb } from 'lucide-react';
 import { supabase } from '../supabase';
+import { notifyError, notifySuccess } from '../toast';
 import LoadingScreen from '../components/LoadingScreen';
 import './CreateListing.css';
 
@@ -36,7 +43,8 @@ const CreateListing = () => {
     price: '',
     listing_type: 'sale',
     condition: 'Good',
-    campus: 'Main Campus'
+    campus: 'Main Campus',
+    quantity: 1
   });
 
   const conditionOptions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
@@ -97,7 +105,8 @@ const CreateListing = () => {
           price: listingData.price?.toString() || '',
           listing_type: listingData.listing_type || 'sale',
           condition: listingData.condition || 'Good',
-          campus: listingData.location || 'Main Campus'
+          campus: listingData.location || 'Main Campus',
+          quantity: listingData.quantity ?? 1
         });
 
         const primaryImage = listingData.listing_images?.find((img) => img.is_primary) || listingData.listing_images?.[0];
@@ -252,27 +261,33 @@ const CreateListing = () => {
     e.preventDefault();
 
     if (!imageFile && !existingImageUrl) {
-      window.alert('Please add a picture!');
+      notifyError('Please add a picture!');
       return;
     }
 
     if (!formData.category_id) {
-      window.alert('Please select a category!');
+      notifyError('Please select a category!');
       return;
     }
 
     if (!formData.title.trim()) {
-      window.alert('Please enter a title!');
+      notifyError('Please enter a title!');
       return;
     }
 
     if (!formData.description.trim()) {
-      window.alert('Please add details about your item!');
+      notifyError('Please add details about your item!');
       return;
     }
 
     if (!formData.price || Number(formData.price) <= 0) {
-      window.alert('Please enter a valid price!');
+      notifyError('Please enter a valid price!');
+      return;
+    }
+
+    const resolvedQuantity = Math.max(0, parseInt(formData.quantity, 10) || 0);
+    if (!isEditMode && resolvedQuantity < 1) {
+      notifyError('Please enter a quantity of at least 1.');
       return;
     }
 
@@ -291,7 +306,8 @@ const CreateListing = () => {
         listing_type: formData.listing_type,
         condition: formData.condition,
         location: formData.campus,
-        status: 'active'
+        quantity: resolvedQuantity,
+        status: resolvedQuantity > 0 ? 'active' : 'sold_out'
       };
       const listingPayload = isEditMode ? listingPayloadBase : { ...listingPayloadBase, seller_id: user.id };
 
@@ -340,7 +356,7 @@ const CreateListing = () => {
           await uploadImage(user.id, resolvedListingId);
         }
 
-        window.alert('Listing updated successfully!');
+        notifySuccess('Listing updated successfully!');
         navigate('/my-listings');
         return;
       }
@@ -354,10 +370,10 @@ const CreateListing = () => {
       if (listingError || !listing?.id) throw listingError || new Error('Listing creation failed.');
 
       await uploadImage(user.id, listing.id);
-      window.alert('Listing Posted successfully!');
+      notifySuccess('Listing Posted successfully!');
       navigate('/dashboard/student');
     } catch (err) {
-      window.alert(`Error: ${err?.message || 'Something went wrong.'}`);
+      notifyError(`Error: ${err?.message || 'Something went wrong.'}`);
     } finally {
       setLoading(false);
     }
@@ -474,6 +490,28 @@ const CreateListing = () => {
                   </div>
                 )}
                 {isFetchingSuggestion && <p className="fetching-text">Calculating market data...</p>}
+              </article>
+
+              <article className="input-field">
+                <label>Quantity</label>
+                <input
+                  type="number"
+                  placeholder="1"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                  min="0"
+                  step="1"
+                />
+                {isEditMode && Number(formData.quantity) === 0 && (
+                  <small style={{ color: '#e63946', marginTop: '4px', display: 'block' }}>
+                    Setting quantity to 0 will mark this listing as sold out.
+                  </small>
+                )}
+                {isEditMode && Number(formData.quantity) > 0 && (
+                  <small style={{ color: '#2ecc71', marginTop: '4px', display: 'block' }}>
+                    Setting quantity &gt; 0 will reactivate a sold-out listing.
+                  </small>
+                )}
               </article>
 
               <article className="input-field">

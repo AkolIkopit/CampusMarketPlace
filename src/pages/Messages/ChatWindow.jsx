@@ -1,3 +1,10 @@
+/*
+Module: ChatWindow.jsx
+Purpose: Main chat area showing messages for a conversation and action buttons.
+Units: message list rendering, date grouping, action controls (accept/decline/payment), composer
+Flow: Renders messages, groups by date, shows transactional controls and uses `MessageInput` to send messages.
+*/
+
 import MessageInput from "./MessagesInput.jsx";
 import styles from "./Messages.module.css";
 

@@ -1,3 +1,9 @@
+/*
+Module: BookingRequest.jsx
+Purpose: Booking creation UI for scheduled pickups/dropoffs at trade facility.
+Units: date/time selection, validation, submission to booking backend
+Flow: Collects booking details and inserts booking record; used in transaction workflows.
+*/
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
@@ -220,12 +226,16 @@ function BookingRequest() {
           // Removed unused activeBuyerId variable
       setSeller(sellerData);
 
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
       const { data: slotRows, error: slotError } = await supabase
         .from("trade_slots")
         .select("id, campus_name, start_time, end_time, max_capacity, current_bookings, is_active")
         .eq("campus_name", listingData.location || sellerData.campus || "Main Campus")
         .eq("is_active", true)
         .gte("end_time", new Date().toISOString())
+        .lte("start_time", sevenDaysFromNow.toISOString())
         .order("start_time", { ascending: true });
 
       if (slotError) {
@@ -312,10 +322,20 @@ function BookingRequest() {
 
         if (updateError) throw updateError;
 
-        await supabase
+        const { data: freshCollectionSlot } = await supabase
           .from("trade_slots")
-          .update({ current_bookings: selectedSlot.booked + 1 })
+          .select("current_bookings")
+          .eq("id", selectedSlot.tradeSlotId)
+          .maybeSingle();
+
+        const { error: collectionSlotUpdateError } = await supabase
+          .from("trade_slots")
+          .update({ current_bookings: (freshCollectionSlot?.current_bookings || 0) + 1 })
           .eq("id", selectedSlot.tradeSlotId);
+
+        if (collectionSlotUpdateError) {
+          console.error("Failed to update slot count:", collectionSlotUpdateError);
+        }
 
         const buyerName = await getProfileName(currentUserId, "The buyer");
         const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot.label}.`;
@@ -385,10 +405,20 @@ function BookingRequest() {
 
       if (insertError) throw insertError;
 
-      await supabase
+      const { data: freshDropoffSlot } = await supabase
         .from("trade_slots")
-        .update({ current_bookings: selectedSlot.booked + 1 })
+        .select("current_bookings")
+        .eq("id", selectedSlot.tradeSlotId)
+        .maybeSingle();
+
+      const { error: dropoffSlotUpdateError } = await supabase
+        .from("trade_slots")
+        .update({ current_bookings: (freshDropoffSlot?.current_bookings || 0) + 1 })
         .eq("id", selectedSlot.tradeSlotId);
+
+      if (dropoffSlotUpdateError) {
+        console.error("Failed to update slot count:", dropoffSlotUpdateError);
+      }
 
       if (transactionId) {
         await supabase
@@ -555,7 +585,7 @@ function BookingRequest() {
                     </option>
                   ) : availableSlots.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {option.label} ({option.capacity - option.booked} spaces left)
+                      {option.label}
                     </option>
                   ))}
                 </select>

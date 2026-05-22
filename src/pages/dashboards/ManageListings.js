@@ -1,10 +1,19 @@
+/*
+Module: ManageListings.js
+Purpose: Admin tool for reviewing and moderating listings.
+Units: listings table, search/filter controls, moderation actions
+Flow: Fetches listings and exposes approve/reject or edit actions for admins.
+*/
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { notifySuccess } from '../../toast';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Trash2, Flag, CheckCircle, 
   Search, User, MessageSquare, X, Info, AlertTriangle 
 } from 'lucide-react';
+import toast from 'react-hot-toast'; // --- NEW IMPORT ---
 import LoadingScreen from '../../components/LoadingScreen';
 import './ManageListings.css';
 
@@ -21,14 +30,14 @@ export default function ManageListings() {
 
   // Form & Action States
   const [expandedId, setExpandedId] = useState(null);
-  const [actionType, setActionType] = useState(null); // 'flag' or 'delete'
+  const [actionType, setActionType] = useState(null); 
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
   
   // Detail & Audit States
   const [showAuditId, setShowAuditId] = useState(null);
-  const [auditDetails, setAuditDetails] = useState({}); // Stores Admin Name + Reason for flagged items
-  const [studentAppeals, setStudentAppeals] = useState({}); // Stores messages from students
+  const [auditDetails, setAuditDetails] = useState({}); 
+  const [studentAppeals, setStudentAppeals] = useState({}); 
   
   // Custom Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState({ 
@@ -49,7 +58,6 @@ export default function ManageListings() {
     setExpandedId(null);
     setShowAuditId(null);
 
-    // 1. Fetch Listings based on status
     const { data: listingsData, error: listingsError } = await supabase
       .from('listings')
       .select(`
@@ -62,15 +70,14 @@ export default function ManageListings() {
 
     if (listingsError) {
       console.error("Error fetching listings:", listingsError);
+      toast.error("Failed to sync marketplace data.");
     } else {
       setListings(listingsData || []);
 
-      // 2. If we are in the Flagged tab, fetch the "Who flagged this" info and student appeals
       if (currentTab === 'flagged' && listingsData?.length > 0) {
         const itemIds = listingsData.map(item => item.id);
         const sellerIds = listingsData.map(item => item.seller_id);
 
-        // Fetch Moderation Logs to see which Admin did the flagging
         const { data: logs } = await supabase
           .from('moderation_logs')
           .select('target_id, reason_category, extra_description, profiles:admin_id(full_name)')
@@ -87,7 +94,6 @@ export default function ManageListings() {
         });
         setAuditDetails(logMap);
 
-        // Fetch Student Appeals
         const { data: appeals } = await supabase
           .from('appeals')
           .select('user_id, student_explanation')
@@ -103,7 +109,6 @@ export default function ManageListings() {
     setLoading(false);
   };
 
-  // Helper to keep tab numbers updated
   const updateTabCounts = async () => {
     const { count: activeCount } = await supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'active');
     const { count: flaggedCount } = await supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'flagged');
@@ -111,7 +116,6 @@ export default function ManageListings() {
     setFlaggedTotal(flaggedCount || 0);
   };
 
-  // Logic to handle 4 flags -> Auto Suspension
   const checkAutoSuspension = async (sellerId, sellerName) => {
     const { count } = await supabase
       .from('listings')
@@ -128,7 +132,12 @@ export default function ManageListings() {
         })
         .eq('id', sellerId);
       
-      if (!error) alert(`Suspension Triggered: ${sellerName} has been locked out of the dashboard.`);
+      if (!error) {
+          toast.error(`User ${sellerName} has been automatically suspended!`, {
+              duration: 6000,
+              icon: '🚨'
+          });
+      }
     }
   };
 
@@ -143,7 +152,6 @@ export default function ManageListings() {
     setDescription("");
   };
 
-  // Opens our custom Confirmation Card
   const openConfirmModal = (item, type) => {
     setConfirmModal({
       show: true,
@@ -153,47 +161,60 @@ export default function ManageListings() {
     });
   };
 
+  // --- UPDATED WITH TOAST LOGIC ---
   const executeAction = async () => {
     const { item, type } = confirmModal;
     const { data: { user: admin } } = await supabase.auth.getUser();
 
-    // 1. Log to Moderation History (Ghost Record for Analytics)
-    if (type !== 'restore') {
-        await supabase.from('moderation_logs').insert([{
-            admin_id: admin.id,
-            target_id: item.id,
-            target_type: 'listing',
-            target_name: item.title,
-            action_taken: type === 'flag' ? 'flagged' : 'deleted',
-            reason_category: reason || "Standard Restoration",
-            extra_description: description || "No additional notes."
-        }]);
-    }
+    // Start loading toast
+    const modToast = toast.loading(`${type === 'flag' ? 'Flagging' : type === 'delete' ? 'Deleting' : 'Restoring'} item...`);
 
-    // 2. Perform Database Update
-    if (type === 'flag') {
-        await supabase.from('listings').update({ 
-            status: 'flagged',
-            flag_reason: reason,
-            flag_details: description
-        }).eq('id', item.id);
-        await checkAutoSuspension(item.seller_id, item.profiles?.full_name);
-    } 
-    else if (type === 'delete') {
-        await supabase.from('listings').delete().eq('id', item.id);
-    } 
-    else if (type === 'restore') {
-        await supabase.from('listings').update({ 
-            status: 'active', 
-            flag_reason: null, 
-            flag_details: null 
-        }).eq('id', item.id);
-    }
+    try {
+        // 1. Log to Moderation History
+        if (type !== 'restore') {
+            const { error: logErr } = await supabase.from('moderation_logs').insert([{
+                admin_id: admin.id,
+                target_id: item.id,
+                target_type: 'listing',
+                target_name: item.title,
+                action_taken: type === 'flag' ? 'flagged' : 'deleted',
+                reason_category: reason || "Standard Action",
+                extra_description: description || "Manual override."
+            }]);
+            if (logErr) throw logErr;
+        }
 
-    setConfirmModal({ show: false });
-    setExpandedId(null);
-    fetchData();
-    updateTabCounts();
+        // 2. Perform Database Update
+        if (type === 'flag') {
+            const { error: flagErr } = await supabase.from('listings').update({ 
+                status: 'flagged', flag_reason: reason, flag_details: description
+            }).eq('id', item.id);
+            if (flagErr) throw flagErr;
+            await checkAutoSuspension(item.seller_id, item.profiles?.full_name);
+        } 
+        else if (type === 'delete') {
+            const { error: delErr } = await supabase.from('listings').delete().eq('id', item.id);
+            if (delErr) throw delErr;
+        } 
+        else if (type === 'restore') {
+            const { error: resErr } = await supabase.from('listings').update({ 
+                status: 'active', flag_reason: null, flag_details: null 
+            }).eq('id', item.id);
+            if (resErr) throw resErr;
+        }
+
+        // Finalize Toast
+        toast.success(`Listing successfully ${type === 'flag' ? 'flagged' : type === 'delete' ? 'deleted' : 'restored'}.`, {
+            id: modToast
+        });
+
+        setConfirmModal({ show: false });
+        setExpandedId(null);
+        fetchData();
+        updateTabCounts();
+    } catch (err) {
+        toast.error(`Moderation failed: ${err.message}`, { id: modToast });
+    }
   };
 
   if (loading) return <LoadingScreen />;
@@ -219,7 +240,7 @@ export default function ManageListings() {
 
           <div className="admin-search-giant">
              <Search size={22} color="#f0a500" />
-             <input type="text" placeholder="Search moderation history..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+             <input type="text" placeholder="Search items or sellers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </nav>
       </header>
@@ -233,7 +254,6 @@ export default function ManageListings() {
               <article key={item.id} className={`mod-card-white ${expandedId === item.id ? 'active-expansion' : ''}`}>
                 
                 <div className="card-main-content">
-                  {/* USER CORNER PIX */}
                   <div className="corner-user-badge">
                       {item.profiles?.avatar_url ? (
                         <img src={item.profiles.avatar_url} className="user-corner-img" alt="User" />
@@ -241,13 +261,10 @@ export default function ManageListings() {
                         <div className="user-corner-icon"><User size={18} /></div>
                       )}
                   </div>
-
                   <img src={item.listing_images?.[0]?.image_url || '/placeholder.jpg'} className="item-thumbnail" alt="" />
-                  
                   <div className="item-details">
                     <div className="info-line">
-                        <span className="label-navy">Username:</span> 
-                        <span className="value-navy">{item.profiles?.full_name}</span>
+                        <span className="label-navy">Username:</span> <span className="value-navy">{item.profiles?.full_name}</span>
                         {item.profiles?.is_suspended && <mark className="suspended-tag">SUSPENDED</mark>}
                     </div>
                     <div className="info-line">
@@ -274,8 +291,8 @@ export default function ManageListings() {
                       <button className="mod-btn-navy" onClick={() => setShowAuditId(showAuditId === item.id ? null : item.id)}>
                         <Info size={18} /> {showAuditId === item.id ? "Hide Details" : "Show Reason"}
                       </button>
-                      <button className="mod-btn-restore" onClick={() => openConfirmModal(item, 'restore')}>
-                        <CheckCircle size={18} /> Restore
+                      <button className="mod-btn-restore" style={{background: '#27ae60', color: 'white', border: 'none', flex: 1, cursor: 'pointer', fontWeight: 'bold'}} onClick={() => openConfirmModal(item, 'restore')}>
+                        Restore
                       </button>
                       <button className="mod-btn-red" onClick={() => toggleExpand(item.id, 'delete')}>
                         Permanent Delete
@@ -284,7 +301,6 @@ export default function ManageListings() {
                   )}
                 </div>
 
-                {/* SHOW REASONS PANEL (Flagged Tab) */}
                 {showAuditId === item.id && (
                     <div className="audit-detail-pane">
                         <div className="audit-row"><strong>Flagged By:</strong> {auditDetails[item.id]?.adminName || "System Moderator"}</div>
@@ -333,10 +349,10 @@ export default function ManageListings() {
         </div>
       </section>
 
-      {/* --- CUSTOM NAVY & ORANGE CONFIRMATION MODAL --- */}
+      {/* --- CUSTOM CONFIRMATION MODAL --- */}
       {confirmModal.show && (
-        <div className="custom-modal-overlay">
-          <div className="confirmation-card">
+        <dialog className="custom-modal-overlay">
+          <article className="confirmation-card">
             <div className="modal-icon-ring"><AlertTriangle color="#f0a500" size={32} /></div>
             <h3>{confirmModal.title}</h3>
             <p>Are you sure you want to proceed with this action on <strong>{confirmModal.item?.title}</strong>?</p>
@@ -344,8 +360,8 @@ export default function ManageListings() {
               <button className="modal-btn-cancel" onClick={() => setConfirmModal({ show: false })}>Cancel</button>
               <button className="modal-btn-confirm" onClick={executeAction}>Confirm Action</button>
             </div>
-          </div>
-        </div>
+          </article>
+        </dialog>
       )}
     </main>
   );
