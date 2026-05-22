@@ -316,10 +316,20 @@ function BookingRequest() {
 
         if (updateError) throw updateError;
 
-        await supabase
+        const { data: freshCollectionSlot } = await supabase
           .from("trade_slots")
-          .update({ current_bookings: selectedSlot.booked + 1 })
+          .select("current_bookings")
+          .eq("id", selectedSlot.tradeSlotId)
+          .maybeSingle();
+
+        const { error: collectionSlotUpdateError } = await supabase
+          .from("trade_slots")
+          .update({ current_bookings: (freshCollectionSlot?.current_bookings || 0) + 1 })
           .eq("id", selectedSlot.tradeSlotId);
+
+        if (collectionSlotUpdateError) {
+          console.error("Failed to update slot count:", collectionSlotUpdateError);
+        }
 
         const buyerName = await getProfileName(currentUserId, "The buyer");
         const notificationText = `${SYSTEM_MESSAGE_PREFIX}${buyerName} booked a collection slot for ${listing.title} at ${selectedSlot.label}.`;
@@ -389,10 +399,20 @@ function BookingRequest() {
 
       if (insertError) throw insertError;
 
-      await supabase
+      const { data: freshDropoffSlot } = await supabase
         .from("trade_slots")
-        .update({ current_bookings: selectedSlot.booked + 1 })
+        .select("current_bookings")
+        .eq("id", selectedSlot.tradeSlotId)
+        .maybeSingle();
+
+      const { error: dropoffSlotUpdateError } = await supabase
+        .from("trade_slots")
+        .update({ current_bookings: (freshDropoffSlot?.current_bookings || 0) + 1 })
         .eq("id", selectedSlot.tradeSlotId);
+
+      if (dropoffSlotUpdateError) {
+        console.error("Failed to update slot count:", dropoffSlotUpdateError);
+      }
 
       if (transactionId) {
         await supabase

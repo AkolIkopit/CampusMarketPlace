@@ -72,16 +72,25 @@ const Analytics = () => {
       dLogs?.forEach(log => { dMap[log.reason_category] = (dMap[log.reason_category] || 0) + 1; });
       setDeleteReasons(Object.keys(dMap).map(key => ({ reason: key, count: dMap[key] })));
 
-      // 5. Facility Usage Logic (As requested: Monday 9 available, 1 reserved)
-      setTradeUtilization([
-        { day: 'Sun', available: 10, reserved: 0 },
-        { day: 'Mon', available: 9, reserved: 1 },
-        { day: 'Tue', available: 10, reserved: 0 },
-        { day: 'Wed', available: 10, reserved: 0 },
-        { day: 'Thu', available: 10, reserved: 0 },
-        { day: 'Fri', available: 10, reserved: 0 },
-        { day: 'Sat', available: 10, reserved: 0 },
-      ]);
+      // 5. Facility Usage - aggregate live slot data by day of week
+      const { data: slotRows } = await supabase
+        .from('trade_slots')
+        .select('start_time, max_capacity, current_bookings');
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayMap = {};
+      dayNames.forEach(d => { dayMap[d] = { available: 0, reserved: 0 }; });
+
+      slotRows?.forEach(slot => {
+        const day = dayNames[new Date(slot.start_time).getDay()];
+        if (!day) return;
+        const reserved = Number(slot.current_bookings || 0);
+        const available = Math.max(0, Number(slot.max_capacity || 0) - reserved);
+        dayMap[day].reserved += reserved;
+        dayMap[day].available += available;
+      });
+
+      setTradeUtilization(dayNames.map(d => ({ day: d, ...dayMap[d] })));
 
       // 6. Completed transactions over time
       const { data: completedBookings } = await supabase

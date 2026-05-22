@@ -265,6 +265,8 @@ console.log("Transaction payload:", JSON.stringify(payload, null, 2));
   const listingType = (listing.listing_type || 'either').toLowerCase();
   const allowsSale = listingType === 'sale' || listingType === 'either';
   const allowsTrade = listingType === 'trade' || listingType === 'either';
+  const isSoldOut = listing.status === 'sold_out' || Number(listing.quantity) === 0;
+  const quantityAvailable = listing.quantity != null ? Number(listing.quantity) : null;
 
   return (
     <main className="listing-detail-page">
@@ -291,8 +293,12 @@ console.log("Transaction payload:", JSON.stringify(payload, null, 2));
           <section className="detail-content">
             <header className="product-header">
               <mark className="product-category-tag">{listing.categories.name}</mark>
+              {isSoldOut && <mark className="sold-out-badge">SOLD OUT</mark>}
               <h1>{listing.title}</h1>
               <p className="product-price">R {listing.price}</p>
+              {!isSoldOut && quantityAvailable !== null && (
+                <p className="quantity-available">{quantityAvailable} available</p>
+              )}
             </header>
             
             <article className="product-description">
@@ -314,19 +320,24 @@ console.log("Transaction payload:", JSON.stringify(payload, null, 2));
               </header>
               
               <footer className="purchase-actions multi-action">
+                {isSoldOut && (
+                  <p className="sold-out-action-notice">This item is currently sold out and cannot be purchased.</p>
+                )}
                 {allowsSale ? (
                   <>
                     <button
                       className="buy-now-btn"
                       onClick={() => handleTransactionIntent('buy')}
-                      disabled={isOwnListing}
+                      disabled={isOwnListing || isSoldOut}
+                      title={isSoldOut ? 'This listing is sold out' : undefined}
                     >
                       Buy Now
                     </button>
                     <button
                       className="make-offer-btn"
                       onClick={() => handleTransactionIntent('offer')}
-                      disabled={isOwnListing}
+                      disabled={isOwnListing || isSoldOut}
+                      title={isSoldOut ? 'This listing is sold out' : undefined}
                     >
                       Make Offer
                     </button>
@@ -336,7 +347,8 @@ console.log("Transaction payload:", JSON.stringify(payload, null, 2));
                   <button
                     className="request-trade-btn"
                     onClick={() => handleTransactionIntent('trade')}
-                    disabled={isOwnListing}
+                    disabled={isOwnListing || isSoldOut}
+                    title={isSoldOut ? 'This listing is sold out' : undefined}
                   >
                     Request Trade
                   </button>

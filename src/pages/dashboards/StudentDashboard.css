@@ -77,6 +77,9 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 
 .campus-badge { position: absolute; bottom: 10px; left: 10px; background: rgba(10, 25, 47, 0.85); color: white; padding: 4px 10px; border-radius: 12px; display: flex; align-items: center; gap: 5px; }
 .campus-badge p { font-size: 0.6rem; font-weight: 700; margin: 0; }
+.listing-card-sold-out { opacity: 0.8; }
+.listing-card-sold-out:hover { border-color: #e63946 !important; }
+.sold-out-overlay-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(230, 57, 70, 0.92); color: #fff; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; padding: 6px 14px; border-radius: 8px; pointer-events: none; z-index: 2; white-space: nowrap; }
 
 /* --- 5. FILTERS & SIDEBAR --- */
 .market-layout { display: grid; grid-template-columns: 260px 1fr; gap: 40px; padding: 40px 10%; max-width: 1600px; margin: 0 auto; position: relative; z-index: 1; }
