@@ -5,6 +5,13 @@ import { notifyError, notifySuccess } from '../toast';
 import { ArrowLeft, Trash2, Loader2, PackageOpen, User, MessageSquare, Edit3 } from 'lucide-react';
 import './MyListings.css';
 
+/*
+Module: MyListings.js
+Purpose: Page for users to view and manage their own listings.
+Units: data fetch for user's listings, listing cards, actions (edit/delete)
+Flow: Loads user's listings on mount and provides UI to navigate to edit/create flows.
+*/
+
 const MyListings = () => {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);
@@ -186,8 +193,8 @@ const MyListings = () => {
       )}
 
       {pendingDelete && (
-        <div className="delete-confirm-backdrop" onClick={cancelDelete}>
-          <div className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
+        <dialog className="delete-confirm-backdrop" onClick={cancelDelete}>
+          <article className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
             <h2>Confirm delete</h2>
             <p>Are you sure you want to delete "{pendingDelete.title}" permanently?</p>
             <div className="delete-confirm-actions">
@@ -196,8 +203,8 @@ const MyListings = () => {
                 {deleteLoading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
-          </div>
-        </div>
+          </article>
+        </dialog>
       )}
     </main>
   );

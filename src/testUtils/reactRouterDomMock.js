@@ -1,3 +1,11 @@
+/*
+Module: reactRouterDomMock.js
+Purpose: Test utilities to mock `react-router-dom` navigation and params for unit tests.
+Units: mocked router components and helper setters/resetters for `navigate`, `params`, `location`, and `searchParams`.
+Flow: Exports lightweight replacements for router hooks/components and imperatively-updatable
+  functions tests call to simulate navigation and routing state.
+*/
+
 const React = require('react');
 
 let navigateMock = jest.fn();

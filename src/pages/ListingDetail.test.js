@@ -1,3 +1,12 @@
+/*
+Test: ListingDetail.test.js
+Purpose: Unit tests for `ListingDetail` page covering rendering, interactions, and DB flows.
+Units: helper mock builders, supabase mocks, router mocks, multiple `it` cases validating
+   listing rendering, transactions, messaging navigation, review submission and UI toggles.
+Flow: sets up mocked Supabase responses, mounts the component under test, asserts UI and
+  side-effect behavior such as inserts and navigation.
+*/
+
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ListingDetail from './ListingDetail';

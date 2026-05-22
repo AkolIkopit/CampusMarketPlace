@@ -1,3 +1,9 @@
+/*
+Module: CreateListing.js
+Purpose: Page to create or edit a listing with form inputs and image uploads.
+Units: form fields, image upload logic, category selection, submit handler
+Flow: Collects listing information and sends to Supabase to insert/update listing.
+*/
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Loader2, Lightbulb } from 'lucide-react';

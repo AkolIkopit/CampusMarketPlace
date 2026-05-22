@@ -1,3 +1,10 @@
+/*
+Module: LoadingScreen.js
+Purpose: Presentational loading component shown while async data loads.
+Units: CSS import and `LoadingScreen` functional component
+Flow: Renders decorative background and simple loading animation used by `App` and routes.
+*/
+
 import React from 'react';
 import './LoadingScreen.css';
 

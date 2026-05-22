@@ -1,3 +1,9 @@
+/*
+Module: StudentDashboard.js
+Purpose: Student-facing dashboard showing personal listings, bookings and shortcuts.
+Units: summary tiles, recent activity, quick links to create/listings/messages
+Flow: Loads user-specific data and displays dashboard widgets and navigation.
+*/
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabase';

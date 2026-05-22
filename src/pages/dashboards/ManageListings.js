@@ -1,3 +1,10 @@
+/*
+Module: ManageListings.js
+Purpose: Admin tool for reviewing and moderating listings.
+Units: listings table, search/filter controls, moderation actions
+Flow: Fetches listings and exposes approve/reject or edit actions for admins.
+*/
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { notifySuccess } from '../../toast';
@@ -344,8 +351,8 @@ export default function ManageListings() {
 
       {/* --- CUSTOM CONFIRMATION MODAL --- */}
       {confirmModal.show && (
-        <div className="custom-modal-overlay">
-          <div className="confirmation-card">
+        <dialog className="custom-modal-overlay">
+          <article className="confirmation-card">
             <div className="modal-icon-ring"><AlertTriangle color="#f0a500" size={32} /></div>
             <h3>{confirmModal.title}</h3>
             <p>Are you sure you want to proceed with this action on <strong>{confirmModal.item?.title}</strong>?</p>
@@ -353,8 +360,8 @@ export default function ManageListings() {
               <button className="modal-btn-cancel" onClick={() => setConfirmModal({ show: false })}>Cancel</button>
               <button className="modal-btn-confirm" onClick={executeAction}>Confirm Action</button>
             </div>
-          </div>
-        </div>
+          </article>
+        </dialog>
       )}
     </main>
   );

@@ -1,3 +1,9 @@
+/*
+Module: AdminDashboard.js
+Purpose: Admin-facing dashboard aggregating management tools (users, listings, analytics).
+Units: admin widgets, navigation to sub-pages, summary stats
+Flow: Fetches admin data and routes to management pages and tools.
+*/
 import React, { useState } from "react";
 import "./AdminDashboard.css";
 import { useNavigate } from "react-router-dom";

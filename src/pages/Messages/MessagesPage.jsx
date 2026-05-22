@@ -1,3 +1,10 @@
+/*
+Module: MessagesPage.jsx
+Purpose: Messaging UI composing conversation list and chat window.
+Units: ConversationList, ChatWindow, helpers for formatting and attachment handling
+Flow: Loads conversations and messages, selects active thread, and renders chat components.
+*/
+
 import ConversationList from "./ConversationList.jsx";
 import ChatWindow from "./ChatWindow.jsx";
 import { useCallback, useEffect, useMemo, useState } from "react";

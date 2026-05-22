@@ -1,5 +1,12 @@
 
 
+/*
+Module: ConversationList.jsx
+Purpose: Left-hand conversation list showing recent threads and unread counts.
+Units: conversation rendering, selection callbacks, timestamp formatting helpers
+Flow: Receives conversation data and exposes selection handlers used by `MessagesPage`.
+*/
+
 import styles from "./Messages.module.css";
 
 // Fallback used only when profile avatar_url is empty.

@@ -8,6 +8,13 @@ import { supabase } from "../../supabase";
 import { notifyError, notifySuccess } from "../../toast";
 import "./MarketTrades.css";
 
+/*
+Module: MarketTrades.js
+Purpose: Staff-facing view for marketplace trade operations and reconciliations.
+Units: trade listings, booking/payment controls, filters
+Flow: Displays current trades and provides staff actions for processing handovers.
+*/
+
 export default function MarketTrades() {
 
   const [pendingTrades, setPendingTrades] = useState([]);
@@ -314,8 +321,8 @@ export default function MarketTrades() {
       </section>
 
       {pendingClaim && (
-        <div className="delete-confirm-backdrop" onClick={cancelClaim}>
-          <div className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
+        <dialog className="delete-confirm-backdrop" onClick={cancelClaim}>
+          <article className="delete-confirm-card" onClick={(event) => event.stopPropagation()}>
             <h2>Confirm assignment</h2>
             <p>Do you want to take responsibility for "{pendingClaim.listings?.title || 'this trade'}"?</p>
             <div className="delete-confirm-actions">
@@ -324,8 +331,8 @@ export default function MarketTrades() {
                 {claimLoading ? 'Assigning...' : 'Confirm'}
               </button>
             </div>
-          </div>
-        </div>
+          </article>
+        </dialog>
       )}
     </main>
   );

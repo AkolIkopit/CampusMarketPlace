@@ -1,3 +1,11 @@
+/*
+Module: ListingDetail.js
+Purpose: Display a single listing with images, seller info, reviews and transaction actions.
+Units: data fetch (listing, reviews), review form, transaction creation, UI state (modals, loading)
+Flow: on mount fetches listing and reviews, determines review eligibility, provides handlers
+  to post reviews, create transactions (sale/offer/trade), and navigate to messaging.
+*/
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabase';

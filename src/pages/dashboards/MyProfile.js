@@ -1,3 +1,10 @@
+/*
+Module: MyProfile.js
+Purpose: Displays a user's profile and related transactions/bookings inside dashboard.
+Units: profile view, transactions/history, role application state, staff schedule UI
+Flow: Loads profile-related data and renders sections for edits, orders, and role applications.
+*/
+
 import React, { useState, useEffect } from 'react';
 import { 
   Phone, Star, ShieldCheck, Briefcase, Edit3, 

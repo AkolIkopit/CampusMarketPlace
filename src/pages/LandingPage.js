@@ -1,3 +1,10 @@
+/*
+Module: LandingPage.js
+Purpose: Public landing page shown to unauthenticated users.
+Units: hero, categories, stats, how-it-works sections and navigation CTA
+Flow: Presents discovery features and links to browse or authenticate.
+*/
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
@@ -82,14 +89,14 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="landing">
+    <main className="landing">
       <nav className="nav anim-fade-in">
         <div className="nav-logo">
           <span className="nav-logo-mark"><img src="/UniMartlogo.png" alt="UniMart logo" /></span>
           <span className="nav-logo-text">UniMart</span>
         </div>
 
-        <div className="nav-links">
+        <nav className="nav-links">
           <a href="#how-it-works">How it works</a>
           <a href="#categories">Browse</a>
           <button className="btn-nav-ghost" onClick={() => openAuth("login")}>
@@ -98,7 +105,7 @@ const LandingPage = () => {
           <button className="btn-nav-primary" onClick={() => openAuth("signup")}>
             Sign up free
           </button>
-        </div>
+        </nav>
 
         <button
           type="button"
@@ -113,8 +120,8 @@ const LandingPage = () => {
         </button>
       </nav>
 
-      <div className={`mobile-menu ${isMenuOpen ? "open" : ""}`}>
-        <div className="mobile-menu-panel">
+      <aside className={`mobile-menu ${isMenuOpen ? "open" : ""}`}>
+        <nav className="mobile-menu-panel">
           <a href="#how-it-works" onClick={closeMenu}>
             How it works
           </a>
@@ -127,10 +134,10 @@ const LandingPage = () => {
           <button className="btn-nav-primary mobile-menu-btn" onClick={() => openAuth("signup")}>
             Sign up free
           </button>
-        </div>
-      </div>
+        </nav>
+      </aside>
 
-      <section className="hero">
+      <header className="hero">
         <div className="hero-bg-grid" aria-hidden="true" />
         <div className="hero-blob hero-blob-1" aria-hidden="true" />
         <div className="hero-blob hero-blob-2" aria-hidden="true" />
@@ -202,7 +209,7 @@ const LandingPage = () => {
             Secure campus trade hub
           </div>
         </div>
-      </section>
+      </header>
 
       <section className="cta-banner">
         <div className="cta-inner">
@@ -234,7 +241,7 @@ const LandingPage = () => {
       </div>
 
       <section className="section categories-section" id="categories">
-        <div className="section-label">Browse categories</div>
+        <header className="section-label">Browse categories</header>
         <h2 className="section-title">
           Everything a student
           <br />
@@ -258,7 +265,7 @@ const LandingPage = () => {
       <section className="section how-section" id="how-it-works">
         <div className="how-inner">
           <div className="how-left">
-            <div className="section-label light">How it works</div>
+            <header className="section-label light">How it works</header>
             <h2 className="section-title light">
               Four steps
               <br />
@@ -277,17 +284,17 @@ const LandingPage = () => {
           </div>
           <div className="how-right">
             {howItWorks.map((step, index) => (
-              <div
+              <article
                 key={step.step}
                 className="step-card"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="step-number">{step.step}</div>
-                <div className="step-body">
+                <article className="step-body">
                   <h3 className="step-title">{step.title}</h3>
                   <p className="step-text">{step.body}</p>
-                </div>
-              </div>
+                </article>
+              </article>
             ))}
           </div>
         </div>
@@ -304,7 +311,7 @@ const LandingPage = () => {
           </p>
         </div>
       </footer>
-    </div>
+    </main>
   );
 };
 

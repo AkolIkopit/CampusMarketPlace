@@ -1,3 +1,11 @@
+/*
+Module: auth.js
+Purpose: Small auth helpers for role normalization and preserving auth intent.
+Units: ROLE_OPTIONS, normalizeRole, getRoleLabel, getDefaultFullName, save/read/clearAuthIntent
+Flow: Provides utilities to normalize roles, derive display labels/names, and persist temporary
+  sign-in/up intent in localStorage for cross-page flows.
+*/
+
 export const ROLE_OPTIONS = [
   { label: "Student", value: "student" },
   { label: "Trade Facility Staff", value: "staff" },

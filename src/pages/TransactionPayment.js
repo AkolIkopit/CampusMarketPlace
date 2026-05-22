@@ -1,3 +1,10 @@
+/*
+Module: TransactionPayment.js
+Purpose: Handles payment flow for a transaction (payment form + redirect/confirmation).
+Units: UI form, payment submission logic, success/cancel handling.
+Flow: Renders transaction payment UI and coordinates with backend/payment gateway to complete payments.
+*/
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";

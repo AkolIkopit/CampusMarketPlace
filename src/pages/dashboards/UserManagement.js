@@ -1,3 +1,9 @@
+/*
+Module: UserManagement.js
+Purpose: Admin interface to view and manage user accounts and roles.
+Units: user table, role assignment, suspension actions
+Flow: Fetches users and exposes management actions for admins.
+*/
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 import { notifyError, notifySuccess } from '../../toast';

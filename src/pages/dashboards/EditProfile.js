@@ -4,6 +4,13 @@ import { notifyError, notifySuccess } from '../../toast';
 import { Camera, User, Phone, Book, MapPin, Save, X, Loader2 } from 'lucide-react';
 import './EditProfile.css';
 
+/*
+Module: EditProfile.js
+Purpose: User profile editing page within dashboard (update name, avatar, campus).
+Units: form state, avatar upload, submit handler, validation
+Flow: Loads profile, allows edits, and updates Supabase profiles table on submit.
+*/
+
 const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -68,7 +75,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
   };
 
   return (
-    <div className="ep-workspace">
+    <main className="ep-workspace">
       <div className="ep-card">
         <header className="ep-header">
           <h2>Edit My Profile</h2>
@@ -144,7 +151,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
           </footer>
         </form>
       </div>
-    </div>
+    </main>
   );
 };
 

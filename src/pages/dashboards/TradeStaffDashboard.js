@@ -1,3 +1,9 @@
+/*
+Module: TradeStaffDashboard.js
+Purpose: Dashboard for trade facility staff with tools and task list.
+Units: quick actions, reporting, handover tasks
+Flow: Presents staff-specific controls and navigates to work pages.
+*/
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 

@@ -1,3 +1,10 @@
+/*
+Module: MakeOfferModal.jsx
+Purpose: Reusable modal for making offers or requesting trades on a listing.
+Units: form state (amount, tradeItem, cashAmount), validation and submit handler
+Flow: Resets state when listing/type change, validates input and calls `onSubmit` prop.
+*/
+
 import React, { useEffect, useState } from 'react';
 import { X, Banknote, Package } from 'lucide-react';
 
@@ -20,8 +27,8 @@ const MakeOfferModal = ({ type, listing, visible, onClose, onSubmit, loading, er
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal-content">
+    <dialog className="modal-backdrop" role="dialog" aria-modal="true">
+      <article className="modal-content">
         <header className="modal-header">
           <div>
             <h2>{type === 'offer' ? 'Make an Offer' : 'Request a Trade'}</h2>
@@ -98,8 +105,8 @@ const MakeOfferModal = ({ type, listing, visible, onClose, onSubmit, loading, er
             </button>
           </footer>
         </form>
-      </div>
-    </div>
+      </article>
+    </dialog>
   );
 };
 
