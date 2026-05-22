@@ -114,12 +114,20 @@
   height: 180px;
   position: relative;
   margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
 }
 
 .listing-img-box img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
 }
 
 .delete-btn {
@@ -139,6 +147,30 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
   transition: all 0.2s ease;
   z-index: 10; /* Keeps it above the card click area */
+}
+
+.edit-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: #0f6d66;
+  color: white;
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.edit-btn:hover {
+  transform: scale(1.15);
+  background: #0b514b;
 }
 
 .delete-btn:hover {
@@ -177,6 +209,31 @@
   color: #0a192f;
   font-style: italic;
   margin: 0;
+}
+
+.listing-qty-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2ecc71;
+  margin: 3px 0 0;
+}
+
+.my-listing-sold-out-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(230, 57, 70, 0.9);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 16px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
 }
 
 /* --- 6. COMPACT REVIEWS LIST --- */
@@ -312,8 +369,91 @@
   to { transform: rotate(360deg); }
 }
 
-/* Responsive adjustments */
+/* ── Mobile Responsive ─────────────────────────────────── */
 @media (max-width: 768px) {
-  .my-listings-page { padding: 30px 5%; }
-  .page-header h1 { font-size: 2.2rem; }
+  .my-listings-page { padding: 20px 5%; }
+  .page-header h1 { font-size: 2rem; }
+  .page-header p { font-size: 0.95rem; }
+  .my-listings-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+}
+
+@media (max-width: 540px) {
+  .my-listings-page { padding: 16px 4%; }
+  .page-header h1 { font-size: 1.7rem; }
+  .my-listings-grid { grid-template-columns: 1fr; gap: 16px; }
+  .my-listing-card { border-radius: 22px; }
+  .listing-img-box { height: 160px; }
+  .listing-details { padding: 18px; gap: 14px; }
+  .listing-header-main h3 { font-size: 1.1rem; }
+  .listing-price { font-size: 1.15rem; }
+}
+
+@media (max-width: 400px) {
+  .my-listings-page { padding: 14px 3%; }
+}
+
+.delete-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 27, 42, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+
+.delete-confirm-card {
+  width: min(100%, 420px);
+  background: #f7f3ec;
+  border: 1px solid rgba(240, 169, 30, 0.2);
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 24px 80px rgba(13, 27, 42, 0.25);
+  text-align: center;
+}
+
+.delete-confirm-card h2 {
+  margin: 0 0 12px;
+  color: #0d1b2a;
+  font-size: 1.5rem;
+}
+
+.delete-confirm-card p {
+  margin: 0 0 24px;
+  color: #324153;
+  line-height: 1.6;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btn-cancel-delete,
+.btn-confirm-delete {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 24px;
+  font-weight: 800;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.btn-cancel-delete {
+  background: white;
+  color: #0d1b2a;
+  border: 1px solid rgba(13, 27, 42, 0.1);
+}
+
+.btn-confirm-delete {
+  background: #0d1b2a;
+  color: #f0a500;
+}
+
+.btn-confirm-delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

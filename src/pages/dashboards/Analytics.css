@@ -1,0 +1,107 @@
+.analytics-page-container {
+  min-height: 100vh;
+  background: #f6f8fb;
+  font-family: 'Inter', Arial, sans-serif;
+}
+
+.analytics-page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
+  gap: 25px;
+  padding: 30px 40px;
+  position: relative;
+  z-index: 10;
+}
+
+.analytics-chart-card {
+  background: white;
+  border-radius: 24px;
+  padding: 25px;
+  box-shadow: 0 10px 40px rgba(13, 27, 42, 0.06);
+  border: 1px solid rgba(13, 27, 42, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.analytics-chart-card:hover {
+  transform: translateY(-5px);
+}
+
+.full-width-report {
+  grid-column: 1 / -1;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.report-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0d1b2a;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+.export-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.export-btn {
+  padding: 8px;
+  background: #f8f9fa;
+  border: 1.5px solid #eee;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: #0d1b2a;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: #0d1b2a;
+  color: #f0a500;
+  border-color: #0d1b2a;
+}
+
+.back-panel-btn {
+  background: #0d1b2a;
+  color: #f0a500;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity 0.2s;
+}
+
+.back-panel-btn:hover {
+  opacity: 0.9;
+}
+
+/* ── Mobile Responsive ─────────────────────────────────── */
+@media (max-width: 900px) {
+  .analytics-page-grid { grid-template-columns: 1fr; padding: 20px 16px; }
+}
+
+@media (max-width: 600px) {
+  .analytics-page-grid { padding: 14px 12px; gap: 16px; }
+  .analytics-chart-card { padding: 18px 14px; border-radius: 18px; }
+  .report-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .export-btn-group { width: 100%; justify-content: flex-end; }
+  .back-panel-btn { width: 100%; justify-content: center; padding: 12px; }
+}
+
+@media (max-width: 400px) {
+  .analytics-page-grid { padding: 12px 8px; }
+  .analytics-chart-card { padding: 14px 10px; }
+}

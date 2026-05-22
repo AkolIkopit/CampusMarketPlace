@@ -1,7 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../../supabase';
+import { notifyError, notifySuccess } from '../../toast';
 import { Camera, User, Phone, Book, MapPin, Save, X, Loader2 } from 'lucide-react';
 import './EditProfile.css';
+
+/*
+Module: EditProfile.js
+Purpose: User profile editing page within dashboard (update name, avatar, campus).
+Units: form state, avatar upload, submit handler, validation
+Flow: Loads profile, allows edits, and updates Supabase profiles table on submit.
+*/
 
 const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
   const [isSaving, setIsSaving] = useState(false);
@@ -39,7 +47,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setFormData(prev => ({ ...prev, avatar_url: data.publicUrl }));
     } catch (error) {
-      alert('Upload error: ' + error.message);
+      notifyError('Upload error: ' + error.message);
     } finally {
       setIsSaving(false);
     }
@@ -59,15 +67,15 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
 
     setIsSaving(false);
     if (error) {
-      alert(error.message);
+      notifyError(error.message);
     } else {
-      alert("Profile updated successfully!");
+      notifySuccess('Profile updated successfully!');
       onSaveSuccess(formData); // This triggers the reload in the parent
     }
   };
 
   return (
-    <div className="ep-workspace">
+    <main className="ep-workspace">
       <div className="ep-card">
         <header className="ep-header">
           <h2>Edit My Profile</h2>
@@ -143,7 +151,7 @@ const EditProfile = ({ profile, onCancel, onSaveSuccess }) => {
           </footer>
         </form>
       </div>
-    </div>
+    </main>
   );
 };
 

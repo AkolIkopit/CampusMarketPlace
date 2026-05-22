@@ -1,117 +1,290 @@
-import { useEffect, useState } from "react";
+/*
+Module: App.js
+Purpose: Application root, routing, and session/profile lifecycle management.
+Units: fetchProfile, ensureProfile, withTimeout, getDashboardPath, SessionErrorScreen, ProtectedRoute, App component
+Flow: exports helper functions used across the app, defines `ProtectedRoute` for access control,
+      initializes and syncs Supabase session on mount, loads/creates user profiles and provides
+      top-level `Routes` that render pages or dashboards based on session/profile state.
+*/
+
+import ManageListings from "./pages/dashboards/ManageListings";
+import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 import { supabase } from "./supabase";
-import { clearAuthIntent, normalizeRole, readAuthIntent } from "./auth";
-
+import { clearAuthIntent, getDefaultFullName, normalizeRole, readAuthIntent } from "./auth";
+import Analytics from "./pages/dashboards/Analytics";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
+import TransactionPayment from "./pages/TransactionPayment";
+import FacilitySettings from "./pages/dashboards/FacilitySettings";
 // Page Imports
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
-import RolePicker from "./pages/RolePicker";
 import CreateListing from "./pages/CreateListing";
 import ListingDetail from "./pages/ListingDetail";
 import MyListings from "./pages/MyListings";
+import BookingRequest from "./pages/BookingRequest";
+import MessagesPage from "./pages/Messages/MessagesPage";
+import LoadingScreen from "./components/LoadingScreen";
+import RoleApproval from "./pages/dashboards/RoleApproval";
+import { Toaster } from "react-hot-toast";
+import { toastOptions, notifyError } from "./toast";
 
 // Dashboard Imports
 import StudentDashboard from "./pages/dashboards/StudentDashboard";
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import UserManagement from "./pages/dashboards/UserManagement";
+import TradeStaffDashboard from "./pages/dashboards/TradeStaffDashboard";
+import MarketTrades from "./pages/dashboards/MarketTrades";
+import MyTrades from "./pages/dashboards/MyTrades";
+export async function fetchProfile(userId) {
+  const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+  return data || null;
+}
+
+export async function ensureProfile(user) {
+  const existingProfile = await fetchProfile(user.id);
+  const authIntent = readAuthIntent();
+  const provider = user.app_metadata.provider;
+
+  if (existingProfile) {
+    if (existingProfile.is_banned) {
+      await supabase.auth.signOut();
+      notifyError("Your account has been suspended.");
+      return null;
+    }
+
+    clearAuthIntent();
+    return existingProfile;
+  }
+
+  if (provider === 'google' && (!authIntent || authIntent.mode === "login")) {
+    await supabase.auth.signOut();
+    clearAuthIntent();
+    window.location.href = "/auth?mode=login&error=Account+not+found.+Please+sign+up+first.";
+    return null;
+  }
+
+  const fullName = 
+    user?.user_metadata?.full_name || 
+    user?.user_metadata?.name || 
+    user?.user_metadata?.display_name ||
+    getDefaultFullName(user) || "New Student";
+
+  const { data: newProfile, error: insertError } = await supabase
+    .from("profiles")
+    .insert([{
+      id: user.id,
+      full_name: fullName,
+      role: "student",
+      application_status: "approved",
+      requested_role: "student",
+      campus: 'Main Campus' 
+    }])
+    .select("*")
+    .maybeSingle();
+
+  if (insertError && insertError.code === '23505') return fetchProfile(user.id);
+
+  clearAuthIntent();
+  return newProfile;
+}
+
+export function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
+export function getDashboardPath(role, status) {
+  if (status === "pending") return "/waiting-room";
+  if (role === "admin") return "/dashboard/admin";
+  if (role === "staff") return "/dashboard/staff";
+  return "/dashboard/student";
+}
+
+export function SessionErrorScreen({ message }) {
+  return (
+    <main style={{display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#fdfaf5", textAlign: "center", padding: "20px"}}>
+      <h1>Something went wrong</h1>
+      <p>{message}</p>
+      <button onClick={() => supabase.auth.signOut()} style={{marginTop: "20px", padding: "10px 20px", cursor: "pointer"}}>Sign Out</button>
+    </main>
+  );
+}
+
+export function ProtectedRoute({ loading, session, profile, authError, requiredRole, element }) {
+  if (loading) return <LoadingScreen />;
+  if (!session) return <Navigate to="/" replace />;
+  if (authError || !profile) return <SessionErrorScreen message={authError || "We could not load your profile."} />;
+
+  const role = normalizeRole(profile?.role) || "student";
+  const status = profile?.application_status || "approved";
+
+  if (status === "pending") return <Navigate to="/waiting-room" replace />;
+  if (requiredRole && role !== requiredRole) {
+    return <Navigate to={getDashboardPath(role, status)} replace />;
+  }
+
+  return element;
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+
+  // Logic to handle session changes without creating a re-render loop
+  const syncSession = useCallback(async (nextSession) => {
+    setAuthError("");
+    setSession(nextSession);
+
+    if (!nextSession) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    // Optimization: If we already have the correct profile, just stop loading
+    // This is what prevents the tab-switch "freeze"
+    setProfile((currentProfile) => {
+      if (currentProfile && currentProfile.id === nextSession.user.id) {
+        setLoading(false);
+        return currentProfile;
+      }
+      
+      // If no profile or wrong profile, start the fetch
+      setLoading(true);
+      (async () => {
+        try {
+          const animationPromise = new Promise(res => setTimeout(res, 1800));
+          const profilePromise = withTimeout(
+            ensureProfile(nextSession.user),
+            10000,
+            "Timed out while loading your profile."
+          );
+
+          const [nextProfile] = await Promise.all([profilePromise, animationPromise]);
+
+          if (nextProfile) {
+            setProfile(nextProfile);
+          } else {
+            setAuthError("We could not load your profile. Please sign out and try again.");
+          }
+        } catch (error) {
+          setAuthError(error.message);
+        } finally {
+          setLoading(false);
+        }
+      })();
+      
+      return currentProfile;
+    });
+  }, []);
 
   useEffect(() => {
-    const syncSession = async (nextSession) => {
-      setSession(nextSession);
-      
-      if (!nextSession) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
+    // Initial Session Check
+    supabase.auth.getSession().then(({ data: { session: cur } }) => syncSession(cur));
 
-      try {
-        setLoading(true);
-        // 1. Fetch profile
-        const { data: existingProfile, error: fetchError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", nextSession.user.id)
-          .maybeSingle();
-
-        if (fetchError) throw fetchError;
-
-        if (existingProfile) {
-          setProfile(existingProfile);
-        } else {
-          // 2. Create profile if it doesn't exist
-          const authIntent = readAuthIntent();
-          const role = normalizeRole(nextSession.user?.user_metadata?.role) || normalizeRole(authIntent?.role) || 'student';
-          
-          const { data: newProfile, error: insertError } = await supabase
-            .from("profiles")
-            .insert([{ 
-              id: nextSession.user.id, 
-              full_name: nextSession.user?.user_metadata?.full_name || "New Student", 
-              role: role,
-              campus: 'Main Campus'
-            }])
-            .select("*")
-            .maybeSingle();
-
-          if (insertError) throw insertError;
-          setProfile(newProfile);
-        }
-      } catch (err) {
-        console.error("Auth System Error:", err.message);
-      } finally {
-        // This is the most important line - it kills the loading screen
-        setLoading(false);
-      }
-    };
-
-    // Initial check
-    supabase.auth.getSession().then(({ data: { session: cur } }) => {
-      syncSession(cur);
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    // Listen for Auth Changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "SIGNED_OUT" && document.hidden) return;
       syncSession(s);
     });
     
     return () => subscription.unsubscribe();
-  }, []);
+  }, [syncSession]);
 
-  const getDashboardPath = (role) => {
-    if (role === "student") return "/dashboard/student";
-    if (role === "admin") return "/dashboard/admin";
-    return "/complete-profile";
-  };
-
-  if (loading) {
-    return (
-      <main style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif', backgroundColor: '#fdfaf5'}}>
-        <p style={{color: '#666'}}>Loading UniMart...</p>
-      </main>
-    );
-  }
+  if (loading && !session) return <LoadingScreen />;
 
   return (
     <Router>
+      <Toaster toastOptions={toastOptions} />
       <Routes>
-        {/* Public */}
-        <Route path="/" element={!session ? <LandingPage /> : <Navigate to={getDashboardPath(profile?.role)} replace />} />
-        <Route path="/auth" element={!session ? <AuthPage /> : <Navigate to={getDashboardPath(profile?.role)} replace />} />
-        <Route path="/complete-profile" element={<RolePicker session={session} profile={profile} onProfileCreated={setProfile} />} />
+        <Route path="/" element={!session ? <LandingPage /> : (loading ? <LoadingScreen /> : (profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <LoadingScreen />))} />
+        <Route path="/auth" element={!session ? <AuthPage /> : (loading ? <LoadingScreen /> : (profile ? <Navigate to={getDashboardPath(profile.role, profile.application_status)} replace /> : <LoadingScreen />))} />
+        <Route path="/waiting-room" element={<main style={{display: "flex", justifyContent: "center", alignItems: "center", height: "100vh"}}><h1>Request Pending</h1></main>} />
         
-        {/* Student Dashboard & Actions */}
-        <Route path="/dashboard/student" element={session ? <StudentDashboard profile={profile} /> : <Navigate to="/" />} />
-        <Route path="/create-listing" element={session ? <CreateListing /> : <Navigate to="/" />} />
-        <Route path="/listing/:id" element={session ? <ListingDetail /> : <Navigate to="/" />} />
-        <Route path="/my-listings" element={session ? <MyListings /> : <Navigate to="/" />} />
+        <Route path="/dashboard/student" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="student" element={<StudentDashboard profile={profile} />} />} />
+     
+        <Route path="/dashboard/admin" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="admin" element={<AdminDashboard profile={profile} />} />} />
+        <Route
+  path="/dashboard/admin/role-approval"
+  element={session ? <RoleApproval /> : <Navigate to="/" />}
+/>
+<Route
+  path="/dashboard/admin/users"
+  element={session ? <UserManagement /> : <Navigate to="/" />}
+/>
+<Route
+  path="/dashboard/staff"
+  element={
+    <ProtectedRoute
+      loading={loading}
+      session={session}
+      profile={profile}
+      authError={authError}
+      requiredRole="staff"
+      element={<TradeStaffDashboard profile={profile} />}
+    />
+  }
+/>
+<Route
+  path="/dashboard/staff/market"
+  element={
+    <ProtectedRoute
+      loading={loading}
+      session={session}
+      profile={profile}
+      authError={authError}
+      requiredRole="staff"
+      element={<MarketTrades />}
+    />
+  }
+/>
+<Route
+  path="/dashboard/staff/my-trades"
+  element={
+    <ProtectedRoute
+      loading={loading}
+      session={session}
+      profile={profile}
+      authError={authError}
+      requiredRole="staff"
+      element={<MyTrades />}
+    />
+  }
+/>
+<Route path="/payment/success" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<PaymentSuccess />} />} />
+<Route path="/payment/cancel" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<PaymentCancel />} />} />
+        <Route path="/create-listing" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<CreateListing />} />} />
+        <Route path="/listing/:id" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<ListingDetail />} />} />
+        <Route path="/my-listings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MyListings />} />} />
+        <Route path="/messages" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<MessagesPage />} />} />
+        <Route path="/bookings/new" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<BookingRequest />} />} />
+        <Route path="/transactions/:transactionId/payment" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} element={<TransactionPayment />} />} />
+        <Route 
+  path="/dashboard/admin/analytics" 
+  element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<Analytics />} />} 
+/>
+<Route 
+  path="/dashboard/admin/manage-listings" 
+  element={<ProtectedRoute loading={loading} session={session} profile={profile} requiredRole="admin" element={<ManageListings />} />} 
+/>
+
+<Route path="/dashboard/admin/facility-settings" element={<ProtectedRoute loading={loading} session={session} profile={profile} authError={authError} requiredRole="admin" element={<FacilitySettings />} />} />
         
-        {/* Catch-all */}
+        
+  
         <Route path="*" element={<Navigate to="/" replace />} />
+        
       </Routes>
     </Router>
   );

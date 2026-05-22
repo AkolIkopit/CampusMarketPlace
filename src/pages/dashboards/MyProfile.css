@@ -1,86 +1,101 @@
+:root {
+  --navy: #0d1b2a;
+  --amber: #f0a500;
+  --cream: #F7F3EC;
+  --white: #ffffff;
+  --border: rgba(13, 27, 42, 0.1);
+}
+
 .mp-container {
     max-width: 800px;
     margin: 40px auto;
     padding: 0 20px;
-    animation: fadeIn 0.4s ease-out;
 }
 
 .mp-card {
-    background: white;
-    border-radius: 30px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.05);
+    background: var(--white);
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(13, 27, 42, 0.05);
     padding: 60px 40px;
     text-align: center;
-    border: 1px solid #f0f0f0;
-  
+    border: 1.5px solid var(--border);
+}
+
+/* Status Banner */
+.mp-status-banner {
+    background: var(--navy);
+    color: var(--amber);
+    padding: 12px 20px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    border: 1px solid var(--amber);
+}
+
+.mp-status-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mp-withdraw-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: 0.2s;
+}
+
+.mp-withdraw-btn:hover {
+    background: #e63946;
+    border-color: #e63946;
 }
 
 .mp-avatar-large {
-    width: 200px;
-    height: 200px;
+    width: 180px;
+    height: 180px;
     border-radius: 50%;
     object-fit: cover;
-    border: 6px solid #fff;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    margin-bottom: 25px;
+    border: 4px solid var(--white);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
 }
 
 .mp-name {
-    font-size: 2.2rem;
+    font-family: 'Playfair Display', serif; /* Or your display font */
+    font-size: 2.5rem;
     font-weight: 900;
-    color: #111827;
+    color: var(--navy);
     margin-bottom: 5px;
 }
 
 .mp-student-id {
-    font-size: 1rem;
-    color: #4b5563;
+    font-size: 0.9rem;
+    color: var(--navy);
     font-weight: 700;
     margin-bottom: 25px;
-    background: #f3f4f6;
+    background: var(--cream);
     display: inline-block;
     padding: 6px 16px;
     border-radius: 99px;
-}
-
-.mp-bio {
-    color: #4b5563;
-    line-height: 1.8;
-    max-width: 550px;
-    margin: 0 auto 35px;
-    font-size: 1.05rem;
-}
-
-.mp-contact-info {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin-bottom: 40px;
-    color: #6b7280;
-}
-
-.mp-contact-info span {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
+    border: 1px solid var(--border);
 }
 
 .mp-action-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
-}
-.mp-message {
-  margin: 12px 0;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-
-  background: rgba(240, 165, 0, 0.15);
-  color: var(--navy);
-  border: 1px solid var(--amber);
+    margin-top: 20px;
 }
 
 .mp-btn {
@@ -89,39 +104,163 @@
     justify-content: center;
     gap: 10px;
     padding: 16px;
-    border-radius: 16px;
+    border-radius: 12px;
     font-weight: 700;
     border: none;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.mp-btn:hover { transform: translateY(-2px); filter: brightness(0.95); }
+.mp-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
 
 .mp-btn-reviews { background: #fef3c7; color: #92400e; }
 .mp-btn-staff { background: #dcfce7; color: #166534; }
 .mp-btn-admin { background: #ede9fe; color: #5b21b6; }
-.mp-btn-edit { background: #3b82f6; color: white; grid-column: span 2; margin-top: 10px; }
-
-@media (max-width: 600px) {
-    .mp-action-group { grid-template-columns: 1fr; }
-    .mp-btn-edit { grid-column: span 1; }
-}
-.mp-btn-back {
-  align-self: flex-start;
-  margin-bottom: 20px;
-
-  background: transparent;
-  border: none;
-  color: var(--navy);
-
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-
-  padding: 0;
+.mp-btn-edit { 
+    background: var(--navy); 
+    color: var(--white); 
+    grid-column: span 2; 
+    margin-top: 10px; 
 }
 
-.mp-btn-back:hover {
-  text-decoration: underline;
+.mp-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 15px;
+    background: var(--white);
+    border-radius: 20px;
+    margin-bottom: 10px;
+    border: 2px solid var(--navy);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.history-item-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex: 0 0 auto;
+}
+
+.history-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-item-main strong {
+    display: block;
+    color: #0a192f;
+}
+
+.history-item-main time {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.collection-ready-note {
+    margin: 6px 0 0;
+    color: #0d5c63;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.collection-booked-note {
+    margin: 6px 0 0;
+    color: #166534;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.history-item-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    text-align: right;
+}
+
+.history-item-side p {
+    margin: 0;
+    font-weight: 900;
+    color: #0a192f;
+}
+
+.history-item-side mark {
+    background: #e6fffa;
+    color: #00a884;
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.collection-slot-btn,
+.payment-route-btn {
+    border: none;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.collection-slot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--amber);
+    color: var(--navy);
+    box-shadow: 0 8px 18px rgba(240, 165, 0, 0.2);
+}
+
+.payment-route-btn {
+    background: var(--navy);
+    color: var(--amber);
+    box-shadow: 0 8px 18px rgba(13, 27, 42, 0.16);
+}
+
+.collection-slot-btn:hover,
+.payment-route-btn:hover {
+    transform: translateY(-1px);
+}
+
+.collection-slot-btn:hover {
+    box-shadow: 0 10px 22px rgba(240, 165, 0, 0.28);
+}
+
+.payment-route-btn:hover {
+    box-shadow: 0 10px 22px rgba(13, 27, 42, 0.22);
+}
+
+@media (max-width: 640px) {
+  .history-item { align-items: flex-start; flex-wrap: wrap; }
+  .history-item-side { align-items: stretch; width: 100%; }
+  .collection-slot-btn, .payment-route-btn { padding: 9px 10px; width: 100%; }
+  .mp-container { margin: 20px auto; }
+  .mp-card { padding: 36px 20px; }
+  .mp-status-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .mp-withdraw-btn { align-self: flex-end; }
+}
+
+@media (max-width: 420px) {
+  .mp-card { padding: 24px 14px; border-radius: 18px; }
+  .mp-avatar-large { width: 130px; height: 130px; }
+  .mp-name { font-size: 1.9rem; }
+  .mp-action-group { grid-template-columns: 1fr; }
+  .mp-btn-edit { grid-column: span 1; }
+  .history-item { gap: 12px; }
+  .history-item-image { width: 42px; height: 42px; }
+  .history-item-side { flex-direction: column; gap: 8px; }
 }

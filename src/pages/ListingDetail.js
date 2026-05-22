@@ -1,34 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+/*
+Module: ListingDetail.js
+Purpose: Display a single listing with images, seller info, reviews and transaction actions.
+Units: data fetch (listing, reviews), review form, transaction creation, UI state (modals, loading)
+Flow: on mount fetches listing and reviews, determines review eligibility, provides handlers
+  to post reviews, create transactions (sale/offer/trade), and navigate to messaging.
+*/
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { 
-  ArrowLeft, MessageCircle, ShoppingCart, User, 
-  Star, MapPin, Loader2, MessageSquare, Send 
+import { notifySuccess } from '../toast';
+import {
+  ArrowLeft, MessageCircle, User,
+  Star, MapPin, Loader2, Send
 } from 'lucide-react';
+import MakeOfferModal from './MakeOfferModal';
 import './ListingDetail.css';
+
+const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
 
 const ListingDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [listing, setListing] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Review Form State
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [canReview, setCanReview] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [modalType, setModalType] = useState(null);
+  const [transactionLoading, setTransactionLoading] = useState(false);
+  const [transactionError, setTransactionError] = useState("");
 
-  useEffect(() => {
-    fetchAllData();
-  }, [id]);
-
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || null;
+    setCurrentUserId(userId);
+
     const { data: listData } = await supabase
       .from('listings')
-      .select(`*, profiles!inner(id, full_name, avatar_url, campus), categories(name), listing_images(image_url)`)
+      .select(`*, profiles!inner(id, full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
       .eq('id', id)
       .single();
 
@@ -40,70 +57,263 @@ const ListingDetail = () => {
 
     if (listData) setListing(listData);
     if (revData) setReviews(revData);
+
+    // Determine if the current user is eligible to leave a review.
+    // They must have a completed, item-released booking for this listing,
+    // and at least one booking must be newer than the user's last review.
+    if (userId) {
+      const { data: completedBooking } = await supabase
+        .from("bookings")
+        .select("id, created_at")
+        .eq("buyer_id", userId)
+        .eq("listing_id", id)
+        .eq("status", "completed")
+        .eq("item_released", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const latestReviewDate = (revData || [])
+        .filter((r) => r.reviewer_id === userId && r.created_at)
+        .map((r) => new Date(r.created_at))
+        .sort((a, b) => b - a)[0];
+
+      const bookingDate = completedBooking?.created_at ? new Date(completedBooking.created_at) : null;
+      const hasRecentBooking = bookingDate && (!latestReviewDate || bookingDate > latestReviewDate);
+
+      setCanReview(!!hasRecentBooking);
+    } else {
+      setCanReview(false);
+    }
+
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Auto-open the review form when arriving via the review prompt popup
+  useEffect(() => {
+    if (canReview && searchParams.get("review") === "true") {
+      setShowForm(true);
+    }
+  }, [canReview, searchParams]);
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase
-        .from('reviews')
-        .insert([{
-          listing_id: id,
-          reviewer_id: user.id,
-          reviewee_id: listing.seller_id, // The person who posted the item
-          rating: rating,
-          comment: comment
-        }]);
-
-      if (error) throw error;
-
-      // Reset form and refresh list
-      setComment("");
-      setShowForm(false);
-      await fetchAllData();
-      alert("Review posted!");
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSubmitting(false);
+      const { error } = await supabase.from('reviews').insert([{
+        listing_id: id, 
+        reviewer_id: user.id, 
+        reviewee_id: listing.seller_id, 
+        rating, 
+        comment
+      }]);
+      if (!error) { 
+        setComment(""); 
+        setShowForm(false); 
+        await fetchAllData(); 
+        notifySuccess("Review posted!"); 
+      }
+    } finally { 
+      setSubmitting(false); 
     }
   };
 
+  const closeModal = () => {
+    setModalType(null);
+    setTransactionError("");
+  };
+
+  const navigateToMessages = (transactionId, action) => {
+    const query = new URLSearchParams({
+      user: listing.seller_id,
+      listing: id,
+      name: listing.profiles.full_name,
+      item: listing.title,
+      transaction: transactionId,
+      action
+    }).toString();
+
+    navigate(`/messages?${query}`);
+  };
+
+  const createTransaction = async ({ type, action, amount, cashAmount = 0, tradeItem = '' }) => {
+    console.log("createTransaction called", { type, action, amount });
+    setTransactionLoading(true);
+    setTransactionError("");
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) throw new Error('Unable to determine buyer account.');
+
+      const trimmedTradeItem = tradeItem.trim();
+      if (type === 'trade' && !trimmedTradeItem) {
+        throw new Error('Describe the item you want to trade before sending the request.');
+      }
+
+      let buyerProfile = null;
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+        buyerProfile = data;
+      } catch {
+        buyerProfile = null;
+      }
+
+      const buyerName = buyerProfile?.full_name || 'A student';
+      const listingPrice = Number(listing.price || 0);
+      const requestedAmount = Number(amount ?? 0);
+      const topUpAmount = Number(cashAmount || 0);
+
+     const primaryImageSnapshot = listing.listing_images?.find((img) => img.is_primary) || listing.listing_images?.[0];
+
+const payload = {
+  buyer_id: user.id,
+  seller_id: listing.seller_id,
+  listing_id: id,
+  amount: requestedAmount,
+  agreed_amount: requestedAmount,
+  cash_shortfall_due: type === 'trade' ? topUpAmount : 0,
+  status: 'pending_seller_acceptance',
+  transaction_type: type === 'offer' ? 'sale' : type,
+  payment_status: 'unpaid',
+  booking_status: 'not_booked',
+
+  listing_title: listing.title,
+  listing_image: primaryImageSnapshot?.image_url || null,
+  listing_price: listing.price,
+  listing_description: listing.description || null,
+};
+console.log("Transaction payload:", JSON.stringify(payload, null, 2));
+      const { data: transaction, error: transactionError } = await supabase
+        .from('transactions')
+        .insert([payload])
+        .select('*')
+        .maybeSingle();
+
+      if (transactionError || !transaction) throw transactionError || new Error('Could not create transaction.');
+
+      try {
+        const messageText =
+          type === 'sale'
+            ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to buy ${listing.title} for R${listingPrice.toFixed(2)}. Transaction ID: ${transaction.id}`
+            : type === 'offer'
+            ? `${SYSTEM_MESSAGE_PREFIX}${buyerName} offered R${requestedAmount.toFixed(2)} for ${listing.title}. Transaction ID: ${transaction.id}`
+            : `${SYSTEM_MESSAGE_PREFIX}${buyerName} requested to trade "${trimmedTradeItem}" for ${listing.title}${topUpAmount > 0 ? ` with a R${topUpAmount.toFixed(2)} top-up` : ''}. Transaction ID: ${transaction.id}`;
+
+        await supabase.from('messages').insert([{
+          listing_id: id,
+          sender_id: user.id,
+          receiver_id: listing.seller_id,
+          message_text: messageText,
+          transaction_id: transaction.id,
+          is_read: false,
+        }]);
+      } catch (messageError) {
+        // Do not block transaction flow if message creation fails.
+        console.warn('Could not create initial transaction message', messageError);
+      }
+
+      closeModal();
+      navigateToMessages(transaction.id, action);
+    } catch (error) {
+      setTransactionError(error?.message || 'Could not create transaction.');
+    } finally {
+      setTransactionLoading(false);
+    }
+  };
+
+  const handleBuyNow = () => {
+    createTransaction({
+      type: 'sale',
+      action: 'buy',
+      amount: listing.price
+    });
+  };
+
+  const handleModalSubmit = async ({ amount, cashAmount, tradeItem }) => {
+    if (modalType === 'offer') {
+      await createTransaction({
+        type: 'offer',
+        action: 'offer',
+        amount
+      });
+    } else if (modalType === 'trade') {
+      await createTransaction({
+        type: 'trade',
+        action: 'trade',
+        amount: cashAmount ?? 0,
+        cashAmount,
+        tradeItem
+      });
+    }
+  };
+
+  const handleTransactionIntent = (intent) => {
+    if (intent === 'buy') {
+      handleBuyNow();
+      return;
+    }
+    setModalType(intent);
+  };
+
+  const isOwnListing = Boolean(currentUserId && listing?.seller_id === currentUserId);
+
   if (loading) return <main className="detail-loading-screen"><Loader2 className="spinner" /></main>;
+  if (!listing) return <main className="detail-loading-screen"><h2>Listing not found.</h2></main>;
+
+  const primaryImage = listing.listing_images?.find((img) => img.is_primary) || listing.listing_images?.[0];
+  const listingType = (listing.listing_type || 'either').toLowerCase();
+  const allowsSale = listingType === 'sale' || listingType === 'either';
+  const allowsTrade = listingType === 'trade' || listingType === 'either';
+  const isSoldOut = listing.status === 'sold_out' || Number(listing.quantity) === 0;
+  const quantityAvailable = listing.quantity != null ? Number(listing.quantity) : null;
 
   return (
     <main className="listing-detail-page">
       <section className="aurora-bg" aria-hidden="true">
         <hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" />
       </section>
-
+      
       <nav className="detail-top-nav">
-        <button className="detail-back-btn" onClick={() => navigate(-1)}><ArrowLeft size={20} /> Back</button>
+        <button className="detail-back-btn" onClick={() => navigate(-1)} type="button">
+          <ArrowLeft size={20} /> Back
+        </button>
       </nav>
 
       <section className="detail-layout">
         <section className="product-essential-grid">
           <figure className="detail-image-gallery">
-            <img src={listing.listing_images[0]?.image_url || '/placeholder.jpg'} alt={listing.title} />
+            <img
+              src={primaryImage?.image_url || '/placeholder.jpg'}
+              alt={listing.title}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
+            />
           </figure>
-
+          
           <section className="detail-content">
             <header className="product-header">
               <mark className="product-category-tag">{listing.categories.name}</mark>
+              {isSoldOut && <mark className="sold-out-badge">SOLD OUT</mark>}
               <h1>{listing.title}</h1>
               <p className="product-price">R {listing.price}</p>
+              {!isSoldOut && quantityAvailable !== null && (
+                <p className="quantity-available">{quantityAvailable} available</p>
+              )}
             </header>
-
+            
             <article className="product-description">
               <h3>Description</h3>
               <p>{listing.description || "No description provided."}</p>
             </article>
-
+            
             <section className="seller-profile-card">
               <header className="seller-card-top">
                 {listing.profiles.avatar_url ? (
@@ -113,35 +323,80 @@ const ListingDetail = () => {
                 )}
                 <nav className="seller-meta">
                   <h4>{listing.profiles.full_name}</h4>
-                  <p className="seller-campus-text"><MapPin size={12} /> {listing.profiles.campus}</p>
+                  <p className="seller-campus-text"><MapPin size={12} /> {listing.location || 'Main Campus'}</p>
                 </nav>
               </header>
-              <footer className="purchase-actions">
-                <button className="msg-seller-btn" onClick={() => navigate(`/messages?user=${listing.profiles.id}`)}><MessageCircle size={18} /> Message</button>
-                <button className="add-cart-btn"><ShoppingCart size={18} /> Add to Cart</button>
+              
+              <footer className="purchase-actions multi-action">
+                {isSoldOut && (
+                  <p className="sold-out-action-notice">This item is currently sold out and cannot be purchased.</p>
+                )}
+                {allowsSale ? (
+                  <>
+                    <button
+                      className="buy-now-btn"
+                      onClick={() => handleTransactionIntent('buy')}
+                      disabled={isOwnListing || isSoldOut}
+                      title={isSoldOut ? 'This listing is sold out' : undefined}
+                    >
+                      Buy Now
+                    </button>
+                    <button
+                      className="make-offer-btn"
+                      onClick={() => handleTransactionIntent('offer')}
+                      disabled={isOwnListing || isSoldOut}
+                      title={isSoldOut ? 'This listing is sold out' : undefined}
+                    >
+                      Make Offer
+                    </button>
+                  </>
+                ) : null}
+                {allowsTrade ? (
+                  <button
+                    className="request-trade-btn"
+                    onClick={() => handleTransactionIntent('trade')}
+                    disabled={isOwnListing || isSoldOut}
+                    title={isSoldOut ? 'This listing is sold out' : undefined}
+                  >
+                    Request Trade
+                  </button>
+                ) : null}
+                <button
+                  className="msg-seller-btn"
+                  onClick={() => navigate(`/messages?${new URLSearchParams({
+                    user: listing.seller_id,
+                    listing: id,
+                    name: listing.profiles.full_name,
+                    item: listing.title,
+                  }).toString()}`)}
+                  disabled={isOwnListing}
+                >
+                  <MessageCircle size={18} /> {isOwnListing ? 'Your Listing' : 'Message Seller'}
+                </button>
               </footer>
             </section>
           </section>
         </section>
 
-        {/* --- REVIEWS SECTION --- */}
         <section className="reviews-container">
           <header className="section-header">
             <h2>Reviews & Feedback</h2>
-            <button className="add-review-toggle" onClick={() => setShowForm(!showForm)}>
-              {showForm ? "Cancel" : "Write a Review"}
-            </button>
+            {canReview && (
+              <button className="add-review-toggle" onClick={() => setShowForm(!showForm)}>
+                {showForm ? "Cancel" : "Write a Review"}
+              </button>
+            )}
           </header>
 
-          {showForm && (
+          {canReview && showForm && (
             <form className="review-form-box" onSubmit={handleReviewSubmit}>
               <fieldset className="rating-selector">
-                <legend>Your Rating</legend>
+                <legend>Rating</legend>
                 <nav className="star-input-group">
                   {[1, 2, 3, 4, 5].map((num) => (
-                    <button 
-                      key={num} 
-                      type="button" 
+                    <button
+                      key={num}
+                      type="button"
                       className={num <= rating ? "star-btn active" : "star-btn"}
                       onClick={() => setRating(num)}
                     >
@@ -152,10 +407,10 @@ const ListingDetail = () => {
               </fieldset>
 
               <fieldset className="comment-input-area">
-                <legend>Your Feedback</legend>
-                <textarea 
-                  required 
-                  placeholder="Tell others about your experience with this seller..."
+                <legend>Feedback</legend>
+                <textarea
+                  required
+                  placeholder="Share your experience with the seller..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 ></textarea>
@@ -169,7 +424,7 @@ const ListingDetail = () => {
 
           <ul className="reviews-list">
             {reviews.length === 0 ? (
-              <article className="no-reviews"><p>Be the first to review this item!</p></article>
+              <article className="no-reviews"><p>No reviews yet.</p></article>
             ) : (
               reviews.map(rev => (
                 <li key={rev.id} className="review-item">
@@ -198,6 +453,15 @@ const ListingDetail = () => {
           </ul>
         </section>
       </section>
+      <MakeOfferModal
+        type={modalType}
+        listing={listing}
+        visible={Boolean(modalType)}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+        loading={transactionLoading}
+        error={transactionError}
+      />
     </main>
   );
 };

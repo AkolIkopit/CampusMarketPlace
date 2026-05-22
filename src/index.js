@@ -1,3 +1,10 @@
+/*
+Module: index.js
+Purpose: Application bootstrapper.
+Units: React root creation and initial render, performance hook invocation.
+Flow: Imports global styles and `App`, mounts React tree into `#root`, and calls `reportWebVitals`.
+*/
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';

@@ -1,3 +1,10 @@
+/*
+Module: DashboardShell.js
+Purpose: Layout shell used by dashboard pages for consistent navigation and sidebars.
+Units: sidebar, topbar, main content slot, responsive behaviors
+Flow: Wraps dashboard child pages providing layout, navigation, and common actions.
+*/
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRoleLabel } from "../../auth";

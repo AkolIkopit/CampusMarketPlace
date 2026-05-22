@@ -1,461 +1,355 @@
+/*
+Module: StudentDashboard.js
+Purpose: Student-facing dashboard showing personal listings, bookings and shortcuts.
+Units: summary tiles, recent activity, quick links to create/listings/messages
+Flow: Loads user-specific data and displays dashboard widgets and navigation.
+*/
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabase';
 import {
-  Plus,
-  ShoppingBag,
-  Box,
-  MessageCircle,
-  Search,
-  Menu,
-  X,
-  User,
-  Settings,
-  LogOut,
-  Filter,
-  MapPin,
+  Plus, ShoppingBag, Box, MessageCircle,
+  Menu, X, User, LogOut, Filter, MapPin, Search,
+  PartyPopper, Loader2, OctagonX, Clock
 } from 'lucide-react';
-
-// Import our sub-components
+import { notifyError } from '../../toast';
 import MyProfile from './MyProfile';
 import EditProfile from './EditProfile';
+import LoadingScreen from '../../components/LoadingScreen';
 import './StudentDashboard.css';
+import BuyerPopup from "./BuyerPopup";
+import Seller_Popup from "./Seller_Popup";
+import ReviewPromptPopup from "./ReviewPromptPopup";
+
+const logoSrc = `${process.env.PUBLIC_URL || ''}/UniMartlogo.png`;
 
 const StudentDashboard = ({ profile: initialProfile }) => {
   const navigate = useNavigate();
-
-  // --- VIEW NAVIGATION STATE ---
-  // Possible views: 'market', 'profile', 'edit'
-  const [view, setView] = useState('market');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // URL Persistence: Refreshing keeps you on the same view
+  const view = searchParams.get('view') || 'market';
+  
   const [profile, setProfile] = useState(initialProfile);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // --- DATA STATES ---
   const [recentListings, setRecentListings] = useState([]);
   const [marketListings, setMarketListings] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
-  // --- FILTER STATES ---
+  // Role Popup States
+  const [approvedApp, setApprovedApp] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Filter & Search panels (mobile drawers)
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Filter States
   const [selectedCat, setSelectedCat] = useState('all');
   const [selectedCampus, setSelectedCampus] = useState('all');
+  const [selectedCondition, setSelectedCondition] = useState('all');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [listingSearch, setListingSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const campusOptions = ['Main Campus', 'Education Campus', 'Med Campus'];
+  // Search is applied on explicit submit (Search button) or clear.
 
-  // --- FETCH INITIAL DATA (Categories & Recent) ---
+  const campusOptions = ["Main Campus", "Education Campus", "Med Campus"];
+  const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
+
   useEffect(() => {
+    if (!profile?.id) return;
+
     const fetchData = async () => {
       try {
-        const { data: catData, error: catError } = await supabase
-          .from('categories')
-          .select('*');
-
-        if (catError) throw catError;
+        const { data: catData } = await supabase.from('categories').select('*');
         setCategories(catData || []);
 
-        const { data: recent, error: recentError } = await supabase
+        const { data: recent } = await supabase
           .from('listings')
-          .select(`
-            *,
-            profiles:seller_id (full_name, avatar_url, campus),
-            categories(name),
-            listing_images(image_url)
-          `)
-          .eq('status', 'active')
+          .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
+          .in('status', ['active', 'sold_out'])
           .order('created_at', { ascending: false })
-          .limit(4);
-
-        if (recentError) throw recentError;
+          .limit(10);
         setRecentListings(recent || []);
-      } catch (err) {
-        console.error('Fetch Error:', err.message);
+
+        await checkApprovalStatus();
+      } finally {
+        setLoading(false); 
       }
     };
-
     fetchData();
-  }, []);
+  }, [profile?.id]);
 
-  // --- FETCH MARKET DATA (Whenever filters change) ---
+  const checkApprovalStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from('role_applications').select('*').eq('user_id', user.id).eq('status', 'approved').maybeSingle();
+    if (data && !sessionStorage.getItem('skipRolePopup')) setShowPopup(true);
+    setApprovedApp(data);
+  };
+
+  const handleAcceptRole = async () => {
+    setIsProcessing(true);
+    try {
+      const targetRole = approvedApp.requested_role;
+      await supabase.from('profiles').update({ role: targetRole }).eq('id', approvedApp.user_id);
+      await supabase.from('role_applications').update({ status: 'completed' }).eq('id', approvedApp.id);
+      window.location.href = targetRole === 'admin' ? '/dashboard/admin' : '/dashboard/staff';
+    } catch (err) { notifyError(err.message); setIsProcessing(false); }
+  };
+
   useEffect(() => {
+    if (!profile?.id) return;
+
     const fetchMarket = async () => {
-      try {
-        let query = supabase
-          .from('listings')
-          .select(`
-            *,
-            profiles:seller_id (full_name, avatar_url, campus),
-            categories(name),
-            listing_images(image_url)
-          `)
-          .eq('status', 'active');
+      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).in('status', ['active', 'sold_out']);
+      if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
+      if (selectedCondition !== 'all') query = query.eq('condition', selectedCondition);
+      if (minPrice) query = query.gte('price', Number(minPrice));
+      if (maxPrice) query = query.lte('price', Number(maxPrice));
 
-        if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
-        if (minPrice !== '') query = query.gte('price', Number(minPrice));
-        if (maxPrice !== '') query = query.lte('price', Number(maxPrice));
+      const { data } = await query.order('created_at', { ascending: false });
+      let filtered = data || [];
+      if (selectedCampus !== 'all') filtered = filtered.filter(i => i.location === selectedCampus);
+      setMarketListings(filtered);
+    };
+    fetchMarket();
+  }, [profile?.id, selectedCat, selectedCampus, selectedCondition, minPrice, maxPrice]);
 
-        const { data, error } = await query.order('created_at', {
-          ascending: false,
-        });
+  useEffect(() => {
+    const userId = profile?.id;
+    if (!userId) return;
 
-        if (error) throw error;
-
-        let filtered = data || [];
-
-        if (selectedCampus !== 'all') {
-          filtered = filtered.filter(
-            (item) => item.profiles?.campus === selectedCampus
-          );
-        }
-
-        setMarketListings(filtered);
-      } catch (err) {
-        console.error('Market Error:', err.message);
-      }
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('receiver_id', userId)
+        .eq('is_read', false);
+      setUnreadMessageCount(count || 0);
     };
 
-    fetchMarket();
-  }, [selectedCat, selectedCampus, minPrice, maxPrice]);
+    fetchUnread();
 
-  // --- HANDLERS ---
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-  };
+    const channel = supabase.channel?.(`unread-messages-${userId}`);
+    const subscribedChannel = channel
+      ?.on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const newRow = payload.new;
+          if (!newRow) return;
+          if (newRow.receiver_id === userId && newRow.is_read === false) {
+            setUnreadMessageCount((current) => current + 1);
+          }
+        }
+      )
+      ?.on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages' },
+        (payload) => {
+          const newRow = payload.new;
+          const oldRow = payload.old;
+          if (!newRow || !oldRow) return;
 
-  const handleSaveProfileSuccess = (updatedData) => {
-    setProfile((prev) => ({ ...prev, ...updatedData }));
-    setView('profile');
-    setIsMenuOpen(false);
-  };
+          if (newRow.receiver_id === userId) {
+            if (oldRow.is_read === false && newRow.is_read === true) {
+              setUnreadMessageCount((current) => Math.max(0, current - 1));
+            }
+            if (oldRow.is_read === true && newRow.is_read === false) {
+              setUnreadMessageCount((current) => current + 1);
+            }
+          }
+        }
+      )
+      ?.subscribe();
+
+    return () => {
+      const removeTarget = subscribedChannel ?? channel;
+      if (removeTarget && supabase.removeChannel) {
+        supabase.removeChannel(removeTarget);
+      }
+    };
+  }, [profile?.id]);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredRecentListings = recentListings;
+  const filteredMarketListings = normalizedSearch
+    ? marketListings.filter((item) => item.title?.toLowerCase() === normalizedSearch)
+    : marketListings;
+
+  const setView = (newV) => { setSearchParams({ view: newV }); setIsMenuOpen(false); };
+
+  if (loading && !profile) return <LoadingScreen />;
 
   return (
+   
+
     <main className="dashboard-container">
-      {/* 1. UNIVERSAL HEADER */}
+
+      <section className="aurora-bg" aria-hidden="true"><hr className="orb orb-1" /><hr className="orb orb-2" /><hr className="orb orb-3" /></section>
+      
       <header className="main-header">
         <nav className="header-nav">
-          <section
-            className="logo-section"
-            onClick={() => {
-              setView('market');
-              setIsMenuOpen(false);
-            }}
-          >
-            <img src="/UniMartlogo.png" alt="Logo" className="header-logo" />
+          <section className="logo-section" onClick={() => setView('market')}>
+            <img src={logoSrc} alt="UniMart logo" className="header-logo" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <h1 className="logo-text">UniMart</h1>
           </section>
-
-          <section className="header-actions">
-            <button
-              className="icon-btn"
-              onClick={() => navigate('/search')}
-              type="button"
-            >
-              <Search size={20} />
-            </button>
-
-            <button
-              className="icon-btn"
-              onClick={() => navigate('/cart')}
-              type="button"
-            >
-              <ShoppingBag size={20} />
-            </button>
-
-            <button
-              className="icon-btn"
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-              type="button"
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </section>
+          <nav className="header-actions">
+            {view === 'market' && (
+              <>
+                <button
+                  className="icon-btn search-toggle-btn"
+                  onClick={() => { setIsSearchOpen(o => !o); setIsFilterOpen(false); setIsMenuOpen(false); }}
+                  aria-label="Toggle search"
+                  aria-expanded={isSearchOpen}
+                >
+                  {isSearchOpen ? <X size={20} /> : <Search size={20} />}
+                </button>
+                <button
+                  className="icon-btn filter-toggle-btn"
+                  onClick={() => { setIsFilterOpen(o => !o); setIsSearchOpen(false); setIsMenuOpen(false); }}
+                  aria-label="Toggle filters"
+                  aria-expanded={isFilterOpen}
+                >
+                  {isFilterOpen ? <X size={20} /> : <Filter size={20} />}
+                </button>
+              </>
+            )}
+            <button className="icon-btn" onClick={() => { setIsMenuOpen(!isMenuOpen); setIsFilterOpen(false); setIsSearchOpen(false); }}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
+          </nav>
         </nav>
       </header>
 
-      {/* BURGER MENU */}
       {isMenuOpen && (
         <aside className="burger-menu">
           <ul className="menu-list">
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  setView('profile');
-                  setIsMenuOpen(false);
-                }}
-              >
-                <User size={18} /> My Profile
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  navigate('/settings');
-                  setIsMenuOpen(false);
-                }}
-              >
-                <Settings size={18} /> Settings
-              </button>
-            </li>
-            <li className="menu-divider"></li>
-            <li>
-              <button
-                type="button"
-                className="logout-action-btn"
-                onClick={handleLogout}
-              >
-                <LogOut size={18} /> Logout
-              </button>
-            </li>
+            <li><button onClick={() => setView('profile')}><User size={18} /> My Profile</button></li>
+            <li><button onClick={async () => { await supabase.auth.signOut(); navigate('/'); }} className="logout-action-btn"><LogOut size={18} /> Logout</button></li>
           </ul>
         </aside>
       )}
 
-      {/* 2. CONDITIONAL CONTENT RENDERING */}
-
-      {/* VIEW: MY PROFILE */}
-      {view === 'profile' && (
-        <MyProfile
-          profile={profile}
-          onEditClick={() => setView('edit')}
-          navigate={navigate}
-        />
-      )}
-
-      {/* VIEW: EDIT PROFILE */}
-      {view === 'edit' && (
-        <EditProfile
-          profile={profile}
-          onCancel={() => setView('profile')}
-          onSaveSuccess={handleSaveProfileSuccess}
-        />
-      )}
-
-      {/* VIEW: MARKETPLACE */}
+      {/* --- VIEWS --- */}
+      {view === 'profile' && <MyProfile profile={profile} onEditClick={() => setView('edit')} onBack={() => setView('market')} navigate={navigate} onOpenRolePopup={() => setShowPopup(true)} />}
+      {view === 'edit' && <EditProfile profile={profile} onCancel={() => setView('profile')} onSaveSuccess={(d) => { setProfile({...profile, ...d}); setView('profile'); }} />}
+      
       {view === 'market' && (
         <>
-          {/* HERO */}
           <section className="hero-section">
             <header className="hero-content">
-              <p className="hero-kicker">
-                WELCOME BACK,{' '}
-                {profile?.full_name?.split(' ')[0]?.toUpperCase() || 'STUDENT'}
-              </p>
-              <h2 className="hero-title">
-                Your campus marketplace is waiting for you.
-              </h2>
-              <p className="hero-description">
-                Trade securely with verified university students.
-              </p>
+              <mark className="hero-kicker">WELCOME BACK, {profile?.full_name?.split(' ')[0].toUpperCase()}</mark>
+              <h2 className="hero-title gold-text">Your campus marketplace is alive.</h2>
+              <p className="hero-description white-text">Trade securely with verified university students from all campuses.</p>
             </header>
           </section>
 
-          {/* QUICK ACTIONS */}
+          {/* GRID OF 3 (REMOVED REDUNDANT PROFILE BUTTON) */}
           <section className="quick-actions-grid">
-            <article
-              className="action-block"
-              onClick={() => navigate('/my-listings')}
-            >
-              <figure className="block-icon">
-                <Box size={24} />
-              </figure>
-              <h3>My Listings</h3>
-              <p>Manage your posts.</p>
-            </article>
-
-            <article
-              className="action-block"
-              onClick={() => navigate('/messages')}
-            >
-              <figure className="block-icon">
-                <MessageCircle size={24} />
-              </figure>
-              <h3>My Messages</h3>
-              <p>Chat with buyers.</p>
-            </article>
-
-            <article className="action-block" onClick={() => setView('profile')}>
-              <figure className="block-icon">
-                <User size={24} />
-              </figure>
-              <h3>My Profile</h3>
-              <p>View your stats.</p>
-            </article>
-
-            <article className="action-block" onClick={() => navigate('/browse')}>
-              <figure className="block-icon">
-                <ShoppingBag size={24} />
-              </figure>
-              <h3>Browse All</h3>
-              <p>Full catalog.</p>
+            <article className="action-block" onClick={() => navigate('/my-listings')}><figure className="block-icon"><Box size={24} /></figure><h3>My Listings</h3></article>
+            <article className="action-block" onClick={() => navigate('/messages')}>
+              <figure className="block-icon"><MessageCircle size={24} /></figure>
+              <nav className="action-title-row"><h3>My Messages</h3>{unreadMessageCount > 0 && <mark className="message-count-badge">{unreadMessageCount}</mark>}</nav>
             </article>
           </section>
 
-          {/* RECENT LISTINGS */}
-          <section className="recent-section">
-            <header className="section-header">
-              <h2>Recent Listings</h2>
-            </header>
+          <section className="feed-outer-section">
+            <header className="section-header"><h2>Recent Listings (Top 10)</h2></header>
             <section className="listings-grid-layout">
-              {recentListings.map((item) => (
-                <ListingCard key={item.id} item={item} />
-              ))}
+              {filteredRecentListings.length > 0 ? filteredRecentListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">No recent listings available.</p>}
             </section>
           </section>
 
-          {/* MARKET FEED AND FILTERS */}
-          <section className="market-layout">
-            <aside className="filter-sidebar">
-              <header className="sidebar-header">
-                <Filter size={18} />
-                <h3>Filters</h3>
-              </header>
-
-              <form className="filter-form">
-                <fieldset>
-                  <legend>Campus</legend>
-                  <select
-                    value={selectedCampus}
-                    onChange={(e) => setSelectedCampus(e.target.value)}
-                  >
-                    <option value="all">All Campuses</option>
-                    {campusOptions.map((campus) => (
-                      <option key={campus} value={campus}>
-                        {campus}
-                      </option>
-                    ))}
-                  </select>
-                </fieldset>
-
-                <fieldset>
-                  <legend>Category</legend>
-                  <select
-                    value={selectedCat}
-                    onChange={(e) => setSelectedCat(e.target.value)}
-                  >
-                    <option value="all">All Categories</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </fieldset>
-
-                <fieldset>
-                  <legend>Price Range</legend>
-                  <div className="price-inputs">
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      value={minPrice}
-                      onChange={(e) => setMinPrice(e.target.value)}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Max"
-                      value={maxPrice}
-                      onChange={(e) => setMaxPrice(e.target.value)}
-                    />
-                  </div>
-                </fieldset>
-
-                <button
-                  type="button"
-                  className="reset-btn"
-                  onClick={() => {
-                    setSelectedCat('all');
-                    setSelectedCampus('all');
-                    setMinPrice('');
-                    setMaxPrice('');
-                  }}
-                >
-                  Clear Filters
+          <form className={`search-ribbon${isSearchOpen ? ' search-open' : ''}`} onSubmit={(e) => { e.preventDefault(); setSearchQuery(listingSearch); setIsSearchOpen(false); }}>
+            <div className="search-bar-inner">
+              <input
+                type="text"
+                className="search-input"
+                value={listingSearch}
+                onChange={(e) => setListingSearch(e.target.value)}
+                placeholder="Search listings by name"
+              />
+              {listingSearch && (
+                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setListingSearch(''); setSearchQuery(''); setIsSearchOpen(false); }}>
+                  ×
                 </button>
+              )}
+            </div>
+            <button type="submit" className="search-button">Search</button>
+          </form>
+
+          <section className="market-layout">
+            <aside className={`filter-sidebar${isFilterOpen ? ' filter-open' : ''}`}>
+              <header className="sidebar-header"><Filter size={18} /><h3>Filters</h3></header>
+              <form className="filter-form">
+                <fieldset className="filter-group"><legend>Campus</legend><select value={selectedCampus} onChange={(e) => setSelectedCampus(e.target.value)}><option value="all">All Campuses</option>{campusOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></fieldset>
+                <fieldset className="filter-group"><legend>Condition</legend><select value={selectedCondition} onChange={(e) => setSelectedCondition(e.target.value)}><option value="all">Any Condition</option>{conditionOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></fieldset>
+                <fieldset className="filter-group">
+                   <legend>Price Range (R)</legend>
+                   <input type="number" placeholder="Min" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
+                   <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+                </fieldset>
+                <fieldset className="filter-group"><legend>Category</legend><select value={selectedCat} onChange={(e) => setSelectedCat(e.target.value)}><option value="all">All</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></fieldset>
+                <button type="button" className="reset-btn" onClick={() => { setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice(''); setIsFilterOpen(false); }}>Clear Filters</button>
               </form>
             </aside>
-
             <section className="market-results">
-              <header className="section-header">
-                <h2>Market Feed</h2>
-              </header>
-
-              <section className="listings-grid-layout">
-                {marketListings.length > 0 ? (
-                  marketListings.map((item) => (
-                    <ListingCard key={item.id} item={item} />
-                  ))
-                ) : (
-                  <p className="empty-msg">
-                    No items found matching your search.
-                  </p>
-                )}
-              </section>
+              <header className="section-header"><h2>Market Feed</h2></header>
+              <section className="listings-grid-layout">{filteredMarketListings.length > 0 ? filteredMarketListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">{normalizedSearch ? 'No items match your search.' : 'No items found.'}</p>}</section>
             </section>
           </section>
         </>
       )}
 
-      {/* 3. FLOATING ACTION BUTTON */}
-      {view === 'market' && (
-        <button
-          className="create-post-fab"
-          onClick={() => navigate('/create-listing')}
-          type="button"
-        >
-          <Plus size={24} />
-          <span>Create Post</span>
-        </button>
+      {view === 'market' && <button className="create-post-fab" onClick={() => navigate('/create-listing')}><Plus size={28} /><label>Create Post</label></button>}
+
+      {showPopup && approvedApp && (
+        <aside className="role-popup-overlay" style={{position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)'}}>
+          <article className="role-popup-card" style={{background: '#0d1b2a', padding: '40px', borderRadius: '30px', textAlign: 'center', maxWidth: '450px', width: '90%', border: '2px solid #f0a500'}}>
+            <PartyPopper size={50} color="#f0a500" style={{marginBottom: '20px'}} />
+            <h2 style={{color: '#f0a500'}}>Accept Job as {approvedApp.requested_role.toUpperCase()}</h2>
+            <nav style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '30px'}}>
+                <button onClick={handleAcceptRole} disabled={isProcessing} style={{background: '#f0a500', color: '#0d1b2a', padding: '16px', borderRadius: '12px', border: 'none', fontWeight: '900', cursor: 'pointer'}}>ACCEPT & ACTIVATE</button>
+                <button onClick={() => setShowPopup(false)} style={{background: 'none', border: 'none', color: 'white', marginTop: '10px', cursor: 'pointer'}}>LATER</button>
+            </nav>
+          </article>
+        </aside>
       )}
+      <BuyerPopup userId={profile?.id} />
+      <Seller_Popup userId={profile?.id} />
+      <ReviewPromptPopup userId={profile?.id} />
     </main>
   );
 };
 
-// --- SUB-COMPONENT: LISTING CARD ---
 const ListingCard = ({ item }) => {
   const navigate = useNavigate();
-
+  const primaryImage = item.listing_images?.find((img) => img.is_primary) || item.listing_images?.[0];
+  const isSoldOut = item.status === 'sold_out';
   return (
-    <article
-      className="listing-card-item"
-      onClick={() => navigate(`/listing/${item.id}`)}
-    >
+    <article className={`listing-card-item${isSoldOut ? ' listing-card-sold-out' : ''}`} onClick={() => navigate(`/listing/${item.id}`)}>
       <header className="listing-card-top">
         <figure className="listing-img-container">
           <img
-            src={item.listing_images?.[0]?.image_url || '/placeholder.jpg'}
-            alt={item.title || 'Listing'}
+            src={primaryImage?.image_url || '/placeholder.jpg'}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', display: 'block' }}
           />
         </figure>
-
+        {isSoldOut && <span className="sold-out-overlay-badge">SOLD OUT</span>}
         <section className="seller-mini-info">
-          {item.profiles?.avatar_url ? (
-            <img
-              src={item.profiles.avatar_url}
-              alt={item.profiles?.full_name || 'Seller'}
-              className="mini-avatar"
-            />
-          ) : (
-            <div className="mini-avatar-placeholder">
-              <User size={10} />
-            </div>
-          )}
-          <p>{item.profiles?.full_name || 'User'}</p>
+          {item.profiles?.avatar_url ? <img src={item.profiles.avatar_url} alt="" className="mini-avatar" /> : <User size={12} style={{color: '#f3a91e'}} />}
+          <p>{item.profiles?.full_name || 'Student'}</p>
         </section>
-
-        <section className="campus-badge">
-          <MapPin size={10} />
-          <p>{item.profiles?.campus || 'Main'}</p>
-        </section>
+        <section className="campus-badge"><MapPin size={10} /><p>{item.location || 'Main'}</p></section>
       </header>
-
       <footer className="listing-card-bottom">
-        <section className="listing-info-main">
-          <h4>{item.title}</h4>
-          <mark className="category-tag">{item.categories?.name || 'General'}</mark>
-        </section>
+        <section className="listing-info-main"><h4>{item.title}</h4><mark className="category-tag">{item.categories?.name}</mark><p className="condition-tag">{item.condition}</p></section>
         <p className="listing-price">R {item.price}</p>
       </footer>
     </article>

@@ -1,0 +1,29 @@
+.ls-container {
+  height: 100vh; width: 100%; display: flex; justify-content: center;
+  align-items: center; background-color: #f0f4f8; position: fixed;
+  top: 0; left: 0; z-index: 9999; overflow: hidden;
+}
+.ls-content { text-align: center; position: relative; z-index: 10; }
+.ls-animation-wrap { margin: 0 auto 20px auto; width: 250px; position: relative; }
+.ls-graduate-run { width: 220px; animation: runAction 0.6s infinite ease-in-out; }
+.ls-ground-shadow {
+  border: none; height: 3px; background: rgba(10, 25, 47, 0.1);
+  width: 120px; margin: -10px auto 0 auto; opacity: 0.2;
+  border-radius: 50%; animation: shadowPulse 0.6s infinite ease-in-out;
+}
+@keyframes runAction {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(-2deg); }
+}
+@keyframes shadowPulse {
+  0%, 100% { transform: scaleX(1); opacity: 0.2; }
+  50% { transform: scaleX(0.7); opacity: 0.1; }
+}
+.ls-text { font-family: 'Inter', sans-serif; color: #0a192f; font-weight: 800; letter-spacing: 1px; margin-top: 20px; }
+
+/* Aurora Orbs matching dashboard */
+.orb { position: absolute; border: none; border-radius: 50%; filter: blur(100px); opacity: 0.3; animation: drift 15s infinite alternate ease-in-out; }
+.orb-1 { width: 400px; height: 400px; background: #003049; top: -10%; left: -10%; }
+.orb-2 { width: 500px; height: 500px; background: #f3a91e; bottom: -10%; right: -10%; }
+.orb-3 { width: 300px; height: 300px; background: #0077b6; top: 20%; right: 20%; }
+@keyframes drift { from { transform: translate(0,0); } to { transform: translate(100px, 50px); } }
