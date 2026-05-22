@@ -14,6 +14,10 @@
 .header-logo { height: 28px; }
 .logo-text { font-size: 1.3rem; font-weight: 800; color: #0a192f; }
 
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.icon-btn { border: 1px solid rgba(13, 27, 42, 0.12); border-radius: 14px; background: rgba(255,255,255,0.94); width: 46px; height: 46px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #0a192f; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.icon-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.08); }
+
 .burger-menu { position: absolute; right: 5%; top: 60px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 220px; overflow: hidden; border: 1px solid #eee; z-index: 1001; }
 .menu-list { list-style: none; padding: 0; margin: 0; }
 .menu-list button { width: 100%; text-align: left; padding: 15px 20px; background: none; border: none; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; cursor: pointer; color: #333; font-weight: 600; }
@@ -92,3 +96,33 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .loading-state { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 60vh; color: #0077b6; font-weight: 700; gap: 15px; }
 .spinner { animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .main-header { padding: 12px 4%; }
+  .header-nav { flex-wrap: wrap; gap: 12px; }
+  .hero-section { padding: 40px 6%; }
+  .quick-actions-grid { padding: 24px 6%; }
+  .search-ribbon { flex-direction: column; align-items: stretch; padding: 18px 18px; }
+  .search-button { width: 100%; }
+  .market-layout { grid-template-columns: 1fr; gap: 24px; padding: 32px 6%; }
+  .filter-sidebar { position: static; top: auto; width: 100%; }
+  .listings-grid-layout { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .burger-menu { right: 4%; }
+}
+
+@media (max-width: 640px) {
+  .hero-section { padding: 30px 5%; }
+  .logo-text { font-size: 1.1rem; }
+  .hero-title { font-size: 2.1rem; }
+  .quick-actions-grid { gap: 14px; padding: 22px 5%; }
+  .action-block { padding: 22px; }
+  .search-ribbon { padding: 16px; }
+  .market-layout { padding: 20px 5%; }
+  .search-bar-inner { padding: 8px; }
+  .search-button { padding: 12px 16px; }
+  .filter-sidebar { border-radius: 20px; padding: 22px; }
+  .listing-card-top { height: 140px; }
+  .listing-card-bottom { flex-direction: column; align-items: stretch; gap: 10px; }
+  .campus-badge { font-size: 0.7rem; padding: 4px 8px; }
+  .create-post-fab { right: 16px; bottom: 18px; width: calc(100% - 32px); justify-content: center; padding: 14px; }
+}

@@ -116,3 +116,22 @@
 .action-block p { margin-top: 8px; font-size: 14px; color: #666; line-height: 1.4; }
 
 .full-width-card { grid-column: span 2; }
+
+@media (max-width: 900px) {
+  .main-header { padding: 15px 20px; }
+  .header-nav { flex-wrap: wrap; gap: 16px; }
+  .hero-section { padding: 40px 20px; }
+  .hero-title { font-size: 2.4rem; }
+  .quick-actions-grid { grid-template-columns: 1fr; padding: 25px 20px; }
+  .action-block { padding: 24px; }
+  .full-width-card { grid-column: span 1; }
+}
+
+@media (max-width: 640px) {
+  .main-header { padding: 12px 16px; }
+  .hero-section { padding: 28px 16px; }
+  .hero-title { font-size: 2rem; }
+  .quick-actions-grid { gap: 16px; padding: 18px 16px; }
+  .action-block { padding: 22px; }
+  .dropdown-menu { width: 100%; right: 0; left: 0; top: 48px; border-radius: 0 0 16px 16px; }
+}
