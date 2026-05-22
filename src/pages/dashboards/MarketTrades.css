@@ -6,6 +6,36 @@
   padding-bottom: 60px;
 }
 
+.hero-section {
+  padding: 60px 40px;
+  background: #0d1b2a;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hero-kicker {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #ffffff;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-size: 34px;
+  margin: 0;
+  color: #f0a500;
+  font-weight: 900;
+  max-width: 800px;
+}
+
+.hero-description {
+  font-size: 16px;
+  color: #ffffff;
+  opacity: 0.8;
+}
+
 .market-hero {
   padding: 70px 10%;
 }
@@ -18,19 +48,27 @@
 }
 
 .back-btn-gold {
-  background: none;
-  border: none;
-  color: #7c3aed;
+  background: #ffffff;
+  border: 1px solid rgba(13, 27, 42, 0.08);
+  color: #0d1b2a;
   font-weight: 800;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 18px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(13, 27, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  width: auto;
+  max-width: max-content;
 }
 
 .back-btn-gold:hover {
-  opacity: 0.85;
+  transform: translateX(-2px);
+  box-shadow: 0 14px 36px rgba(13, 27, 42, 0.12);
+  opacity: 0.96;
 }
 
 .market-title {
@@ -171,19 +209,25 @@
 }
 
 .back-btn-gold {
-  background: none;
-  border: none;
-  color: #7c3aed;
+  background: #ffffff;
+  border: 1px solid rgba(13, 27, 42, 0.08);
+  color: #0d1b2a;
   font-weight: 800;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 18px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: 0 12px 30px rgba(13, 27, 42, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .back-btn-gold:hover {
-  opacity: 0.85;
+  transform: translateX(-2px);
+  box-shadow: 0 14px 36px rgba(13, 27, 42, 0.12);
+  opacity: 0.96;
 }
 
 .delete-confirm-backdrop {

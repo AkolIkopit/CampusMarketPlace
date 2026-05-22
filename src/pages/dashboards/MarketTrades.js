@@ -128,20 +128,20 @@ export default function MarketTrades() {
     <main className="market-page">
 
       {/* HERO */}
-      <section className="market-hero">
+      <section className="hero-section">
         <button type="button" className="back-btn-gold" onClick={() => navigate(-1)}>
           <ArrowLeft size={18} /> Back
         </button>
 
-        <span className="market-kicker">
+        <span className="hero-kicker">
           MARKET MANAGEMENT
         </span>
 
-        <h1 className="market-title">
+        <h1 className="hero-title">
           Marketplace Sales & Trades
         </h1>
 
-        <p className="market-description">
+        <p className="hero-description">
           Manage marketplace transactions, assign responsibility,
           and monitor completed exchanges.
         </p>

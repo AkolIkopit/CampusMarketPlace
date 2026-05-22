@@ -85,7 +85,7 @@ const LandingPage = () => {
     <div className="landing">
       <nav className="nav anim-fade-in">
         <div className="nav-logo">
-          <span className="nav-logo-mark">UM</span>
+          <span className="nav-logo-mark"><img src="/UniMartlogo.png" alt="UniMart logo" /></span>
           <span className="nav-logo-text">UniMart</span>
         </div>
 

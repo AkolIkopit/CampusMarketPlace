@@ -41,6 +41,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const [selectedCondition, setSelectedCondition] = useState('all');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [listingSearch, setListingSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Search is applied on explicit submit (Search button) or clear.
 
   const campusOptions = ["Main Campus", "Education Campus", "Med Campus"];
   const conditionOptions = ["New", "Like New", "Good", "Fair", "Poor"];
@@ -161,6 +165,12 @@ const StudentDashboard = ({ profile: initialProfile }) => {
     };
   }, [profile?.id]);
 
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredRecentListings = recentListings;
+  const filteredMarketListings = normalizedSearch
+    ? marketListings.filter((item) => item.title?.toLowerCase() === normalizedSearch)
+    : marketListings;
+
   const setView = (newV) => { setSearchParams({ view: newV }); setIsMenuOpen(false); };
 
   if (loading && !profile) return <LoadingScreen />;
@@ -213,13 +223,32 @@ const StudentDashboard = ({ profile: initialProfile }) => {
               <figure className="block-icon"><MessageCircle size={24} /></figure>
               <nav className="action-title-row"><h3>My Messages</h3>{unreadMessageCount > 0 && <mark className="message-count-badge">{unreadMessageCount}</mark>}</nav>
             </article>
-            <article className="action-block" onClick={() => navigate('/browse')}><figure className="block-icon"><ShoppingBag size={24} /></figure><h3>Browse All</h3></article>
           </section>
 
           <section className="feed-outer-section">
             <header className="section-header"><h2>Recent Listings (Top 10)</h2></header>
-            <section className="listings-grid-layout">{recentListings.map(item => <ListingCard key={item.id} item={item} />)}</section>
+            <section className="listings-grid-layout">
+              {filteredRecentListings.length > 0 ? filteredRecentListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">No recent listings available.</p>}
+            </section>
           </section>
+
+          <form className="search-ribbon" onSubmit={(e) => { e.preventDefault(); setSearchQuery(listingSearch); }}>
+            <div className="search-bar-inner">
+              <input
+                type="text"
+                className="search-input"
+                value={listingSearch}
+                onChange={(e) => setListingSearch(e.target.value)}
+                placeholder="Search listings by name"
+              />
+              {listingSearch && (
+                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setListingSearch(''); setSearchQuery(''); }}>
+                  ×
+                </button>
+              )}
+            </div>
+            <button type="submit" className="search-button">Search</button>
+          </form>
 
           <section className="market-layout">
             <aside className="filter-sidebar">
@@ -238,7 +267,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
             </aside>
             <section className="market-results">
               <header className="section-header"><h2>Market Feed</h2></header>
-              <section className="listings-grid-layout">{marketListings.length > 0 ? marketListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">No items found.</p>}</section>
+              <section className="listings-grid-layout">{filteredMarketListings.length > 0 ? filteredMarketListings.map(item => <ListingCard key={item.id} item={item} />) : <p className="empty-msg">{normalizedSearch ? 'No items match your search.' : 'No items found.'}</p>}</section>
             </section>
           </section>
         </>
