@@ -94,6 +94,10 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .reset-btn { width: 100%; background: none; border: 1px dashed rgba(255,255,255,0.3); color: white; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 0.75rem; }
 
 .action-title-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+
+@media (max-width: 860px) {
+  .action-title-row { justify-content: flex-start; }
+}
 .message-count-badge { background: #e63946; color: #fff; font-size: 0.65rem; font-weight: 800; padding: 2px 7px; border-radius: 99px; line-height: 1.4; }
 
 .create-post-fab { position: fixed; bottom: 30px; right: 30px; background: #0a192f; color: #fff; border: 1px solid #f3a91e; padding: 14px 24px; border-radius: 50px; font-weight: 700; cursor: pointer; z-index: 2000; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease; display: flex; align-items: center; gap: 10px; }
@@ -118,7 +122,10 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
   .filter-toggle-btn { display: inline-flex; }
 
   .hero-section { padding: 36px 5%; }
-  .quick-actions-grid { padding: 20px 5%; gap: 12px; }
+  .quick-actions-grid { padding: 20px 5%; gap: 12px; grid-template-columns: 1fr 1fr; }
+  .action-block { padding: 14px 16px; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 12px; text-align: left !important; }
+  .action-block .block-icon { margin: 0 !important; flex-shrink: 0; }
+  .action-block h3 { font-size: 0.9rem; margin: 0; }
   .feed-outer-section { padding: 20px 5% 12px; }
 
   /* Sidebar removed from the grid — market column takes full width */
@@ -168,7 +175,9 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
   .hero-title.gold-text { font-size: clamp(1.6rem, 7vw, 2.4rem); }
   .hero-description.white-text { font-size: 0.95rem; }
   .quick-actions-grid { padding: 16px 4%; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .action-block { padding: 18px; border-radius: 16px; }
+  .action-block { padding: 14px 16px; border-radius: 16px; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 12px; text-align: left !important; }
+  .action-block .block-icon { margin: 0 !important; flex-shrink: 0; }
+  .action-block h3 { font-size: 0.85rem; margin: 0; }
   .feed-outer-section { padding: 16px 4% 10px; }
   .market-layout { padding: 16px 4%; }
   .listings-grid-layout { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -178,9 +187,4 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 
 @media (max-width: 400px) {
   .listings-grid-layout { grid-template-columns: 1fr; }
-  /* Keep action blocks side-by-side on very small screens */
-  .quick-actions-grid { grid-template-columns: 1fr 1fr; padding: 12px 4%; gap: 8px; }
-  .action-block { padding: 14px 10px; border-radius: 14px; }
-  .action-block h3 { font-size: 0.8rem; }
-  .block-icon { width: 36px; height: 36px; margin-bottom: 10px; }
 }
