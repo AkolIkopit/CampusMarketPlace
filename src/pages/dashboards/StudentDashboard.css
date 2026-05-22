@@ -93,6 +93,9 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .filter-form select, .filter-form input { width: 100%; background: #1a2a44; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; color: white; outline: none; margin-bottom: 10px; font-size: 0.85rem; }
 .reset-btn { width: 100%; background: none; border: 1px dashed rgba(255,255,255,0.3); color: white; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 0.75rem; }
 
+.action-title-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.message-count-badge { background: #e63946; color: #fff; font-size: 0.65rem; font-weight: 800; padding: 2px 7px; border-radius: 99px; line-height: 1.4; }
+
 .create-post-fab { position: fixed; bottom: 30px; right: 30px; background: #0a192f; color: #fff; border: 1px solid #f3a91e; padding: 14px 24px; border-radius: 50px; font-weight: 700; cursor: pointer; z-index: 2000; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease; display: flex; align-items: center; gap: 10px; }
 .create-post-fab:hover { background: #f3a91e; color: #0a192f; transform: scale(1.08); box-shadow: 0 0 20px rgba(243, 169, 30, 0.7); }
 
@@ -100,20 +103,63 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 .spinner { animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+/* Search & Filter toggle buttons — hidden on desktop, shown on mobile */
+.search-toggle-btn { display: none; }
+.filter-toggle-btn { display: none; }
+
 /* ── Mobile Responsive ─────────────────────────────────── */
 @media (max-width: 1024px) {
   .market-layout { grid-template-columns: 220px 1fr; gap: 24px; padding: 30px 5%; }
 }
 
 @media (max-width: 860px) {
+  /* Show both toggle buttons in the header */
+  .search-toggle-btn { display: inline-flex; }
+  .filter-toggle-btn { display: inline-flex; }
+
   .hero-section { padding: 36px 5%; }
   .quick-actions-grid { padding: 20px 5%; gap: 12px; }
   .feed-outer-section { padding: 20px 5% 12px; }
+
+  /* Sidebar removed from the grid — market column takes full width */
   .market-layout { grid-template-columns: 1fr; padding: 20px 5%; }
-  .filter-sidebar { position: static; border-radius: 18px; }
-  .search-ribbon { flex-direction: column; padding: 14px 16px; gap: 10px; border-radius: 18px; }
+
+  /* Filter sidebar: hidden from flow, fixed overlay when open */
+  .filter-sidebar {
+    display: none;
+    position: fixed;
+    top: 66px;
+    left: 0;
+    right: 0;
+    z-index: 997;
+    border-radius: 0 0 24px 24px !important;
+    padding: 20px 5% 24px !important;
+    max-height: 72vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  }
+  .filter-sidebar.filter-open { display: block; }
+
+  /* Search ribbon: hidden from its normal in-page position */
+  .search-ribbon {
+    display: none;
+    position: fixed;
+    top: 66px;
+    left: 0;
+    right: 0;
+    z-index: 998;
+    border-radius: 0 0 24px 24px;
+    margin: 0;
+    max-width: 100%;
+    flex-direction: column;
+    padding: 16px 5% 20px;
+    gap: 10px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  }
+  .search-ribbon.search-open { display: flex; }
   .search-bar-inner { width: 100%; }
   .search-button { width: 100%; justify-content: center; padding: 12px; }
+
   .listings-grid-layout { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
 }
 
@@ -132,6 +178,9 @@ input[type="search"]::-webkit-search-results-decoration { display: none; }
 
 @media (max-width: 400px) {
   .listings-grid-layout { grid-template-columns: 1fr; }
-  .quick-actions-grid { grid-template-columns: 1fr; }
-  .search-ribbon { padding: 12px; }
+  /* Keep action blocks side-by-side on very small screens */
+  .quick-actions-grid { grid-template-columns: 1fr 1fr; padding: 12px 4%; gap: 8px; }
+  .action-block { padding: 14px 10px; border-radius: 14px; }
+  .action-block h3 { font-size: 0.8rem; }
+  .block-icon { width: 36px; height: 36px; margin-bottom: 10px; }
 }

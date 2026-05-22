@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabase';
-import { 
-  Plus, ShoppingBag, Box, MessageCircle, 
-  Menu, X, User, LogOut, Filter, MapPin,
+import {
+  Plus, ShoppingBag, Box, MessageCircle,
+  Menu, X, User, LogOut, Filter, MapPin, Search,
   PartyPopper, Loader2, OctagonX, Clock
 } from 'lucide-react';
 import { notifyError } from '../../toast';
@@ -36,6 +36,10 @@ const StudentDashboard = ({ profile: initialProfile }) => {
   const [approvedApp, setApprovedApp] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Filter & Search panels (mobile drawers)
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Filter States
   const [selectedCat, setSelectedCat] = useState('all');
@@ -191,7 +195,27 @@ const StudentDashboard = ({ profile: initialProfile }) => {
             <h1 className="logo-text">UniMart</h1>
           </section>
           <nav className="header-actions">
-            <button className="icon-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
+            {view === 'market' && (
+              <>
+                <button
+                  className="icon-btn search-toggle-btn"
+                  onClick={() => { setIsSearchOpen(o => !o); setIsFilterOpen(false); setIsMenuOpen(false); }}
+                  aria-label="Toggle search"
+                  aria-expanded={isSearchOpen}
+                >
+                  {isSearchOpen ? <X size={20} /> : <Search size={20} />}
+                </button>
+                <button
+                  className="icon-btn filter-toggle-btn"
+                  onClick={() => { setIsFilterOpen(o => !o); setIsSearchOpen(false); setIsMenuOpen(false); }}
+                  aria-label="Toggle filters"
+                  aria-expanded={isFilterOpen}
+                >
+                  {isFilterOpen ? <X size={20} /> : <Filter size={20} />}
+                </button>
+              </>
+            )}
+            <button className="icon-btn" onClick={() => { setIsMenuOpen(!isMenuOpen); setIsFilterOpen(false); setIsSearchOpen(false); }}>{isMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
           </nav>
         </nav>
       </header>
@@ -235,7 +259,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
             </section>
           </section>
 
-          <form className="search-ribbon" onSubmit={(e) => { e.preventDefault(); setSearchQuery(listingSearch); }}>
+          <form className={`search-ribbon${isSearchOpen ? ' search-open' : ''}`} onSubmit={(e) => { e.preventDefault(); setSearchQuery(listingSearch); setIsSearchOpen(false); }}>
             <div className="search-bar-inner">
               <input
                 type="text"
@@ -245,7 +269,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
                 placeholder="Search listings by name"
               />
               {listingSearch && (
-                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setListingSearch(''); setSearchQuery(''); }}>
+                <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setListingSearch(''); setSearchQuery(''); setIsSearchOpen(false); }}>
                   ×
                 </button>
               )}
@@ -254,7 +278,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
           </form>
 
           <section className="market-layout">
-            <aside className="filter-sidebar">
+            <aside className={`filter-sidebar${isFilterOpen ? ' filter-open' : ''}`}>
               <header className="sidebar-header"><Filter size={18} /><h3>Filters</h3></header>
               <form className="filter-form">
                 <fieldset className="filter-group"><legend>Campus</legend><select value={selectedCampus} onChange={(e) => setSelectedCampus(e.target.value)}><option value="all">All Campuses</option>{campusOptions.map(c => <option key={c} value={c}>{c}</option>)}</select></fieldset>
@@ -265,7 +289,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
                    <input type="number" placeholder="Max" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
                 </fieldset>
                 <fieldset className="filter-group"><legend>Category</legend><select value={selectedCat} onChange={(e) => setSelectedCat(e.target.value)}><option value="all">All</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></fieldset>
-                <button type="button" className="reset-btn" onClick={() => { setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice(''); }}>Clear Filters</button>
+                <button type="button" className="reset-btn" onClick={() => { setSelectedCat('all'); setSelectedCampus('all'); setSelectedCondition('all'); setMinPrice(''); setMaxPrice(''); setIsFilterOpen(false); }}>Clear Filters</button>
               </form>
             </aside>
             <section className="market-results">
