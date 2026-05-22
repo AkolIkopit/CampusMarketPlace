@@ -75,40 +75,39 @@ const handlePayment = async () => {
   }
 
 
+  // Build only required fields — no empty values
   const fields = {
-    merchant_id: MERCHANT_ID,
+    merchant_id:  MERCHANT_ID,
     merchant_key: MERCHANT_KEY,
-    return_url: `${RETURN_URL}?transaction=${transactionId}&amount=${amount.toFixed(2)}`,
-    cancel_url: CANCEL_URL,
-    notify_url: NOTIFY_URL,
-    amount: amount.toFixed(2),
-    item_name: "UniMart Purchase",
+    return_url:   RETURN_URL,
+    cancel_url:   CANCEL_URL,
+    amount:       amount.toFixed(2),
+    item_name:    "UniMart Purchase",
   };
 
-  // Generate signature correctly
-  const queryString = Object.entries(fields)
-    .map(([key, value]) =>
-      `${key}=${encodeURIComponent(value).replace(/%20/g, "+")}`
-    )
+  // Only include notify_url if it has a value
+  if (NOTIFY_URL) fields.notify_url = NOTIFY_URL;
+
+  // Build signature string per PayFast spec
+  const pfParamString = Object.entries(fields)
+    .map(([k, v]) => `${k}=${encodeURIComponent(String(v).trim()).replace(/%20/g, "+")}`)
     .join("&");
 
-  const signature = md5(
-    `${queryString}&passphrase=${encodeURIComponent(PASSPHRASE).replace(/%20/g, "+")}`
-  );
+  // Default sandbox test account has NO passphrase set — omit it
+  const signature = md5(pfParamString);
+
+  console.log("PayFast POST fields:", fields);
+  console.log("Signature input:", pfParamString);
+  console.log("MD5 signature:", signature);
 
   const form = document.createElement("form");
   form.method = "POST";
   form.action = PAYFAST_URL;
 
-  const allFields = {
-    ...fields,
-    signature,
-  };
-
-  Object.entries(allFields).forEach(([key, value]) => {
+  [...Object.entries(fields), ["signature", signature]].forEach(([key, value]) => {
     const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = key;
+    input.type  = "hidden";
+    input.name  = key;
     input.value = value;
     form.appendChild(input);
   });
