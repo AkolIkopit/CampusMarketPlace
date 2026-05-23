@@ -7,10 +7,10 @@ Flow: Renders transaction payment UI and coordinates with backend/payment gatewa
 
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "./supabase";
+import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
-import { getPayFastConfig } from "./payfastConfig";
+import { getPayFastConfig } from "../payfastConfig";
 
 const maskValue = (value, visibleStart = 3, visibleEnd = 3) => {
   const text = String(value || "");
