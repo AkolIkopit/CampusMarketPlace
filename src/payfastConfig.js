@@ -9,6 +9,7 @@ const cleanEnvValue = (value) => {
 
   if (
     (quote === '"' || quote === "'") &&
+    trimmed.length > 1 &&
     trimmed[trimmed.length - 1] === quote
   ) {
     return trimmed.slice(1, -1).trim();
@@ -18,9 +19,7 @@ const cleanEnvValue = (value) => {
 };
 
 export function getPayFastConfig(env = process.env) {
-  const mode = cleanEnvValue(
-    env.REACT_APP_PAYFAST_MODE || env.PAYFAST_MODE || "sandbox"
-  ).toLowerCase();
+  const mode = "sandbox";
 
   const merchantId = cleanEnvValue(
     env.REACT_APP_PAYFAST_MERCHANT_ID || env.PAYFAST_MERCHANT_ID
@@ -41,14 +40,11 @@ export function getPayFastConfig(env = process.env) {
     env.REACT_APP_NOTIFY_URL || env.REACT_APP_PAYFAST_NOTIFY_URL
   );
 
+  const explicitUrl = cleanEnvValue(env.REACT_APP_PAYFAST_URL);
 
-  const processUrl = mode === "live" ? LIVE_URL : SANDBOX_URL;
+  const processUrl = SANDBOX_URL;
 
   const errors = [];
-
-  if (!["sandbox", "live"].includes(mode)) {
-    errors.push("REACT_APP_PAYFAST_MODE must be either sandbox or live.");
-  }
 
   if (!merchantId) {
     errors.push("REACT_APP_PAYFAST_MERCHANT_ID is required.");
@@ -76,12 +72,10 @@ export function getPayFastConfig(env = process.env) {
     errors.push("REACT_APP_NOTIFY_URL is required.");
   }
 
-  if (mode === "live" && processUrl !== LIVE_URL) {
-    errors.push("Live PayFast mode must use the live PayFast process URL.");
-  }
-
-  if (mode === "sandbox" && processUrl !== SANDBOX_URL) {
-    errors.push("Sandbox PayFast mode must use the sandbox PayFast process URL.");
+  if (explicitUrl && explicitUrl.includes("www.payfast.co.za")) {
+    errors.push(
+      "REACT_APP_PAYFAST_URL is pointing to live PayFast. This project is sandbox-only. Use https://sandbox.payfast.co.za/eng/process"
+    );
   }
 
   return {
