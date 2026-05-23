@@ -11,14 +11,18 @@ import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
-// PayFast configuration from environment variables
-const PAYFAST_URL  = process.env.REACT_APP_PAYFAST_URL;
-const MERCHANT_ID  = process.env.REACT_APP_PAYFAST_MERCHANT_ID;
-const MERCHANT_KEY = process.env.REACT_APP_PAYFAST_MERCHANT_KEY;
-const PASSPHRASE   = process.env.REACT_APP_PAYFAST_PASSPHRASE || "";
-const RETURN_URL   = process.env.REACT_APP_PAYFAST_RETURN_URL;
-const CANCEL_URL   = process.env.REACT_APP_PAYFAST_CANCEL_URL;
-const NOTIFY_URL   = process.env.REACT_APP_NOTIFY_URL || "";
+// PayFast Sandbox configuration
+const PAYFAST_URL  = "https://sandbox.payfast.co.za/eng/process";
+const MERCHANT_ID  = "10048982";
+const MERCHANT_KEY = "8fr5hx4alngq6";
+const PASSPHRASE   = "andre12345678";
+const RETURN_URL   = window.location.hostname === "localhost"
+  ? "http://localhost:3000/payment/success"
+  : "https://unimart-ekbjezg8fmfnhfes.austriaeast-01.azurewebsites.net/payment/success";
+const CANCEL_URL   = window.location.hostname === "localhost"
+  ? "http://localhost:3000/payment/cancel"
+  : "https://unimart-ekbjezg8fmfnhfes.austriaeast-01.azurewebsites.net/payment/cancel";
+const NOTIFY_URL   = "";
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
