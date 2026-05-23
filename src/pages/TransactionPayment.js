@@ -10,19 +10,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
-
-// PayFast Sandbox configuration
-const PAYFAST_URL  = "https://sandbox.payfast.co.za/eng/process"; 
-const MERCHANT_ID  = "10048982";
-const MERCHANT_KEY = "8fr5hx4alngq6";
-const PASSPHRASE   = "andre12345678";
-const RETURN_URL   = window.location.hostname === "localhost"
-  ? "http://localhost:3000/payment/success"
-  : "https://unimart-ekbjezg8fmfnhfes.austriaeast-01.azurewebsites.net/payment/success";
-const CANCEL_URL   = window.location.hostname === "localhost"
-  ? "http://localhost:3000/payment/cancel"
-  : "https://unimart-ekbjezg8fmfnhfes.austriaeast-01.azurewebsites.net/payment/cancel";
-const NOTIFY_URL   = "";
+import { getPayFastConfig } from "../payfastConfig";
 
 export default function TransactionPayment() {
   const { transactionId } = useParams();
@@ -67,6 +55,7 @@ const fetchTransaction = async () => {
 const handlePayment = async () => {
   const amount = parseFloat(payAmount);
   const outstandingAmount = Number(transaction.cash_shortfall_due ?? transaction.agreed_amount ?? 0);
+  const payFastConfig = getPayFastConfig();
 
   if (!amount || amount <= 0) {
     setError("Please enter a valid amount.");
@@ -78,40 +67,46 @@ const handlePayment = async () => {
     return;
   }
 
+  if (!payFastConfig.isValid) {
+    console.error("Invalid PayFast configuration", {
+      mode: payFastConfig.mode,
+      processUrl: payFastConfig.processUrl,
+      errors: payFastConfig.errors,
+    });
+    setError("Payment is not configured correctly. Please contact support.");
+    return;
+  }
 
-  // Build only required fields — no empty values
   const fields = {
-    merchant_id:  MERCHANT_ID,
-    merchant_key: MERCHANT_KEY,
-    return_url:   RETURN_URL,
-    cancel_url:   CANCEL_URL,
-    amount:       amount.toFixed(2),
-    item_name:    "UniMart Purchase",
+    merchant_id: payFastConfig.merchantId,
+    merchant_key: payFastConfig.merchantKey,
+    return_url: `${payFastConfig.returnUrl}?transaction=${transactionId}`,
+    cancel_url: payFastConfig.cancelUrl,
+    notify_url: payFastConfig.notifyUrl,
+    amount: amount.toFixed(2),
+    item_name: "UniMart Purchase",
+    custom_str1: transactionId,
   };
 
-  // Only include notify_url if it has a value
-  if (NOTIFY_URL) fields.notify_url = NOTIFY_URL;
-
-  // Build signature string per PayFast spec
+  // Build signature string per PayFast spec.
   const pfParamString = Object.entries(fields)
     .map(([k, v]) => `${k}=${encodeURIComponent(String(v).trim()).replace(/%20/g, "+")}`)
     .join("&");
 
-  // Append passphrase if set on the merchant account
-  const signatureInput = PASSPHRASE
-    ? `${pfParamString}&passphrase=${encodeURIComponent(PASSPHRASE.trim()).replace(/%20/g, "+")}`
+  const signatureInput = payFastConfig.passphrase
+    ? `${pfParamString}&passphrase=${encodeURIComponent(payFastConfig.passphrase).replace(/%20/g, "+")}`
     : pfParamString;
 
   const signature = md5(signatureInput);
 
   const form = document.createElement("form");
   form.method = "POST";
-  form.action = PAYFAST_URL;
+  form.action = payFastConfig.processUrl;
 
   [...Object.entries(fields), ["signature", signature]].forEach(([key, value]) => {
     const input = document.createElement("input");
-    input.type  = "hidden";
-    input.name  = key;
+    input.type = "hidden";
+    input.name = key;
     input.value = value;
     form.appendChild(input);
   });
@@ -130,9 +125,9 @@ const handlePayment = async () => {
   const outstandingAmount = Number(transaction.cash_shortfall_due ?? agreedAmount);
   const isPartial = outstandingAmount > 0 && outstandingAmount < agreedAmount;
   const amountPaid = Math.max(agreedAmount - outstandingAmount, 0);
-  const paymentComplete =
-    String(transaction.payment_status || "").toLowerCase() === "fully_paid" ||
-    outstandingAmount <= 0;
+  const paymentComplete = ["fully_paid", "paid", "complete", "successful"].includes(
+    String(transaction.payment_status || "").toLowerCase()
+  );
   return (
     <main className="payment-container">
 
@@ -181,12 +176,11 @@ const handlePayment = async () => {
             <span className="payment-info-value">{transaction.transaction_type}</span>
           </li>
         </ul>
-       
 
         {paymentComplete ? (
 
           <section className="payment-complete">
-            <p>✅ Payment complete. No outstanding balance.</p>
+            <p>Payment complete. No outstanding balance.</p>
             <button className="btn btn-primary" onClick={() => navigate("/messages")}>
               Back to Messages
             </button>

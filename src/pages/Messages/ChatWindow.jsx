@@ -30,7 +30,7 @@ function ChatWindow({
   const bookingStatus = (conversation.bookingStatus || "").toLowerCase();
   const paymentStatus = (conversation.paymentStatus || "unpaid").toLowerCase();
   const outstandingBalance = Number(conversation.cashShortfallDue ?? conversation.agreedAmount ?? 0);
-  const paymentComplete = paymentStatus === "fully_paid";
+  const paymentComplete = ["fully_paid", "paid", "complete", "successful"].includes(paymentStatus);
   const facilityHandoverStarted = Boolean(
     conversation.itemReceived ||
     conversation.itemReleased ||
@@ -114,6 +114,13 @@ function ChatWindow({
           <button type="button" className={styles["booking-button"]} onClick={onRequestBooking}>
             {hasExistingBooking ? "Request a new booking" : "Request facility booking"}
           </button>
+        </section>
+      ) : null}
+
+      {conversation.transactionId && paymentComplete ? (
+        <section className={styles["payment-banner"]}>
+          <p>Payment successful. This transaction is paid.</p>
+          <strong>Paid</strong>
         </section>
       ) : null}
 

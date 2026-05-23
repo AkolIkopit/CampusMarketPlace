@@ -1,119 +1,69 @@
 /*
 Module: PaymentSuccess.js
-Purpose: Simple page shown after a successful payment.
-Units: presentational component showing confirmation and next steps.
-Flow: Display success message and optionally provide navigation to orders/dashboard.
+Purpose: Simple page shown after returning from PayFast.
+Units: confirmation/pending state display.
+Flow: Refetches backend payment status that is updated by the PayFast ITN webhook.
 */
 
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabase";
 
-const SYSTEM_MESSAGE_PREFIX = "[SYSTEM] ";
-
-async function getProfileName(userId, fallback = "A student") {
-  if (!userId) return fallback;
-  const { data } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.full_name || fallback;
-}
-
 export default function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [updated, setUpdated] = useState(false);
+  const [status, setStatus] = useState("checking");
 
   useEffect(() => {
-    handlePaymentSuccess();
-  }, []);
-
-  const handlePaymentSuccess = async () => {
+    let cancelled = false;
     const transactionId = searchParams.get("transaction");
-    const paymentId = searchParams.get("pf_payment_id");
-    const paidAmountParam = searchParams.get("amount");
 
     if (!transactionId) {
-      setUpdated(true);
+      setStatus("unknown");
       return;
     }
 
-    const { data: transaction } = await supabase
-      .from("transactions")
-      .select(`
-        id,
-        buyer_id,
-        seller_id,
-        listing_id,
-        agreed_amount,
-        cash_shortfall_due,
-        listings ( title )
-      `)
-      .eq("id", transactionId)
-      .maybeSingle();
+    const checkPaymentStatus = async (attempt = 0) => {
+      const { data: transaction } = await supabase
+        .from("transactions")
+        .select("payment_status, cash_shortfall_due")
+        .eq("id", transactionId)
+        .maybeSingle();
 
-    if (!transaction) {
-      setUpdated(true);
-      return;
-    }
+      if (cancelled) return;
 
-    const agreedAmount = Number(transaction.agreed_amount || 0);
-    const currentOutstanding = Number(transaction.cash_shortfall_due ?? agreedAmount);
-    const paidAmount = Math.min(
-      Math.max(Number(paidAmountParam || currentOutstanding), 0),
-      currentOutstanding
-    );
-    const remainingBalance = Math.max(currentOutstanding - paidAmount, 0);
-    const newPaymentStatus = remainingBalance > 0 ? "pending_payment" : "FULLY_PAID";
-    const totalPaid = Math.max(agreedAmount - remainingBalance, 0);
+      const paymentStatus = String(transaction?.payment_status || "").toLowerCase();
+      if (["fully_paid", "paid", "complete", "successful"].includes(paymentStatus)) {
+        setStatus("paid");
+        return;
+      }
 
-    await supabase
-      .from("transactions")
-      .update({
-        payment_status: newPaymentStatus,
-        cash_shortfall_due: remainingBalance,
-        payment_reference: paymentId || "sandbox",
-      })
-      .eq("id", transaction.id);
+      if (attempt >= 4) {
+        setStatus("pending");
+        return;
+      }
 
-    await supabase
-      .from("bookings")
-      .update({
-        amount_paid: totalPaid,
-        cash_shortfall: remainingBalance,
-      })
-      .eq("transaction_id", transaction.id);
+      window.setTimeout(() => checkPaymentStatus(attempt + 1), 2000);
+    };
 
-    const itemTitle = transaction.listings?.title || "the item";
-    const buyerName = await getProfileName(transaction.buyer_id, "The buyer");
-    const sellerName = await getProfileName(transaction.seller_id, "the seller");
-    const paymentMessage = remainingBalance > 0
-      ? `${buyerName} paid R${paidAmount.toFixed(2)} to ${sellerName} for ${itemTitle}. Outstanding balance: R${remainingBalance.toFixed(2)}.`
-      : `${buyerName} paid R${paidAmount.toFixed(2)} to ${sellerName} for ${itemTitle}. The transaction is fully paid.`;
+    checkPaymentStatus();
 
-    await supabase.from("messages").insert([
-      {
-        listing_id: transaction.listing_id,
-        sender_id: transaction.buyer_id,
-        receiver_id: transaction.seller_id,
-        message_text: `${SYSTEM_MESSAGE_PREFIX}${paymentMessage}`,
-        transaction_id: transaction.id,
-        is_read: false,
-      },
-    ]);
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
-    setUpdated(true);
-  };
+  const isPaid = status === "paid";
 
   return (
     <main style={{ textAlign: "center", padding: "80px 20px" }}>
-      <h1 style={{ color: "#27500A" }}>✅ Payment Successful</h1>
+      <h1 style={{ color: "#27500A" }}>
+        {isPaid ? "Payment Successful" : "Payment Processing"}
+      </h1>
       <p>
-        {updated
-          ? "Your payment has been received. The trade facility staff will be notified."
-          : "Finalising your payment update..."}
+        {isPaid
+          ? "Your payment has been confirmed. The listing and chat have been updated."
+          : "PayFast is still confirming your payment. You can return to messages and refresh shortly."}
       </p>
       <button
         onClick={() => navigate("/messages")}

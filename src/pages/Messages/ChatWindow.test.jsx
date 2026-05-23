@@ -133,6 +133,58 @@ describe('ChatWindow', () => {
     expect(screen.queryByRole('button', { name: 'Request a new booking' })).not.toBeInTheDocument();
   });
 
+  it('shows paid state instead of Make payment after full payment', () => {
+    render(
+      <ChatWindow
+        conversation={{
+          ...conversation,
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          transactionId: 'transaction-1',
+          transactionStatus: 'accepted_pending_booking',
+          bookingStatus: 'requested',
+          paymentStatus: 'FULLY_PAID',
+          agreedAmount: 100,
+          cashShortfallDue: 0
+        }}
+        currentUserId="buyer-1"
+        onSendMessage={jest.fn()}
+        isSending={false}
+        onBackToList={jest.fn()}
+        onMakePayment={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Payment successful/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make payment' })).not.toBeInTheDocument();
+  });
+
+  it('does not show paid state for a new unpaid buy-now transaction with zero shortfall', () => {
+    render(
+      <ChatWindow
+        conversation={{
+          ...conversation,
+          listingId: 'listing-1',
+          sellerId: 'seller-1',
+          transactionId: 'transaction-1',
+          transactionStatus: 'pending_seller_acceptance',
+          bookingStatus: 'not_booked',
+          paymentStatus: 'unpaid',
+          agreedAmount: 100,
+          cashShortfallDue: 0
+        }}
+        currentUserId="buyer-1"
+        onSendMessage={jest.fn()}
+        isSending={false}
+        onBackToList={jest.fn()}
+        onMakePayment={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByText(/Payment successful/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Paid')).not.toBeInTheDocument();
+  });
+
   it('hides seller booking prompt once staff marks the item ready for collection', () => {
     render(
       <ChatWindow

@@ -34,10 +34,34 @@ const pendingTransaction = {
 };
 
 describe('TransactionPayment', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    document.querySelectorAll('form').forEach((form) => form.remove());
+    process.env = {
+      ...originalEnv,
+      REACT_APP_PAYFAST_MODE: 'sandbox',
+      REACT_APP_PAYFAST_MERCHANT_ID: '10000100',
+      REACT_APP_PAYFAST_MERCHANT_KEY: 'abc123def4567',
+      REACT_APP_PAYFAST_PASSPHRASE: 'secret',
+      REACT_APP_PAYFAST_RETURN_URL: 'https://example.com/payment/success',
+      REACT_APP_PAYFAST_CANCEL_URL: 'https://example.com/payment/cancel',
+      REACT_APP_NOTIFY_URL: 'https://example.supabase.co/functions/v1/payfast-notify'
+    };
     __resetRouterMocks();
     __setParams({ transactionId: 'tx-1' });
+  });
+
+  afterEach(() => {
+    document.querySelectorAll('form').forEach((form) => form.remove());
+    if (document.createElement.mockRestore) {
+      document.createElement.mockRestore();
+    }
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it('loads a pending transaction and shows the outstanding rand amount', async () => {
@@ -89,7 +113,23 @@ describe('TransactionPayment', () => {
     await userEvent.click(screen.getByRole('button', { name: /Pay R680.00 via PayFast/i }));
 
     expect(submit).toHaveBeenCalled();
+    expect(document.querySelector('form').action).toBe('https://sandbox.payfast.co.za/eng/process');
+    expect(document.querySelector('input[name="merchant_id"]').value).toBe('10000100');
+    expect(document.querySelector('input[name="merchant_key"]').value).toBe('abc123def4567');
+    expect(document.querySelector('input[name="custom_str1"]').value).toBe('tx-1');
     document.createElement.mockRestore();
+  });
+
+  it('fails gracefully when PayFast credentials are missing', async () => {
+    process.env.REACT_APP_PAYFAST_MERCHANT_ID = '';
+    mockTransaction(pendingTransaction);
+
+    render(<TransactionPayment />);
+
+    await screen.findByText('Mechanical Keyboard');
+    await userEvent.click(screen.getByRole('button', { name: /Pay R680.00 via PayFast/i }));
+
+    expect(screen.getByText('Payment is not configured correctly. Please contact support.')).toBeInTheDocument();
   });
 
   it('shows complete-payment state and navigates back to messages', async () => {
@@ -107,6 +147,19 @@ describe('TransactionPayment', () => {
     await userEvent.click(screen.getByRole('button', { name: /Back to Messages/i }));
 
     expect(navigate).toHaveBeenCalledWith('/messages');
+  });
+
+  it('does not treat an unpaid zero-shortfall transaction as payment complete', async () => {
+    mockTransaction({
+      ...pendingTransaction,
+      cash_shortfall_due: 0,
+      payment_status: 'unpaid'
+    });
+
+    render(<TransactionPayment />);
+
+    expect(await screen.findByText('Mechanical Keyboard')).toBeInTheDocument();
+    expect(screen.queryByText(/Payment complete/i)).not.toBeInTheDocument();
   });
 
   it('shows an error when the transaction cannot be loaded', async () => {
