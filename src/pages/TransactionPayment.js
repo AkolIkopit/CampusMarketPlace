@@ -12,7 +12,7 @@ import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
 // PayFast Sandbox configuration
-const PAYFAST_URL  = "https://www.payfast.co.za/eng/process"; 
+const PAYFAST_URL  = "https://sandbox.payfast.co.za/eng/process"; 
 const MERCHANT_ID  = "10048982";
 const MERCHANT_KEY = "8fr5hx4alngq6";
 const PASSPHRASE   = "andre12345678";
