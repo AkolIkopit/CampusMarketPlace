@@ -12,9 +12,9 @@ import "./TransactionPayment.css";
 import md5 from "blueimp-md5";
 
 // PayFast Sandbox configuration
-const PAYFAST_URL  = "https://sandbox.payfast.co.za/eng/process";
-const MERCHANT_ID  = "10000100"; // Replace with your actual merchant ID in production
-const MERCHANT_KEY = "46f0cd694581a"; // Replace with your actual merchant key in production
+const PAYFAST_URL  = "https://www.payfast.co.za/eng/process"; 
+const MERCHANT_ID  = "10048982";
+const MERCHANT_KEY = "8fr5hx4alngq6";
 const PASSPHRASE   = "andre12345678";
 const RETURN_URL   = window.location.hostname === "localhost"
   ? "http://localhost:3000/payment/success"
