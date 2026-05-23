@@ -72,7 +72,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
         const { data: recent } = await supabase
           .from('listings')
           .select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`)
-          .eq('status', 'active')
+          .in('status', ['active', 'sold_out'])
           .order('created_at', { ascending: false })
           .limit(10);
         setRecentListings(recent || []);
@@ -107,7 +107,7 @@ const StudentDashboard = ({ profile: initialProfile }) => {
     if (!profile?.id) return;
 
     const fetchMarket = async () => {
-      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).eq('status', 'active');
+      let query = supabase.from('listings').select(`*, profiles:seller_id(full_name, avatar_url, campus), categories(name), listing_images(image_url, is_primary)`).in('status', ['active', 'sold_out']);
       if (selectedCat !== 'all') query = query.eq('category_id', selectedCat);
       if (selectedCondition !== 'all') query = query.eq('condition', selectedCondition);
       if (minPrice) query = query.gte('price', Number(minPrice));
