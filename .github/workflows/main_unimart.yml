@@ -34,7 +34,7 @@ jobs:
       - name: Verify lcov report exists
         run: |
           if [ ! -f coverage/lcov.info ]; then
-            echo ":⚠️:coverage/lcov.info not found — Codecov upload will be skipped"
+            echo "⚠️ coverage/lcov.info not found — Codecov upload will be skipped"
           else
             echo "coverage/lcov.info found ($(wc -l < coverage/lcov.info) lines)"
           fi
@@ -61,7 +61,49 @@ jobs:
 
       - run: npm install
 
-      - run: CI=false npm run build
+      - name: Build React app with PayFast sandbox config
+        run: CI=false npm run build
+        env:
+          REACT_APP_PAYFAST_MODE: sandbox
+          REACT_APP_PAYFAST_URL: https://sandbox.payfast.co.za/eng/process
+          REACT_APP_PAYFAST_MERCHANT_ID: 10004002
+          REACT_APP_PAYFAST_MERCHANT_KEY: q1cd2rdny4a53
+          REACT_APP_PAYFAST_PASSPHRASE: payfast
+          REACT_APP_PAYFAST_RETURN_URL: https://unimart-ekbjezg8fmfnhfes.austriaeast-01.azurewebsites.net/payment/success
+          REACT_APP_PAYFAST_CANCEL_URL: https://unimart-ekbjezg8fmfnhfes.austriaeast-01.azurewebsites.net/payment/cancel
+          REACT_APP_NOTIFY_URL: https://pjqoghabztvrywvwvfdp.supabase.co/functions/v1/payfast-notify
+
+      - name: Verify PayFast values are baked into React build
+        run: |
+          echo "Checking generated React bundle..."
+
+          if grep -R "YOUR_PRODUCTION_MERCHANT_ID" build/static/js; then
+            echo "❌ Old PayFast placeholder still exists in build."
+            exit 1
+          else
+            echo "✅ Old PayFast merchant placeholder not found."
+          fi
+
+          if grep -R "YOUR_PRODUCTION_MERCHANT_KEY" build/static/js; then
+            echo "❌ Old PayFast merchant key placeholder still exists in build."
+            exit 1
+          else
+            echo "✅ Old PayFast key placeholder not found."
+          fi
+
+          if grep -R "sandbox.payfast.co.za" build/static/js; then
+            echo "✅ Sandbox PayFast URL found in build."
+          else
+            echo "❌ Sandbox PayFast URL not found in build."
+            exit 1
+          fi
+
+          if grep -R "10004002" build/static/js; then
+            echo "✅ Sandbox merchant ID found in build."
+          else
+            echo "❌ Sandbox merchant ID not found in build."
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
